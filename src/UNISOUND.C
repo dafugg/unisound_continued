@@ -3343,7 +3343,7 @@ int iw_list_roms(void)
     unsigned long size = 0;
     unsigned long addr = 0;
     char sig[5] = { 0 };
-    char name[16] = { 0 };
+    char name[17] = { 0 };     /* 16 characters + NUL */
     register int i = 0;
     register int n = 0;
 
