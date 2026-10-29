@@ -24,9 +24,11 @@ byte for byte.
     606f8faec686d56468bb53eecdf1e28e4d6cda7a8a2051c36b7bcec16c37b370  UNISOUND.COM
 
 Renames, comments and other changes that don't affect the code go there too, and any change must
-keep `tools/build.sh` reporting IDENTICAL; a build takes about 6 seconds. `main` adds the bug
-fixes below on top, so its build no longer has that hash. All of this applies only to version
-0.82a; other releases will differ.
+keep `tools/build.sh` reporting IDENTICAL; a build takes about 6 seconds. CI checks this on every
+push and pull request to `0.82a`, on every push to `main` and daily (the "0.82a Byte-identical"
+badge above): it builds `0.82a` in 86Box under FreeDOS and fails unless the result has exactly
+that hash. `main` adds the bug fixes below on top, so its build no longer has that hash. All of
+this applies only to version 0.82a; other releases will differ.
 
 The source compiles without warnings. Functions, globals, the card families (`CARD_*`) and the
 main routine's locals have names. Globals that hold settings say in their comment which BLASTER
