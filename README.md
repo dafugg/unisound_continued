@@ -177,7 +177,6 @@ yet. Details and links to the reports are in
 
 | Commit | Card | Fix | Reported by |
 |---|---|---|---|
-| [d2f397b](https://github.com/dafugg/unisound_continued/commit/d2f397b) | OPTi 82C924/925 with `/NOPNP`, in a machine with another device at F80h-F8Fh (an NE2000, for one) | The 82C924/925 probe no longer takes that device for the card | analog_programmer |
 | [00806ef](https://github.com/dafugg/unisound_continued/commit/00806ef) | Any card | After setup, BLASTER's A, I, D and H are compared with what the card got | analog_programmer |
 | [5281f0f](https://github.com/dafugg/unisound_continued/commit/5281f0f) | Crystal CS4237B/CS4238B cards (Orpheus, Turtle Beach) | The codec is put back in MODE 1 | vanfanel |
 | [1adfd17](https://github.com/dafugg/unisound_continued/commit/1adfd17) | ES1868/ES1869 | BLASTER `U` sets the MPU-401 IRQ | crvs |

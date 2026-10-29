@@ -1,9 +1,11 @@
 # Testing in 86Box
 
-All results here come from emulation in 86Box. Six fixes have since also been confirmed on real
-hardware: the ULTRASND and BLASTER parsing, option names (bug 12), unknown PnP cards (bug 11),
-the ESS DSP flush (bug 10) and the ES1688 enable reads (bug 19). All but the unknown PnP cards ran
-on a Compaq LTE 5000 with its on-board ES1688; the table in
+All results here come from emulation in 86Box. Eight fixes have since also been confirmed on
+real hardware: the ULTRASND and BLASTER parsing, option names (bug 12), unknown PnP cards (bug
+11), the ESS DSP flush (bug 10) and the ES1688 enable reads (bug 19) on a Compaq LTE 5000 with its
+on-board ES1688 (all but the unknown PnP cards), and the OPTi 82C924/925 probe (d2f397b) and the
+ES688/ES1688 IRQ and DMA writes (aee160e) on analog_programmer's ES1688F with the fix-3 build,
+which also found the chip with the DSP flush and the enable reads. The table in
 [changes_since_official_082a.md](changes_since_official_082a.md) marks them.
 
 ## Environment
