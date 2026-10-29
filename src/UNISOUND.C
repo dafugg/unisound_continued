@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <dos.h>
 #include <conio.h>
+#include <stdarg.h>
 #undef inp
 #undef outp
 #undef outpw
@@ -406,6 +407,7 @@ int opt_xnet = 0;  /* /XNET: Realtek PnP network card workaround */
 int opt_x3d = 0;  /* /X3Dn: 3D level */
 int opt_xxg = 0;  /* /XXGn: SB16 gain */
 int nopnp_mode = 0;  /* /NOPNP = 1; 2 = OPTi control chip found */
+char opt_log = 0;  /* /LOG: print diagnostic lines */
 
 /* ---- functions ---- */
 void print_banner(void);
@@ -496,13 +498,15 @@ unsigned char sb_dsp_read(int port);
 int ess_mixer_writable(int port, unsigned char reg, unsigned char mask);
 unsigned char ess_ext_read(int port, unsigned char reg);
 void ess_ext_set(int port, unsigned char reg, unsigned char sel);
+void ess_irq_test(int port);
+void dlog(char *fmt, ...);
 
 /* Entry point. Uppercases every argument and parses the options into the global settings:
    /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
-   scan), /R (read only), /D (disable), the /Xxxx extended options and /NOPNP. /H or /? prints the
-   help and exits. Options start with / or - and must match a whole option name; anything else
-   prints "Unknown option" and exits with 2. Then calls configure_pnp and returns its result as
-   the exit code (0 = success, 1 = no card configured). */
+   scan), /R (read only), /D (disable), the /Xxxx extended options, /NOPNP and /LOG (diagnostic
+   lines). /H or /? prints the help and exits. Options start with / or - and must match a whole
+   option name; anything else prints "Unknown option" and exits with 2. Then calls configure_pnp
+   and returns its result as the exit code (0 = success, 1 = no card configured). */
 int main(int argc, char *argv[])
 {
     int full_scan = 0;
@@ -624,7 +628,9 @@ int main(int argc, char *argv[])
             else if (strcmp(opt, "NOPNP") == 0) {
                 nopnp_mode = 1;
                 probe_opti_ctl();
-            } else if (strcmp(opt, "H") == 0 || strcmp(opt, "?") == 0) {
+            } else if (strcmp(opt, "LOG") == 0)
+                opt_log = 1;
+            else if (strcmp(opt, "H") == 0 || strcmp(opt, "?") == 0) {
                 print_help();
                 return 0;
             } else {
@@ -679,6 +685,7 @@ void print_help(void)
     puts("   /VRnn  and /VUnn Set FM Reverb/Chorus amount (00-99) (SB AWE only)");
     puts("   /Xxxx  eXtended settings (See TXT section 5)");
     puts("   /NOPNP Detect & init some Non-PnP cards (See TXT end of section 3)");
+    puts("   /LOG   Print diagnostic lines (UNISOUND /LOG > LOG.TXT)");
     puts("   /H /?  This help screen");
     puts("\nUNISOUND (w/o options) initializes 1st card found with default vols.");
     puts("If BLASTER/ULTRASND env var is found, values will be used to configure");
@@ -788,6 +795,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         else
             port += 0x20;
     }
+    dlog("PnP read data port %X", pnp_rdata_port);
     while (found != 0) {
         csn++;
         pnp_write(6, csn);
@@ -886,6 +894,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                      memcmp(id, "STB01", 5) == 0)
                 type = CARD_GUSPNP;
         }
+        dlog("CSN %d: %s serial %02X%02X%02X%02X, type %d", csn, id, (unsigned char)buf[7],
+             (unsigned char)buf[6], (unsigned char)buf[5], (unsigned char)buf[4], type);
         cardno++;
         if (card > 1) {
             printf("Card #%d [%s] ", cardno, id);
@@ -2390,6 +2400,7 @@ int parse_blaster(void)
         field++;
     }
     free(dup);
+    dlog("BLASTER=%s: A%X I%d D%d H%d P%X", env, sb_port, sb_irq, sb_dma, sb_hdma, mpu_port);
     if (field < 1)
         return 0;
     return 1;
@@ -4700,6 +4711,8 @@ void sb_dsp_flush(int port)
     int i;
     for (i = 0; i < 16 && (inportb(port + 0xe) & 0x80); i++)
         inportb(port + 0xa);
+    if (i > 0)
+        dlog("%X: flushed %d byte(s)", port, i);
 }
 
 /* The read sequence that enables an ES1688-family chip at port (2x9 three times, 2xB, 2x9, 2xB,
@@ -4718,12 +4731,15 @@ void es_enable_reads(int port)
 int sb_dsp_reset(int port)
 {
     int i;
+    unsigned char b;
     outportb(port + 6, 3);
     delay(1);
     outportb(port + 6, 0);
     for (i = 0; i < 100 && !(inportb(port + 0xe) & 0x80); i++)
         delay(1);
-    return inportb(port + 0xa) == 0xaa;
+    b = inportb(port + 0xa);
+    dlog("%X: reset, read %02X after %d ms", port, b, i);
+    return b == 0xaa;
 }
 
 /* Write a command or data byte to the SB DSP at port once its write buffer is free (bit 7 of
@@ -4780,6 +4796,93 @@ void ess_ext_set(int port, unsigned char reg, unsigned char sel)
     unsigned char val = (old & 0xf3) | 0x50 | sel;
     sb_dsp_write(port, reg);
     sb_dsp_write(port, val);
+    dlog("%02Xh was %02X, wrote %02X %02X to %X", reg, old, reg, val, port + 0xc);
+}
+
+/* /LOG: print a diagnostic line, prefixed "LOG: ". Does nothing without /LOG. */
+void dlog(char *fmt, ...)
+{
+    va_list ap;
+    if (opt_log == 0)
+        return;
+    printf("LOG: ");
+    va_start(ap, fmt);
+    vprintf(fmt, ap);
+    va_end(ap);
+    puts("");
+}
+
+volatile int irq_hits[16];          /* /LOG IRQ test: interrupts seen per IRQ */
+unsigned char pic_mask1, pic_mask2;  /* PIC masks before the test */
+int irq_port;                        /* DSP port acknowledged by the test handlers */
+void interrupt (*irq_old[16])(void);
+
+/* Count interrupt n and acknowledge it at the DSP (read 2xEh). An IRQ that was unmasked
+   before belongs to another driver: its old handler is called, and it ends the interrupt. */
+void irq_ack(int n)
+{
+    irq_hits[n]++;
+    inportb(irq_port + 0xe);
+    if (!((n < 8 ? pic_mask1 >> n : pic_mask2 >> (n - 8)) & 1)) {
+        (*irq_old[n])();
+        return;
+    }
+    if (n >= 8)
+        outportb(0xa0, 0x20);
+    outportb(0x20, 0x20);
+}
+void interrupt irq_isr3(void) { irq_ack(3); }
+void interrupt irq_isr5(void) { irq_ack(5); }
+void interrupt irq_isr7(void) { irq_ack(7); }
+void interrupt irq_isr9(void) { irq_ack(9); }
+void interrupt irq_isr10(void) { irq_ack(10); }
+
+/* Point the vector of IRQ n at the handler at offset off. Taking a handler's far address
+   directly would need a segment fixup, which a .COM file can't have. */
+void irq_hook(int n, unsigned off)
+{
+    int v = n < 8 ? 8 + n : 0x70 + n - 8;
+    irq_old[n] = getvect(v);
+    setvect(v, (void interrupt (*)(void))MK_FP(_CS, off));
+}
+
+/* /LOG: find out which IRQ the ESS chip at port really uses, as ESSCFG does: with handlers on
+   IRQ 3, 5, 7, 9 and 10 (unmasked for the test), send DSP command 0xF2 (raise an interrupt)
+   up to three times. The vectors and masks are restored afterwards. */
+void ess_irq_test(int port)
+{
+    static int irqs[5] = {3, 5, 7, 9, 10};
+    int i, t, k;
+    int got = 0;
+    irq_port = port;
+    pic_mask1 = inportb(0x21);
+    pic_mask2 = inportb(0xa1);
+    disable();
+    irq_hook(3, FP_OFF(irq_isr3));
+    irq_hook(5, FP_OFF(irq_isr5));
+    irq_hook(7, FP_OFF(irq_isr7));
+    irq_hook(9, FP_OFF(irq_isr9));
+    irq_hook(10, FP_OFF(irq_isr10));
+    outportb(0x21, pic_mask1 & ~0xac);
+    outportb(0xa1, pic_mask2 & ~0x06);
+    enable();
+    for (t = 0; t < 3 && got == 0; t++) {
+        sb_dsp_write(port, 0xf2);
+        for (k = 0; k < 50 && got == 0; k++) {
+            delay(1);
+            for (i = 0; i < 5; i++)
+                if (irq_hits[irqs[i]])
+                    got = irqs[i];
+        }
+    }
+    disable();
+    outportb(0x21, pic_mask1);
+    outportb(0xa1, pic_mask2);
+    for (i = 0; i < 5; i++)
+        setvect(irqs[i] < 8 ? 8 + irqs[i] : 0x68 + irqs[i], irq_old[irqs[i]]);
+    enable();
+    dlog("F2h IRQ test, %d tries: IRQ3=%d IRQ5=%d IRQ7=%d IRQ9=%d IRQ10=%d", t, irq_hits[3],
+         irq_hits[5], irq_hits[7], irq_hits[9], irq_hits[10]);
 }
 
 /* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. For each base from 0x220 to 0x260 it
@@ -4788,6 +4891,7 @@ void ess_ext_set(int port, unsigned char reg, unsigned char sel)
    extended registers 0xB1/0xB2 and reads them back. On the ES1688 and later it also sets the
    MPU-401 and gameport (register 0x40), then sets up the SB Pro mixer. An ES1788 or ES1887/ES1888
    is named as such; on the ES1887/ES1888, an IRQ pin chosen by the BIOS in mixer 0x7F is kept.
+   With /LOG each step is printed and ess_irq_test checks which IRQ the chip uses.
    Returns 1 if a card was found, else 0. */
 int init_es688(void)
 {
@@ -4796,16 +4900,23 @@ int init_es688(void)
     int dmav = 8;       /* B2h bits 3-2: DMA 0, 1, 3 = 4, 8, 0xC */
     int mpu = 0;
     unsigned char ver = 0;
+    unsigned char id;
     for (port = 0x220; port <= 0x260; port += 0x10) {
+        if (opt_log) {
+            id = inportb(port + 0xe);
+            dlog("%X: 2xE=%02X 2xA=%02X, sending the enable reads", port, id, inportb(port + 0xa));
+        }
         es_enable_reads(port);
         if (!sb_dsp_reset(port))
             continue;
         sb_dsp_flush(port);
         sb_dsp_write(port, 0xe7);
-        if (sb_dsp_read(port) == 0x68) {
+        id = sb_dsp_read(port);
+        if (id == 0x68)
             ver = sb_dsp_read(port);
+        dlog("%X: E7h: %02X %02X", port, id, ver);
+        if (id == 0x68)
             break;
-        }
     }
     if (ver >= 0x80) {
         outportb(port + 6, 3);
@@ -4852,10 +4963,13 @@ int init_es688(void)
             ess_ext_set(sb_port, 0xb2, dmav);
             /* Show what the chip took: read B1h and B2h back (bits 3-2 select IRQ 2/9, 5, 7, 10
                and DMA -, 0, 1, 3). */
-            b = (ess_ext_read(sb_port, 0xb1) >> 2) & 3;
+            b = ess_ext_read(sb_port, 0xb1);
+            id = ess_ext_read(sb_port, 0xb2);
+            dlog("B1h now %02X, B2h now %02X", b, id);
+            b = (b >> 2) & 3;
             if (b != 0 || (sb_irq != 2 && sb_irq != 9))
                 sb_irq = b == 0 ? 9 : b == 1 ? 5 : b == 2 ? 7 : 10;
-            b = (ess_ext_read(sb_port, 0xb2) >> 2) & 3;
+            b = (id >> 2) & 3;
             if (b != 0)
                 sb_dma = b == 1 ? 0 : b == 2 ? 1 : 3;
             if (pin > 0) {
@@ -4881,8 +4995,18 @@ int init_es688(void)
                 } else
                     joy_port = 0;
                 mpu |= ((mpu_port & 0xf0) >> 1) | 1;
+                if (opt_log) {
+                    outportb(sb_port + 4, 0x40);
+                    dlog("mixer 40h was %02X, writing %02X", inportb(sb_port + 5), mpu);
+                }
                 idx45_write_slow(sb_port, 0x40, mpu);
+                if (opt_log) {
+                    outportb(sb_port + 4, 0x40);
+                    dlog("mixer 40h now %02X", inportb(sb_port + 5));
+                }
             }
+            if (opt_log)
+                ess_irq_test(sb_port);
             printf("Settings: ADD:%X IRQ:%d DMA:%d", sb_port, sb_irq, sb_dma);
             if (ver >= 0x88)
                 printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
