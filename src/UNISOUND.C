@@ -1497,7 +1497,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             if (ld.ld[6] >= 0) {
                 pnp_write(7, ld.ld[6]);
                 if (type == CARD_ES1868 || type == CARD_ES1869) {
-                    if ((type != CARD_ES1869 && opt_xea == 0) || (type == CARD_ES1869 && opt_xea == 1) || opt_essb != 0)
+                    if ((type != CARD_ES1869 && opt_xea == 0) || (type == CARD_ES1869 && opt_xea == 1))
                         pnp_write16(0x60, ess_ctl_port);
                     if (opt_read != 0)
                         ess_ctl_port = pnp_read16(0x60);
@@ -2939,9 +2939,9 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
             strcpy(name, "CS423x");
         ok = 1;
     }
-    /* /XESSB: the ES1868/ES1869 layout, 0 control, 1 audio, 2 gameport, 3 MPU-401 or IDE */
+    /* /XESSB: the ES1868/ES1869 layout, 1 audio, 2 gameport, 3 MPU-401 or IDE. The bypass key
+       has already placed and activated logical device 0, the control port, so it is left alone. */
     if (opt_essb != 0) {
-        ld[6] = 0;
         ld[0] = 1;
         ld[3] = 2;
         ld[5] = 3;
