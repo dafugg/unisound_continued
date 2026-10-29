@@ -23,11 +23,12 @@ loop counters and other conventional short names. On the `0.82a` branch, any cha
 
 ## Fixes & Changes after 0.82a
 
-The first nine were found by reading the decompiled source, the ESS DSP flush in 86Box, and the
-rest (from f049bb7 on) by following up problems reported in the VOGONS thread. Reports links to
-the posts in that thread that describe the problem, with a user's later posts about it numbered.
-Some of the later fixes have none: they turned up while testing a reported problem. The 86Box tests
-used 86Box on an ASUS PVI-486SP3C (`486sp3c`, PnP BIOS) and an Olystar LIL1429
+Fixes with a Reports entry follow up problems reported in the VOGONS thread; Reports links to the
+posts that describe the problem, with a user's later posts about it numbered. The rest were found
+by reading the decompiled source or turned up while testing a reported problem, and the ESS DSP
+flush (44bf539) was found in 86Box before it was reported. The table starts with the reported
+fixes confirmed on real hardware, then the others roughly by importance, and ends with bugs that
+aren't fixed yet. The 86Box tests used 86Box on an ASUS PVI-486SP3C (`486sp3c`, PnP BIOS) and an Olystar LIL1429
 (`ali1429`, no PnP BIOS) under MS-DOS 6.22, plus a Compaq Presario 224x for the ES1888 and the Compaq Presario 7100 486 and 586 for the
 on-board ES1688; details
 are in [docs/TESTING.md](docs/TESTING.md). A ✅ means the bug was reproduced in 86Box and the fix
