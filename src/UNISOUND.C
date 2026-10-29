@@ -373,6 +373,8 @@ int res_logged = -1; /* /LOG: resource data bytes printed so far; -1 = not print
 unsigned _stklen = 0x900;
 unsigned char opti_probe[5]; /* probe_opti_ctl's reads, for /LOG: F8Dh and F8Fh without the
                                  password, register 1, F8Dh again, register 3 */
+/* OPTi MAD16 MC register password: 0xE2 for the 82C928/OTI601, 0xE3 for the 82C929 */
+unsigned char opti928_pwd = 0xe2;
 
 /* ---- functions ---- */
 void print_banner(void);
@@ -749,8 +751,8 @@ void print_help(void)
    port   first read-data port to try (0x20B)
 
    Steps:
-   1. /CS goes straight to init_nonpnp_sb16. /NOPNP tries init_es688, init_opti930, init_opti928 and
-      init_nonpnp_sb16 in turn.
+   1. /CS goes straight to init_nonpnp_sb16. /NOPNP tries init_es688, init_opti930, init_opti928
+      (82C928 and 82C929) and init_nonpnp_sb16 in turn.
    2. Send the initiation key and isolate cards, scanning read-data ports from `port` upward
       until one answers. Each isolated card gets the next CSN.
    3. Identify each card by its vendor id (CTL, ALS, ESS..., see the CARD_* list). Cards before
@@ -5373,28 +5375,33 @@ void i2c_lines(unsigned char v)
     }
 }
 
-/* OPTi 82C928 (and OAK OTI601): unlock with the password 0xE2 at 0xF8F and read the
-   configuration register at `port`. Waits 30 ms first. */
+/* OPTi 82C928 (and OAK OTI601) or 82C929: unlock with the password opti928_pwd at 0xF8F and
+   read the configuration register at `port`. Waits 30 ms first. */
 unsigned char opti928_read(unsigned port)
 {
     delay(30);
-    outportb(0xf8f, 0xe2);
+    outportb(0xf8f, opti928_pwd);
     return inportb(port);
 }
 
-/* OPTi 82C928: unlock with the password 0xE2 at 0xF8F and write val to the configuration
-   register at `port`. */
+/* OPTi 82C928 or 82C929: unlock with the password opti928_pwd at 0xF8F and write val to the
+   configuration register at `port`. */
 void opti928_write(unsigned port, unsigned char val)
 {
-    outportb(0xf8f, 0xe2);
+    outportb(0xf8f, opti928_pwd);
     outportb(port, val);
 }
 
-/* /NOPNP: detect and configure a non-PnP OAK OTI601 / OPTi 82C928 (configuration registers
-   0xF8D-0xF91). Applies the SB/WSS base, gameport, IRQ (5/7/11) and DMA (0/1/3) from BLASTER or
-   the defaults, initializes the WSS codec and its volumes, and selects SB or WSS mode (/XWSS).
+/* /NOPNP: detect and configure a non-PnP OAK OTI601 / OPTi 82C928 (password 0xE2, configuration
+   registers 0xF8D-0xF91) or OPTi 82C929 "MAD16 Pro" (password 0xE3, 0xF8D-0xF92). Applies the
+   SB/WSS base, gameport, IRQ (82C928: 5/7/11, 82C929: 5/7/10) and DMA (0/1/3) from BLASTER or the
+   defaults, and on the 82C929 the MPU-401 (P, U), initializes the WSS codec and its volumes, and
+   selects SB or WSS mode (/XWSS).
    The chip must close its gate after one access, as in probe_opti_ctl: F8Dh read again without
-   the password must not give the same value, or any device at F8Dh/F8Fh would pass.
+   the password must not give the same value, or any device at F8Dh/F8Fh would pass. The 82C929
+   also reads its chip ID, 10b, in MC3 bits 1:0. Its settings follow the 82C929 data sheet
+   (docs/datasheets/opti); OPTi's SNDINIT 2.50 leaves MC1-MC5 at 00 03 82 A2 AF in 86Box for SB
+   Pro mode at 220, IRQ 5, DMA 1 with a CS4231, as this does.
    Returns 1 if the chip was found, else 0. */
 int init_opti928(void)
 {
@@ -5404,14 +5411,47 @@ int init_opti928(void)
     unsigned char cfg2 = 0;
     unsigned char codec_st = 0;
     unsigned char gate;
-    id_f8d = opti928_read(0xf8d);
-    gate = inportb(0xf8d);
-    id_f8f = opti928_read(0xf8f);
-    dlog("82C928: F8D %02X, no pw %02X, F8F %02X", id_f8d, gate, id_f8f);
-    if (id_f8d < 0xff && id_f8f < 0xff && gate != id_f8d) {
-        puts("Card detected: OAK OTI601 / OPTi 82C928");
+    unsigned char mc2 = 3;
+    unsigned char mc5 = 0; /* 82C929: MC5 bits 7, 2 and 0, which must be 1 */
+    int c929 = -1;
+    int found = 0;
+    while (!found && c929 < 1) {
+        c929++;
+        opti928_pwd = c929 ? 0xe3 : 0xe2;
+        id_f8d = opti928_read(0xf8d);
+        gate = inportb(0xf8d);
+        id_f8f = opti928_read(0xf8f);
+        dlog("82C92%d: F8D %02X, no pw %02X, F8F %02X", c929 ? 9 : 8, id_f8d, gate, id_f8f);
+        found = id_f8d < 0xff && id_f8f < 0xff && gate != id_f8d && (!c929 || (id_f8f & 3) == 2);
+    }
+    if (found) {
+        puts(c929 ? "Card detected: OPTi 82C929" : "Card detected: OAK OTI601 / OPTi 82C928");
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
-        if (sb_port == 0x240 || wss_port == 0xf40) {
+        if (c929) {
+            /* MC1 bits 3:1 are the CD-ROM interface, set by jumpers, and MC2 bit 5 tells an OPL4
+               from an OPL3: keep both. The SB base is MC3 bit 2, apart from the WSS base. */
+            cfg1 |= id_f8d & 0x0e;
+            mc2 = opti928_read(0xf8e);
+            mc5 = 0x85;
+            if (sb_port == 0x240) {
+                cfg2 |= 4;
+            } else {
+                sb_port = 0x220;
+            }
+            switch (wss_port) {
+                case 0xe80:
+                    cfg1 |= 0x10;
+                    break;
+                case 0xf40:
+                    cfg1 |= 0x20;
+                    break;
+                case 0x604:
+                    cfg1 |= 0x30;
+                    break;
+                default:
+                    wss_port = 0x530;
+            }
+        } else if (sb_port == 0x240 || wss_port == 0xf40) {
             wss_port = 0xf40;
             cfg1 |= 0x20;
         } else {
@@ -5425,15 +5465,11 @@ int init_opti928(void)
             cfg1 &= 0xfe;
             joy_port = 0x200;
         }
-        switch (sb_irq) {
-            case 11:
-                cfg2 |= 0x40;
-                break;
-            case 7:
-                break;
-            default:
-                sb_irq = 5;
-                cfg2 |= 0x80;
+        if (sb_irq == (c929 ? 10 : 11)) {
+            cfg2 |= 0x40;
+        } else if (sb_irq != 7) {
+            sb_irq = 5;
+            cfg2 |= 0x80;
         }
         switch (sb_dma) {
             case 3:
@@ -5445,16 +5481,52 @@ int init_opti928(void)
             default:
                 sb_dma = 1;
         }
-        opti928_write(0xf8d, 0x40);
+        opti928_write(0xf8d, (cfg1 & 0x0e) | 0x40);
         delay(120);
-        opti928_write(0xf8d, 0x80);
+        opti928_write(0xf8d, (cfg1 & 0x0e) | 0x80);
         delay(140);
-        opti928_write(0xf8e, 3);
+        opti928_write(0xf8e, mc2);
         delay(50);
         opti928_write(0xf8d, cfg1);
         delay(50);
         opti928_write(0xf8f, cfg2);
-        opti928_write(0xf90, 2);
+        /* MC4: SB DSP version 3.2; on the 82C929 bits 7 and 5 must be 1 */
+        opti928_write(0xf90, c929 ? 0xa2 : 2);
+        if (c929) {
+            /* MC6 (write only): MPU-401 enable, base, IRQ; bits 1:0 must be 1 */
+            unsigned char mc6 = 0x83;
+            if (mpu_port == 0) {
+                mc6 = 3;
+            } else {
+                switch (mpu_port) {
+                    case 0x300:
+                        mc6 |= 0x60;
+                        break;
+                    case 0x310:
+                        mc6 |= 0x40;
+                        break;
+                    case 0x320:
+                        mc6 |= 0x20;
+                        break;
+                    default:
+                        mpu_port = 0x330;
+                }
+                switch (mpu_irq) {
+                    case 5:
+                        mc6 |= 0x10;
+                        break;
+                    case 7:
+                        mc6 |= 0x18;
+                        break;
+                    case 10:
+                        mc6 |= 8;
+                        break;
+                    default:
+                        mpu_irq = 9;
+                }
+            }
+            opti928_write(0xf92, mc6);
+        }
         delay(40);
         outportb(wss_port + 4, 0x40);
         idx45_write_slow(wss_port, 0x44, 0xf);
@@ -5470,7 +5542,7 @@ int init_opti928(void)
         fm_reg = fm_vol > 0 ? (100 - fm_vol) * 31 / 97 : 0x80;
         wave_reg = wave_vol > 0 ? (100 - wave_vol) * 63 / 97 : 0x80;
         line_reg = line_vol > 0 ? (100 - line_vol) * 31 / 97 : 0x80;
-        opti928_write(0xf91, 0x1a);
+        opti928_write(0xf91, 0x1a | mc5);
         outportb(wss_port + 4, 0x2c);
         codec_st = inportb(wss_port + 5);
         idx45_write_slow(wss_port, 0x24, fm_reg);
@@ -5488,8 +5560,11 @@ int init_opti928(void)
            mad16 and Linux opti92x-ad1848 set CFIX for those codecs the same way. 0.82a tested
            (codec_st & 0xfd) == 2, which is never true, so it always wrote 20h. Untested on real
            hardware. */
-        opti928_write(0xf91, (codec_st & 0x80) ? 0x2a : 0x20);
+        opti928_write(0xf91, ((codec_st & 0x80) ? 0x2a : 0x20) | mc5);
         printf("Settings: ADD:%X IRQ:%d DMA:%d JOY:%X", sb_port, sb_irq, sb_dma, joy_port);
+        if (c929 && mpu_port != 0) {
+            printf(" MPU:%X/I%d", mpu_port, mpu_irq);
+        }
         if (opt_xwss > 0) {
             printf(" [WSS mode: %X]", wss_port);
         } else {
