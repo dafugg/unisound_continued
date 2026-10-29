@@ -1,4 +1,5 @@
-# clang-format 18 style for src/UNISOUND.C: run clang-format -i src/UNISOUND.C before committing.
+# clang-format 18 style for src/UNISOUND.C and tools/dos/*.C (each file keeps its line endings):
+# run clang-format -i on the files you change before committing.
 BasedOnStyle: LLVM
 Language: Cpp
 Standard: c++03
@@ -6,7 +7,7 @@ IndentWidth: 4
 ContinuationIndentWidth: 4
 ColumnLimit: 100
 UseTab: Never
-LineEnding: CRLF
+LineEnding: DeriveLF
 BreakBeforeBraces: Linux
 IndentCaseLabels: true
 InsertBraces: true
