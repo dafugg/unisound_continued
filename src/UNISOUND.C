@@ -26,6 +26,9 @@ int inp(unsigned portid);
 int outp(unsigned portid, int value);
 unsigned outpw(unsigned portid, unsigned value);
 
+/* longest ANSI identifier string kept; the buffers hold ANSI_MAX + 1 bytes or more */
+#define ANSI_MAX       63
+
 /* card families (the type code in configure_pnp and the PnP resource walkers) */
 #define CARD_CREATIVE  0x01  /* Creative SB16/AWE (CTL) */
 #define CARD_ALS       0x02  /* Avance Logic ALS (ALS, RWB1) */
@@ -427,6 +430,7 @@ int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type);
 int pnp_read_res(unsigned char *buf, int n);
 int pnp_read_tag(unsigned char *tag, unsigned *len);
+int pnp_read_str(char *buf, unsigned len);
 void awe_init(unsigned port);
 void sb_print_dsp_ver(int port);
 int init_nonpnp_sb16(void);
@@ -482,6 +486,7 @@ int init_opti928(void);
 void probe_opti_ctl(void);
 int init_opti930(void);
 int init_es688(void);
+void sb_dsp_flush(int port);
 
 /* Entry point. Uppercases every argument and parses the options into the global settings:
    /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
@@ -499,7 +504,7 @@ int main(int argc, char *argv[])
     int j = 0;
 
     if (argc > 1) {
-        for (i = 1; i <= argc; i++) {
+        for (i = 1; i < argc; i++) {
             for (j = 1; j <= strlen(argv[i]); j++)
                 argv[i][j] = toupper(argv[i][j]);
             if (argv[i][0] == '/' || argv[i][0] == '-') {
@@ -1300,7 +1305,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     pnp_write(0x71, 2);
                 }
                 if (opt_read != 0)
-                    mpu_port = pnp_read16(reg_mpu);
+                    mpu_port = pnp_read16(0x60);
                 if (opt_read != 0)
                     irq = pnp_read(0x70) & 0xf;
                 pnp_write(0x30, (!enable || opt_disable != 0) ? 0 : 1);
@@ -1348,21 +1353,21 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     if (opt_read != 0)
                         wss_port = pnp_read16(0x62);
                     if (opt_read != 0)
-                        sb_irq = pnp_read16(0x70) & 0xf;
+                        sb_irq = pnp_read(0x70) & 0xf;
                     printf(" WSS:%X/I%d", wss_port, sb_irq);
                     if (mpu_irq < 0)
                         mpu_irq = sb_irq;
                     if (opt_read != 0)
                         mpu_port = pnp_read16(0x60);
                     if (opt_read != 0)
-                        mpu_irq = pnp_read16(0x72) & 0xf;
+                        mpu_irq = pnp_read(0x72) & 0xf;
                     printf(" MPU:%X/I%d", mpu_port, mpu_irq);
                     pnp_write(0x74, sb_dma);
                     pnp_write(0x75, sb_hdma);
                     if (opt_read != 0)
-                        sb_dma = pnp_read16(0x74) & 7;
+                        sb_dma = pnp_read(0x74) & 7;
                     if (opt_read != 0)
-                        sb_hdma = pnp_read16(0x75) & 7;
+                        sb_hdma = pnp_read(0x75) & 7;
                     printf(" DMA:%d/%d", sb_dma, sb_hdma);
                     pnp_write16(0x64, ctl);
                     if (opt_read != 0)
@@ -2140,7 +2145,7 @@ int parse_ultrasnd(void)
     dup = strdup(env);
     tok = strtok(dup, ",");
     field = 0;
-    while (field < 5 || tok != 0) {
+    while (field < 5 && tok != 0) {
         dec = strtol(tok, 0, 10);
         hex = strtol(tok, 0, 16);
         switch (field) {
@@ -2206,7 +2211,7 @@ int parse_blaster(void)
     dup = strdup(env);
     tok = strtok(dup, " ");
     field = 0;
-    while (field < 12 || tok != 0) {
+    while (field < 12 && tok != 0) {
         if (isalpha(*tok) && strlen(tok) > 1) {
             letter = *tok;
             tok++;
@@ -2344,9 +2349,7 @@ int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type)
             while (!done) {
                 if (pnp_read_tag(&tag, &len)) {
                     if (tag == 0x82) {
-                        if (pnp_read_res(buf, len))
-                            buf[len] = 0;
-                        else
+                        if (!pnp_read_str(buf, len))
                             ok = 0;
                         done = 1;
                     }
@@ -2553,12 +2556,10 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
             break;
         case 0x82:
             if (*name == 0) {
-                ok = pnp_read_res(name, len);
-                if (ok)
-                    name[len] = 0;
+                ok = pnp_read_str(name, len);
             } else {
                 char str[64] = { 0 };
-                ok = pnp_read_res(str, len);
+                ok = pnp_read_str(str, len);
                 if (ok) {
                     if (str[0] == 'A' && str[1] == 'u' && str[2] == 'd')
                         ld[0] = ldn - 1;
@@ -2635,6 +2636,17 @@ int pnp_read_tag(unsigned char *tag, unsigned *len)
         }
         ok = (ok && *tag != 0xff && *len != 0xffff) ? 1 : 0;
     }
+    return ok;
+}
+
+/* Read an ANSI identifier string of len bytes from the resource data into buf and NUL-terminate
+   it. At most ANSI_MAX bytes are kept; the rest is read and discarded.
+   Returns 1 on success, 0 on a read error. */
+int pnp_read_str(char *buf, unsigned len)
+{
+    unsigned keep = len > ANSI_MAX ? ANSI_MAX : len;
+    int ok = pnp_read_res(buf, keep) && pnp_read_res(0, len - keep);
+    buf[ok ? keep : 0] = 0;
     return ok;
 }
 
@@ -3230,6 +3242,7 @@ void sam9407_upload(unsigned base)
     unsigned long size;
     register FILE *fp;
     int i;
+    int lo, hi;
     unsigned out;
 
     fp = fopen("SAM9407.BIN", "rb");
@@ -3275,9 +3288,11 @@ void sam9407_upload(unsigned base)
     fseek(fp, 0x400L, SEEK_SET);
     i = 0;
     printf("Uploading SAM9407 firmware");
-    while (!feof(fp)) {
-        word = fgetc(fp);
-        word = (fgetc(fp) << 8) | word;
+    while ((lo = fgetc(fp)) != EOF) {
+        hi = fgetc(fp);
+        if (hi == EOF)
+            hi = 0;
+        word = hi << 8 | lo;
         outpw(port + 2, word);
         i++;
         if (i % 5000 == 0)
@@ -3329,7 +3344,7 @@ int iw_list_roms(void)
     unsigned long size = 0;
     unsigned long addr = 0;
     char sig[5] = { 0 };
-    char name[16] = { 0 };
+    char name[17] = { 0 };     /* 16 characters + NUL */
     register int i = 0;
     register int n = 0;
 
@@ -3807,7 +3822,7 @@ int emu_init(int ver)
     unsigned target = 0;
     int mem = 0;
     long rev = awe_chorus * 0xff / 0x63;
-    int cho = (awe_reverb * 0xff / 0x63) << 8;
+    unsigned long cho = (unsigned long)(awe_reverb * 0xff / 0x63) << 8;
 
     emu_write16(0x3d, awe_port + 0x400, 0x59);
     emu_write16(0x3e, awe_port + 0x400, 0x20);
@@ -3997,13 +4012,13 @@ int emu_init(int ver)
     emu_write16(0xbe, awe_port + 0x400, 0x80);
     emu_write32(0xde, awe_port, 0xffffffe0L);
     emu_write32(0xfe, awe_port, 0xffffe8L | rev);
-    emu_write32(0x3e, awe_port, (long)cho);
+    emu_write32(0x3e, awe_port, cho);
     emu_write32(0x1e, awe_port, 0L);
     emu_write32(0x1e, awe_port + 0x400, 0xffffe3L);
     emu_write16(0xbf, awe_port + 0x400, 0x80);
     emu_write32(0xdf, awe_port, 0xfffff0L);
     emu_write32(0xff, awe_port, 0xfffff8L | rev);
-    emu_write32(0x3f, awe_port, (long)(0xff | cho));
+    emu_write32(0x3f, awe_port, 0xff | cho);
     emu_write32(0x1f, awe_port, 0x8000L);
     emu_write32(0x1f, awe_port + 0x400, 0xfffff3L);
     emu_write32(0x3e, awe_port, (unsigned long)(ver == 1 ? 0x4828u : 0x4800u) << 16);
@@ -4584,6 +4599,16 @@ int init_opti930(void)
     return 0;
 }
 
+/* Discard bytes waiting in the DSP read buffer at port (data-available is bit 7 of port + 0x0E),
+   such as the 0xAA a DSP reset leaves or the reply to an earlier command, so the next command
+   reads its own reply. Reads at most 16 bytes, so a port with no card answering 0xFF is harmless. */
+void sb_dsp_flush(int port)
+{
+    int i;
+    for (i = 0; i < 16 && (inportb(port + 0xe) & 0x80); i++)
+        inportb(port + 0xa);
+}
+
 /* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. Probes 0x220-0x260 for the ESS
    identify command (0xE7 answering 0x68 and a version byte), then sets the IRQ and DMA through
    extended registers 0xB1/0xB2. On the ES1688 it also sets the MPU-401 and gameport (register
@@ -4597,6 +4622,7 @@ int init_es688(void)
     int mpu = 0;
     unsigned char ver = 0;
     for (port = 0x220; port <= 0x260; port += 0x10) {
+        sb_dsp_flush(port);
         outportb(port + 0xc, 0xe7);
         delay(10);
         if (inportb(port + 0xa) == 0x68) {
@@ -4610,6 +4636,7 @@ int init_es688(void)
         delay(20);
         outportb(port + 6, 0);
         delay(80);
+        sb_dsp_flush(port);
         outportb(port + 0xc, 0xc6);
         outportb(port + 4, 0x40);
         if (inportb(port + 5) != 0x18 || inportb(port + 5) < 0x68) {
