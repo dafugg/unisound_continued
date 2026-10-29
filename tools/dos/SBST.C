@@ -22,9 +22,11 @@ static unsigned char pagep[4] = {0x87, 0x83, 0x81, 0x82};
 int dsp_w(unsigned char v)
 {
     long t = 0;
-    while (inportb(sb + 0xc) & 0x80)
-        if (++t > 100000L)
+    while (inportb(sb + 0xc) & 0x80) {
+        if (++t > 100000L) {
             return -1;
+        }
+    }
     outportb(sb + 0xc, v);
     return 0;
 }
@@ -57,8 +59,9 @@ void play(unsigned long phys, unsigned len, unsigned waitms)
     dsp_w((unsigned char)(len - 1));
     dsp_w((unsigned char)((len - 1) >> 8));
     for (i = 0; i < waitms / 10; i++) {
-        if (inportb(0x08) & (1 << dma))
+        if (inportb(0x08) & (1 << dma)) {
             break;
+        }
         delay(10);
     }
     delay(5);
@@ -86,14 +89,16 @@ int main(int argc, char *argv[])
     outportb(sb + 6, 1);
     delay(1);
     outportb(sb + 6, 0);
-    for (i = 0; i < 1000; i++)
+    for (i = 0; i < 1000; i++) {
         if ((inportb(sb + 0xe) & 0x80) && inportb(sb + 0xa) == 0xaa) {
             ok = 1;
             break;
         }
+    }
     printf("DSP reset %s; mixer 0Eh after DSP reset = %02X\n", ok ? "OK" : "FAILED", mix_r(0x0e));
-    if (!ok)
+    if (!ok) {
         return 2;
+    }
     p = (unsigned char far *)buf;
     phys = ((unsigned long)FP_SEG(p) << 4) + FP_OFF(p);
     if ((phys & 0xffffUL) + LEN > 0x10000UL) {
@@ -102,20 +107,23 @@ int main(int argc, char *argv[])
     }
     dsp_w(0xd1);
     if (mode == 'M') {
-        for (off = 0; off < LEN; off++)
+        for (off = 0; off < LEN; off++) {
             p[off] = (off / 10) & 1 ? 0xc0 : 0x40;
+        }
         dsp_w(0x40);
-        dsp_w(165);             /* 11025 Hz */
+        dsp_w(165); /* 11025 Hz */
         play(phys, LEN, 3000);
     } else {
         p[0] = 0x80;
         mix_w(0x0e, mix_r(0x0e) | 0x02);
-        if (mode == 'D')
+        if (mode == 'D') {
             play(phys, 1, 200);
-        for (off = 0; off < LEN; off++)
+        }
+        for (off = 0; off < LEN; off++) {
             p[off] = (off & 1) ? 0x80 : ((off / 40) & 1 ? 0xc0 : 0x40);
+        }
         dsp_w(0x40);
-        dsp_w(211);             /* 1000000/(256-211) = 22222 bytes/s = 11111 frames/s */
+        dsp_w(211); /* 1000000/(256-211) = 22222 bytes/s = 11111 frames/s */
         play(phys, LEN, 3000);
         mix_w(0x0e, e0);
     }

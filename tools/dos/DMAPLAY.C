@@ -23,25 +23,42 @@ void ack(int irq)
 {
     hit[irq]++;
     inportb(base + 0xe);
-    if (irq >= 8)
+    if (irq >= 8) {
         outportb(0xa0, 0x20);
+    }
     outportb(0x20, 0x20);
 }
-void interrupt isr5(void) { ack(5); }
-void interrupt isr7(void) { ack(7); }
-void interrupt isr9(void) { ack(9); }
-void interrupt isr10(void) { ack(10); }
+void interrupt isr5(void)
+{
+    ack(5);
+}
+void interrupt isr7(void)
+{
+    ack(7);
+}
+void interrupt isr9(void)
+{
+    ack(9);
+}
+void interrupt isr10(void)
+{
+    ack(10);
+}
 
-int vec(int irq) { return irq < 8 ? 8 + irq : 0x70 + irq - 8; }
+int vec(int irq)
+{
+    return irq < 8 ? 8 + irq : 0x70 + irq - 8;
+}
 
 int dsp_write(unsigned char v)
 {
     long i;
-    for (i = 0; i < 100000L; i++)
+    for (i = 0; i < 100000L; i++) {
         if (!(inportb(base + 0xc) & 0x80)) {
             outportb(base + 0xc, v);
             return 1;
         }
+    }
     return 0;
 }
 
@@ -51,8 +68,9 @@ int dsp_reset(void)
     outportb(base + 6, 1);
     delay(1);
     outportb(base + 6, 0);
-    for (k = 0; k < 100 && !(inportb(base + 0xe) & 0x80); k++)
+    for (k = 0; k < 100 && !(inportb(base + 0xe) & 0x80); k++) {
         delay(1);
+    }
     return inportb(base + 0xa);
 }
 
@@ -90,10 +108,12 @@ int wait_irq(int before)
     long t0 = biostime(0, 0L);
     while (biostime(0, 0L) - t0 < 18) {
         int i, n = 0;
-        for (i = 0; i < 4; i++)
+        for (i = 0; i < 4; i++) {
             n += hit[irqs[i]];
-        if (n > before)
+        }
+        if (n > before) {
             return n;
+        }
     }
     return before;
 }
@@ -109,8 +129,9 @@ int main(int argc, char *argv[])
         return 1;
     }
     base = (unsigned)strtoul(argv[1], 0, 16);
-    if (argc > 2)
+    if (argc > 2) {
         blocks = atoi(argv[2]);
+    }
     a = ((unsigned long)FP_SEG(buf) << 4) + FP_OFF(buf);
     p = buf;
     if ((a & 0xffff) + LEN > 0x10000L) {
@@ -118,20 +139,26 @@ int main(int argc, char *argv[])
         a += LEN;
     }
     phys = a;
-    for (i = 0; i < LEN; i++)
+    for (i = 0; i < LEN; i++) {
         p[i] = (i / 10) & 1 ? 0xc0 : 0x40;
+    }
     printf("reset %02X\n", dsp_reset());
-    old[5] = getvect(vec(5)); setvect(vec(5), isr5);
-    old[7] = getvect(vec(7)); setvect(vec(7), isr7);
-    old[9] = getvect(vec(9)); setvect(vec(9), isr9);
-    old[10] = getvect(vec(10)); setvect(vec(10), isr10);
+    old[5] = getvect(vec(5));
+    setvect(vec(5), isr5);
+    old[7] = getvect(vec(7));
+    setvect(vec(7), isr7);
+    old[9] = getvect(vec(9));
+    setvect(vec(9), isr9);
+    old[10] = getvect(vec(10));
+    setvect(vec(10), isr10);
     m1 = inportb(0x21);
     m2 = inportb(0xa1);
     outportb(0x21, m1 & ~((1 << 5) | (1 << 7) | (1 << 2)));
     outportb(0xa1, m2 & ~((1 << 1) | (1 << 2)));
     inportb(0x08);
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 3; i++) {
         dma_prog(chans[i]);
+    }
     dsp_write(0xd1);
     dsp_write(0x40);
     dsp_write(0xa5);
@@ -141,16 +168,18 @@ int main(int argc, char *argv[])
     printf("irq:");
     for (i = 0; i < 4; i++) {
         printf(" %d=%d", irqs[i], hit[irqs[i]]);
-        if (hit[irqs[i]])
+        if (hit[irqs[i]]) {
             irq = irqs[i];
+        }
     }
     printf("\ndma:");
     for (i = 0; i < 3; i++) {
         int c = chans[i];
         unsigned left = dma_count(c);
         printf(" %d=%s/%04X", c, (st >> c) & 1 ? "TC" : "--", left);
-        if ((st >> c) & 1)
+        if ((st >> c) & 1) {
             dma = c;
+        }
     }
     puts("");
     if (irq >= 0 && dma >= 0) {
@@ -160,11 +189,13 @@ int main(int argc, char *argv[])
             n = wait_irq(n);
         }
         printf("played %d blocks on IRQ %d DMA %d, irqs %d\n", blocks, irq, dma, n);
-    } else
+    } else {
         printf("RESULT: IRQ %d DMA %d (-1 = none)\n", irq, dma);
+    }
     dsp_write(0xd3);
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 3; i++) {
         outportb(0x0a, 4 | chans[i]);
+    }
     outportb(0x21, m1);
     outportb(0xa1, m2);
     setvect(vec(5), old[5]);

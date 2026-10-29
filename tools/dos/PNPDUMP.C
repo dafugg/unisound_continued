@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <dos.h>
 
-#define ADDR 0x279
+#define ADDR  0x279
 #define WDATA 0xa79
 #define RDATA 0x20b
 
@@ -49,9 +49,10 @@ int main(int argc, char *argv[])
     for (i = 2; i < argc; i++) {
         unsigned char ldn = (unsigned char)strtoul(argv[i], 0, 16);
         wr(0x07, ldn);
-        printf("LDN %X: act %02X io %02X%02X %02X%02X %02X%02X %02X%02X irq %02X/%02X %02X/%02X dma %02X %02X\n",
-               ldn, rd(0x30), rd(0x60), rd(0x61), rd(0x62), rd(0x63), rd(0x64), rd(0x65), rd(0x66), rd(0x67),
-               rd(0x70), rd(0x71), rd(0x72), rd(0x73), rd(0x74), rd(0x75));
+        printf("LDN %X: act %02X io %02X%02X %02X%02X %02X%02X %02X%02X irq %02X/%02X %02X/%02X "
+               "dma %02X %02X\n",
+               ldn, rd(0x30), rd(0x60), rd(0x61), rd(0x62), rd(0x63), rd(0x64), rd(0x65), rd(0x66),
+               rd(0x67), rd(0x70), rd(0x71), rd(0x72), rd(0x73), rd(0x74), rd(0x75));
     }
     wr(0x02, 0x02);
     return 0;

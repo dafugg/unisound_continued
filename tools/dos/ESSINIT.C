@@ -39,7 +39,10 @@ unsigned char mask1, mask2;
 void interrupt (*old[16])(void);
 static int irqs[5] = {3, 5, 7, 9, 10};
 
-int vec(int n) { return n < 8 ? 8 + n : 0x70 + n - 8; }
+int vec(int n)
+{
+    return n < 8 ? 8 + n : 0x70 + n - 8;
+}
 
 /* Count the interrupt and acknowledge it at the DSP (read 2xEh). If the IRQ was already
    unmasked, another driver owns it: pass it on to that handler, which ends it at the PIC. */
@@ -51,15 +54,31 @@ void ack(int n)
         (*old[n])();
         return;
     }
-    if (n >= 8)
+    if (n >= 8) {
         outportb(0xa0, 0x20);
+    }
     outportb(0x20, 0x20);
 }
-void interrupt isr3(void) { ack(3); }
-void interrupt isr5(void) { ack(5); }
-void interrupt isr7(void) { ack(7); }
-void interrupt isr9(void) { ack(9); }
-void interrupt isr10(void) { ack(10); }
+void interrupt isr3(void)
+{
+    ack(3);
+}
+void interrupt isr5(void)
+{
+    ack(5);
+}
+void interrupt isr7(void)
+{
+    ack(7);
+}
+void interrupt isr9(void)
+{
+    ack(9);
+}
+void interrupt isr10(void)
+{
+    ack(10);
+}
 
 /* Point IRQ n's vector at the handler at offset off in this segment. Taking a handler's far
    address directly needs a segment fixup, which a .COM file can't have. */
@@ -73,8 +92,9 @@ void hook(int n, unsigned off)
 int dsp_out(unsigned port, unsigned char v)
 {
     int i;
-    for (i = 0; i < 100 && (inportb(base + 0xc) & 0x80); i++)
+    for (i = 0; i < 100 && (inportb(base + 0xc) & 0x80); i++) {
         delay(1);
+    }
     outportb(port, v);
     return i < 100 ? i : -1;
 }
@@ -83,8 +103,9 @@ int dsp_out(unsigned port, unsigned char v)
 int dsp_in(void)
 {
     int i;
-    for (i = 0; i < 100 && !(inportb(base + 0xe) & 0x80); i++)
+    for (i = 0; i < 100 && !(inportb(base + 0xe) & 0x80); i++) {
         delay(1);
+    }
     return i < 100 ? inportb(base + 0xa) : -1;
 }
 
@@ -95,8 +116,9 @@ int dsp_reset(void)
     outportb(base + 6, 3);
     delay(1);
     outportb(base + 6, 0);
-    for (i = 0; i < 100 && !(inportb(base + 0xe) & 0x80); i++)
+    for (i = 0; i < 100 && !(inportb(base + 0xe) & 0x80); i++) {
         delay(1);
+    }
     b = inportb(base + 0xa);
     printf("Reset: 2xAh = %02X after %d ms", b, i);
     while (b == 0xaa && n < 16 && (inportb(base + 0xe) & 0x80)) {
@@ -124,35 +146,39 @@ void ext_write(unsigned char reg, unsigned char v, int oldway)
         delay(17);
         outportb(base + 0xd, v);
         delay(16);
-        printf("Write %02Xh = %02X: %02X to %Xh, %02X to %Xh (old way)\n", reg, v, reg,
-               base + 0xc, v, base + 0xd);
+        printf("Write %02Xh = %02X: %02X to %Xh, %02X to %Xh (old way)\n", reg, v, reg, base + 0xc,
+               v, base + 0xd);
         return;
     }
     w1 = dsp_out(base + 0xc, reg);
     w2 = dsp_out(base + 0xc, v);
-    printf("Write %02Xh = %02X: both bytes to %Xh, busy wait %d and %d ms\n", reg, v,
-           base + 0xc, w1, w2);
+    printf("Write %02Xh = %02X: both bytes to %Xh, busy wait %d and %d ms\n", reg, v, base + 0xc,
+           w1, w2);
 }
 
 /* Parse BLASTER's A, I and D fields. Returns 1 if BLASTER is set. */
 int parse_blaster(void)
 {
     char *e = getenv("BLASTER");
-    if (e == 0)
+    if (e == 0) {
         return 0;
+    }
     printf("BLASTER=%s\n", e);
     while (*e) {
         char c = toupper(*e);
-        if (c == 'A')
+        if (c == 'A') {
             base = (unsigned)strtoul(e + 1, 0, 16);
-        else if (c == 'I')
+        } else if (c == 'I') {
             irq = atoi(e + 1);
-        else if (c == 'D')
+        } else if (c == 'D') {
             dma = atoi(e + 1);
-        while (*e && *e != ' ')
+        }
+        while (*e && *e != ' ') {
             e++;
-        while (*e == ' ')
+        }
+        while (*e == ' ') {
             e++;
+        }
     }
     return 1;
 }
@@ -172,24 +198,27 @@ void opti_check(void)
     unsigned char p1, c1, p3;
     puts("OPTi probe (UNISOUND /NOPNP looks for an 82C924/925 at F8Ch first):");
     printf("  F88h-F8Fh, no password:");
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < 8; i++) {
         printf(" %02X", inportb(0xf88 + i));
+    }
     printf("\n  388h-38Fh:              ");
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < 8; i++) {
         printf(" %02X", inportb(0x388 + i));
+    }
     puts("");
     fflush(stdout);
     p1 = opti_read(1);
     c1 = inportb(0xf8d);
     p3 = opti_read(3);
-    printf("  With E5h to F8Fh: reg 1 (F8Dh) = %02X, F8Dh again = %02X, reg 3 (F8Fh) = %02X\n",
-           p1, c1, p3);
+    printf("  With E5h to F8Fh: reg 1 (F8Dh) = %02X, F8Dh again = %02X, reg 3 (F8Fh) = %02X\n", p1,
+           c1, p3);
     if (p1 < 0xff && p3 < 0xff) {
         puts("  UNISOUND /NOPNP would take this for an OPTi 82C924/925 and skip the ESS detection");
         puts(c1 != p1 ? "  (and so would the fixed build: F8Dh changed after the password read)"
                       : "  (the fixed build wouldn't: F8Dh reads the same without the password)");
-    } else
+    } else {
         puts("  Not an OPTi 82C924/925: UNISOUND /NOPNP goes on to the ESS detection");
+    }
 }
 
 /* Fire F2h up to three times with handlers on IRQ 3, 5, 7, 9 and 10; returns the IRQ that
@@ -199,35 +228,40 @@ int irq_test(void)
     int i, t, k, got = 0;
     mask1 = inportb(0x21);
     mask2 = inportb(0xa1);
-    for (i = 0; i < 5; i++)
+    for (i = 0; i < 5; i++) {
         old[irqs[i]] = getvect(vec(irqs[i]));
+    }
     hook(3, FP_OFF(isr3));
     hook(5, FP_OFF(isr5));
     hook(7, FP_OFF(isr7));
     hook(9, FP_OFF(isr9));
     hook(10, FP_OFF(isr10));
     disable();
-    outportb(0x21, mask1 & ~0xac);          /* IRQ 2 (cascade), 3, 5, 7 */
-    outportb(0xa1, mask2 & ~0x06);          /* IRQ 9, 10 */
+    outportb(0x21, mask1 & ~0xac); /* IRQ 2 (cascade), 3, 5, 7 */
+    outportb(0xa1, mask2 & ~0x06); /* IRQ 9, 10 */
     enable();
     for (t = 1; t <= 3 && !got; t++) {
         dsp_out(base + 0xc, 0xf2);
         for (k = 0; k < 50 && !got; k++) {
             delay(1);
-            for (i = 0; i < 5; i++)
-                if (hit[irqs[i]])
+            for (i = 0; i < 5; i++) {
+                if (hit[irqs[i]]) {
                     got = irqs[i];
+                }
+            }
         }
         printf("F2h try %d:", t);
-        for (i = 0; i < 5; i++)
+        for (i = 0; i < 5; i++) {
             printf(" IRQ%d=%d", irqs[i], hit[irqs[i]]);
+        }
         puts("");
     }
     disable();
     outportb(0x21, mask1);
     outportb(0xa1, mask2);
-    for (i = 0; i < 5; i++)
+    for (i = 0; i < 5; i++) {
         setvect(vec(irqs[i]), old[irqs[i]]);
+    }
     enable();
     return got;
 }
@@ -237,37 +271,61 @@ int main(int argc, char *argv[])
     int i, e7, ver, isel, dsel, b1, b2, n1, n2, got, ok = 1, oldway = 0;
     static unsigned char key[10] = {9, 9, 9, 0xb, 9, 0xb, 9, 9, 0xb, 9};
     for (i = 1; i < argc; i++) {
-        if (stricmp(argv[i], "/OLD") == 0)
+        if (stricmp(argv[i], "/OLD") == 0) {
             oldway = 1;
-        else {
+        } else {
             puts("ESSINIT [/OLD]: set up an ESS ES688/ES1688-family chip for BLASTER A, I, D.");
             puts("  /OLD  write B1h/B2h as UNISOUND 0.82a does (value to 2xDh, no bit 6)");
             puts("Exit code 0 = OK, 1 = a step failed, 2 = no ESS chip found.");
             return 1;
         }
     }
-    if (!parse_blaster())
+    if (!parse_blaster()) {
         puts("BLASTER not set: using UNISOUND's defaults, A220 I5 D1");
+    }
     opti_check();
     switch (irq) {
-    case 2: case 9: isel = 0; irq = 9; break;
-    case 5: isel = 4; break;
-    case 7: isel = 8; break;
-    case 10: isel = 0xc; break;
-    default: printf("IRQ %d not possible on these chips, using 5\n", irq); irq = 5; isel = 4;
+        case 2:
+        case 9:
+            isel = 0;
+            irq = 9;
+            break;
+        case 5:
+            isel = 4;
+            break;
+        case 7:
+            isel = 8;
+            break;
+        case 10:
+            isel = 0xc;
+            break;
+        default:
+            printf("IRQ %d not possible on these chips, using 5\n", irq);
+            irq = 5;
+            isel = 4;
     }
     switch (dma) {
-    case 0: dsel = 4; break;
-    case 1: dsel = 8; break;
-    case 3: dsel = 0xc; break;
-    default: printf("DMA %d not possible on these chips, using 1\n", dma); dma = 1; dsel = 8;
+        case 0:
+            dsel = 4;
+            break;
+        case 1:
+            dsel = 8;
+            break;
+        case 3:
+            dsel = 0xc;
+            break;
+        default:
+            printf("DMA %d not possible on these chips, using 1\n", dma);
+            dma = 1;
+            dsel = 8;
     }
     printf("Base %Xh, IRQ %d, DMA %d%s\n", base, irq, dma, oldway ? ", old write" : "");
     printf("Before: 2xEh = %02X, 2xAh = %02X\n", inportb(base + 0xe), inportb(base + 0xa));
     if (!dsp_reset()) {
         disable();
-        for (i = 0; i < 10; i++)
+        for (i = 0; i < 10; i++) {
             inportb(0x220 + key[i]);
+        }
         inportb(base);
         enable();
         puts("No answer: enable reads sent (229h/22Bh, then the base)");
@@ -310,13 +368,14 @@ int main(int argc, char *argv[])
         ok = 0;
     }
     got = irq_test();
-    if (got == irq)
+    if (got == irq) {
         printf("Interrupt on IRQ %d: OK\n", got);
-    else {
-        if (got)
+    } else {
+        if (got) {
             printf("Interrupt on IRQ %d, expected %d\n", got, irq);
-        else
+        } else {
             puts("No interrupt");
+        }
         ok = 0;
     }
     puts(ok ? "RESULT: OK" : "RESULT: FAILED");
