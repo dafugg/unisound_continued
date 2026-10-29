@@ -9,11 +9,11 @@ C source for **UNISOUND.COM v0.82a**, the "Universal ISA PnP Sound Card Driver f
 JazeFox, decompiled so that it rebuilds the released binary byte for byte. UNISOUND is released
 and discussed in [its thread on the VOGONS forum](https://www.vogons.org/viewtopic.php?t=72553).
 
-> **This is an unofficial build. Don't yell at JazeFox if this burns down your house.**
-> Nothing here is made, endorsed or supported by JazeFox. UNISOUND, and the source and data
-> reconstructed from it, remain JazeFox's work; this repository is published only because
-> JazeFox can no longer be reached and the fixes are useful. If JazeFox asks, the
-> reconstruction and the builds will be taken down.
+**This is an unofficial build. Don't yell at JazeFox if this burns down your house.** Nothing
+here is made, endorsed or supported by JazeFox. UNISOUND, and the source and data reconstructed
+from it, remain JazeFox's work; this repository is published only because JazeFox can no longer
+be reached and the fixes are useful. If JazeFox asks, the reconstruction and the builds will be
+taken down.
 
 ## Decompilation status
 
