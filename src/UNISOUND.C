@@ -983,7 +983,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     if (memcmp(id + 3, "A836", 4) == 0) {
                         cs_variant = 4;
                     }
-                } else if (memcmp(id + 4, "25", 2) == 0 || memcmp(id + 4, "025", 3) == 0) {
+                } else if (memcmp(id + 4, "25", 2) == 0 || memcmp(id + 4, "025", 3) == 0 ||
+                           memcmp(id + 5, "25", 2) == 0) {
+                    /* CS4235: real cards end in 25 (CSC0225, CSC1425, CSC4625, CSCE825...);
+                       v0.82a only tested the two characters before that. */
                     type = CARD_CRYSTAL;
                 }
             } else if (memcmp(id, "TBS2004", 7) == 0) {
