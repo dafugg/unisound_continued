@@ -644,13 +644,15 @@ int opt_2digits(char *s)
     return -1;
 }
 
-/* Print the program name and version line, then a 73-character rule of box-drawing characters
-   (0xC4). */
+/* Print the program name and version, then a 73-character rule of box-drawing characters
+   (0xC4). The version names this unofficial fixed build so it isn't mistaken for a release by
+   JazeFox; it takes two lines to fit in 80 columns. */
 void print_banner(void)
 {
     char line[74];
 
-    puts("Universal ISA PnP Sound Card Driver for DOS v0.82a. (c) JazeFox 2019-2025\0");
+    puts("Universal ISA PnP Sound Card Driver for DOS v0.82a-unofficial-fix-1");
+    puts("(c) JazeFox 2019-2025");
     memset(line, 0xc4, 73);
     line[73] = 0;
     printf("%s\n", line);
