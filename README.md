@@ -35,7 +35,7 @@ are in [docs/TESTING.md](docs/TESTING.md). A ✅ means the bug was reproduced in
 shown to work. Every fix was also part of a 175-run regression check against all of 86Box's
 sound cards, with no regressions; the changes in output it found are the intended ones.
 
-Apart from the fixes, the `main` build prints its own version, "v0.82a-unofficial-fix-2"
+Apart from the fixes, the `main` build prints its own version, "v0.82a-unofficial-fix-3"
 ([3245b96](https://github.com/dafugg/unisound_decomp/commit/3245b964ecfa7e1c0c371e1880ed84f8fb6e60cb)),
 so its output can't be mistaken for JazeFox's release, and has a `/LOG` option
 ([fde5b60](https://github.com/dafugg/unisound_decomp/commit/fde5b603ddab9a934871e3470df7ac7f7ba66578))
