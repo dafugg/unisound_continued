@@ -408,6 +408,7 @@ int opt_x3d = 0;  /* /X3Dn: 3D level */
 int opt_xxg = 0;  /* /XXGn: SB16 gain */
 int nopnp_mode = 0;  /* /NOPNP = 1; 2 = OPTi control chip found */
 char opt_log = 0;  /* /LOG: print diagnostic lines */
+char opt_slam = 0;  /* /XSLAM: Crystal chip set up through SLAM; 2 while SLAM is open */
 unsigned char opti_probe[5];  /* probe_opti_ctl's reads, for /LOG: F8Dh and F8Fh without the
                                  password, register 1, F8Dh again, register 3 */
 
@@ -417,6 +418,7 @@ void print_help(void);
 int configure_pnp(int card, int list, int pass, unsigned port);
 void pnp_send_key(void);
 void pnp_write(unsigned char reg, unsigned char val);
+void slam_write(unsigned char reg, unsigned char val);
 unsigned char pnp_read(unsigned char reg);
 void pnp_write16(unsigned char reg, unsigned val);
 unsigned pnp_read16(unsigned char reg);
@@ -634,6 +636,8 @@ int main(int argc, char *argv[])
                 probe_opti_ctl();
             } else if (strcmp(opt, "LOG") == 0)
                 opt_log = 1;
+            else if (strcmp(opt, "XSLAM") == 0)
+                opt_slam = 1;
             else if (strcmp(opt, "H") == 0 || strcmp(opt, "?") == 0) {
                 print_help();
                 return 0;
@@ -689,6 +693,7 @@ void print_help(void)
     puts("   /VRnn  and /VUnn Set FM Reverb/Chorus amount (00-99) (SB AWE only)");
     puts("   /Xxxx  eXtended settings (See TXT section 5)");
     puts("   /NOPNP Detect & init some Non-PnP cards (See TXT end of section 3)");
+    puts("   /XSLAM Crystal chip set up by the BIOS (no PnP): configure it through SLAM");
     puts("   /LOG   Print diagnostic lines (UNISOUND /LOG > LOG.TXT)");
     puts("   /H /?  This help screen");
     puts("\nUNISOUND (w/o options) initializes 1st card found with default vols.");
@@ -778,6 +783,29 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     delay(2);
     pnp_send_key();
     pnp_write(3, 0);
+    if (opt_slam != 0) {
+        /* /XSLAM: a Crystal chip whose PnP key is disabled (set up by a laptop BIOS or CWDINIT)
+           takes no part in isolation, but its Crystal key opens SLAM. Take it as card 1 with the
+           fixed CS423x layout; pnp_write turns the setup below into SLAM commands. */
+        static unsigned char ckey[32] = {
+            0x96, 0x35, 0x9a, 0xcd, 0xe6, 0xf3, 0x79, 0xbc, 0x5e, 0xaf, 0x57, 0x2b,
+            0x15, 0x8a, 0xc5, 0xe2, 0xf1, 0xf8, 0x7c, 0x3e, 0x9f, 0x4f, 0x27, 0x13,
+            0x09, 0x84, 0x42, 0xa1, 0xd0, 0x68, 0x34, 0x1a };
+        int k;
+        if (opt_read != 0) {
+            puts("/R can't read a chip set up through SLAM.");
+            return 1;
+        }
+        for (k = 0; k < 32; k++)
+            outportb(0x279, ckey[k]);
+        opt_slam = 2;
+        slam_write(6, 1);           /* CSN 1 */
+        type = CARD_CRYSTAL;
+        id = "SLAM";
+        csn = 1;
+        nsup = 1;
+        pass = 2;
+    }
     while (found == 0 && pass < 2) {
         if (pass == 1)
             pnp_write(0, port >> 1 >> 1);
@@ -1638,6 +1666,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     delay(1);
     if (opt_disable != 0)
         return 0;
+    if (opt_slam != 0 && inportb(wss_port) == 0xff) {
+        puts("No Crystal codec answered after the SLAM setup.");
+        return 1;
+    }
     if (type == CARD_YAMAHA) {
         int mix_port = wss_port + 4;
         if (treble_lvl < 0)
@@ -2055,10 +2087,40 @@ void pnp_send_key(void)
    logical-device configuration registers 0x30-0x80 are skipped, so the card is only read. */
 void pnp_write(unsigned char reg, unsigned char val)
 {
+    if (opt_slam == 2) {
+        slam_write(reg, val);
+        return;
+    }
     if (opt_read == 0 || reg < 0x30 || reg > 0x80) {
         outportb(pnp_addr_port, reg);
         outportb(pnp_wdata_port, val);
     }
+}
+
+/* /XSLAM: write to 279h the Crystal SLAM command that does what PnP register reg = val would.
+   7 (logical device) is 15h; the I/O base pairs 60h/61h, 62h/63h and 64h/65h are 47h, 48h and
+   42h, the command going with the high byte; IRQs 70h/72h are 22h/27h, DMAs 74h/75h 2Ah/25h,
+   activate 30h 33h and the CSN 6 06h. Config Control (2), sent once the setup is done, leaves
+   SLAM with 79h, which activates the chip. Other registers have no SLAM command. */
+void slam_write(unsigned char reg, unsigned char val)
+{
+    static unsigned char cmd[] = { 7, 0x15, 0x60, 0x47, 0x62, 0x48, 0x64, 0x42, 0x70, 0x22,
+                                   0x72, 0x27, 0x74, 0x2a, 0x75, 0x25, 0x30, 0x33, 6, 6 };
+    int i;
+    if (reg == 2) {
+        outportb(0x279, 0x79);
+        opt_slam = 1;
+        return;
+    }
+    if (reg == 0x61 || reg == 0x63 || reg == 0x65) {
+        outportb(0x279, val);       /* low byte of the base the previous command started */
+        return;
+    }
+    for (i = 0; i < sizeof(cmd); i += 2)
+        if (cmd[i] == reg) {
+            outportb(0x279, cmd[i + 1]);
+            outportb(0x279, val);
+        }
 }
 
 /* Read PnP register reg: select it on the address port and read the read-data port. */
@@ -2550,15 +2612,19 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
     int ad_name = 0;
     int ews = 0;
     int maxi = 0;
-    if (type == CARD_CRYSTAL) {
-        pnp_write(2, 2);
+    if (opt_slam != 0)
+        done = 1;                   /* no resource data: the fixed layout below */
+    else {
+        if (type == CARD_CRYSTAL) {
+            pnp_write(2, 2);
+            delay(1);
+            pnp_send_key();
+        }
+        pnp_write(3, csn);
         delay(1);
-        pnp_send_key();
+        if (ok)
+            ok = pnp_read_res(0, 9);
     }
-    pnp_write(3, csn);
-    delay(1);
-    if (ok)
-        ok = pnp_read_res(0, 9);
     if (ok)
         *name = 0;
     while (ok && !done) {
@@ -2742,6 +2808,18 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
             if (len > 0)
                 ok = pnp_read_res(0, len);
         }
+    }
+    /* No logical devices: /XSLAM, or a Crystal chip whose resource data holds only the serial
+       identifier (the Gateway E-1000's on-board CS4236B). The CS423x layout is fixed: 0 WSS,
+       SB and OPL, 1 gameport, 2 control, 3 MPU-401. */
+    if (ldn == 0 && csn > 0 && type == CARD_CRYSTAL) {
+        ld[0] = 0;
+        ld[3] = 1;
+        ld[6] = 2;
+        ld[2] = 3;
+        if (*name == 0)
+            strcpy(name, "CS423x");
+        ok = 1;
     }
     pnp_write(3, 0);
     delay(1);
