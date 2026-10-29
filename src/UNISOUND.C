@@ -25,25 +25,25 @@ int outp(unsigned portid, int value);
 unsigned outpw(unsigned portid, unsigned value);
 
 /* ---- global data (initialized; addresses in the original DGROUP) ---- */
-int g_b3f2[32] = {
+int emu_init1[32] = {
     0x0c10, 0x8470, 0x14fe, 0xb488, 0x167f, 0xa470, 0x18e7, 0x84b5, 0x1b6e, 0x842a, 0x1f1d, 0x852a,
     0x0da3, 0x8f7c, 0x167e, 0xf254, 0x0000, 0x842a, 0x0001, 0x852a, 0x18e6, 0x8baa, 0x1b6d, 0xf234,
-    0x229f, 0x8429, 0x2746, 0x8529, 0x1f1c, 0x86e7, 0x229e, 0xf224 };  /* EMU8000 init data 1 (reg 0x40, data1) */
-int g_b432[32] = {
+    0x229f, 0x8429, 0x2746, 0x8529, 0x1f1c, 0x86e7, 0x229e, 0xf224 };  /* EMU8000 init data 1 (regs 0x40-0x5f, data port) */  /* EMU8000 init data 1 (reg 0x40, data1) */
+int emu_init2[32] = {
     0x0da4, 0x8429, 0x2c29, 0x8529, 0x2745, 0x87f6, 0x2c28, 0xf254, 0x383b, 0x8428, 0x320f, 0x8528,
     0x320e, 0x8f02, 0x1341, 0xf264, 0x3eb6, 0x8428, 0x3eb9, 0x8528, 0x383a, 0x8fa9, 0x3eb5, 0xf294,
-    0x3eb7, 0x8474, 0x3eba, 0x8575, 0x3eb8, 0xc4c3, 0x3ebb, 0xc5c3 };  /* EMU8000 init data 2 (reg 0x40, data2) */
-int g_b472[32] = {
+    0x3eb7, 0x8474, 0x3eba, 0x8575, 0x3eb8, 0xc4c3, 0x3ebb, 0xc5c3 };  /* EMU8000 init data 2 (regs 0x40-0x5f, data port +2) */  /* EMU8000 init data 2 (reg 0x40, data2) */
+int emu_init3[32] = {
     0x0000, 0xa404, 0x0001, 0xa504, 0x141f, 0x8671, 0x14fd, 0x8287, 0x3ebc, 0xe610, 0x3ec8, 0x8c7b,
     0x031a, 0x87e6, 0x3ec8, 0x86f7, 0x3ec0, 0x821e, 0x3ebe, 0xd280, 0x3ebd, 0x821f, 0x3eca, 0x8386,
-    0x3ec1, 0x8c03, 0x3ec9, 0x831e, 0x3eca, 0x8c4c, 0x3ebf, 0x8c55 };  /* EMU8000 init data 3 (reg 0x60, data1) */
-int g_b4b2[32] = {
+    0x3ec1, 0x8c03, 0x3ec9, 0x831e, 0x3eca, 0x8c4c, 0x3ebf, 0x8c55 };  /* EMU8000 init data 3 (regs 0x60-0x7f, data port) */  /* EMU8000 init data 3 (reg 0x60, data1) */
+int emu_init4[32] = {
     0x3ec9, 0xc280, 0x3ec4, 0xbc84, 0x3ec8, 0x8ead, 0x3ec8, 0xd380, 0x3ec2, 0x8f7e, 0x3ecb, 0x8219,
     0x3ecb, 0xd2e6, 0x3ec5, 0x831f, 0x3ec6, 0xc380, 0x3ec3, 0xb27f, 0x3ec9, 0x8265, 0x3ec9, 0x8319,
-    0x1342, 0xd3e6, 0x3ec7, 0xb37f, 0x0000, 0x8365, 0x1420, 0x9570 };  /* EMU8000 init data 4 (reg 0x60, data2) */
-unsigned char g_b4f2[8] = {
-    0xaa, 0x99, 0x2a, 0xc2, 0x53, 0x02, 0x12, 0x86 };  /* CS4232 firmware header (8 bytes) */
-unsigned char g_b4fa[3213] = {
+    0x1342, 0xd3e6, 0x3ec7, 0xb37f, 0x0000, 0x8365, 0x1420, 0x9570 };  /* EMU8000 init data 4 (regs 0x60-0x7f, data port +2) */  /* EMU8000 init data 4 (reg 0x60, data2) */
+unsigned char cs4232_fw_hdr[8] = {
+    0xaa, 0x99, 0x2a, 0xc2, 0x53, 0x02, 0x12, 0x86 };  /* CS4232 firmware header (8 bytes) */  /* CS4232 firmware header (8 bytes) */
+unsigned char cs4232_fw[3213] = {
     0xaa, 0x76, 0x21, 0x74, 0x10, 0x12, 0x2b, 0x9b, 0x74, 0x20, 0x78, 0x05,
     0xf2, 0x74, 0x09, 0x12, 0x17, 0x75, 0xe5, 0x15, 0x44, 0x80, 0x79, 0x05,
     0xf3, 0xf5, 0x15, 0x12, 0x17, 0x7f, 0x22, 0x79, 0x03, 0xe3, 0xa2, 0xe2,
@@ -311,157 +311,157 @@ unsigned char g_b4fa[3213] = {
     0x02, 0x02, 0x02, 0x20, 0xb5, 0x05, 0x79, 0x0f, 0xf3, 0xc2, 0x11, 0x22,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0xe5, 0x15, 0xa2, 0xe0, 0xb0, 0xe6, 0x50,
-    0x01, 0x22, 0xa2, 0xe1, 0xb0, 0xe7, 0x22, 0x0e, 0x01 };  /* CS4232 firmware body (0xc8d bytes) */
-int g_c187 = 0x0220;  /* SB base port */
-int g_c189 = 0x0388;  /* OPL port */
-int g_c18b = 0x0620;  /* AWE port */
-int g_c18d = 0x0330;  /* MPU-401 port */
-int g_c18f = 0x0299;  /* gameport */
-int g_c191 = 0x0530;  /* WSS / codec port */
-int g_c193 = 0x0370;  /* control port (Yamaha) */
-int g_c195 = 0x0120;  /* control port (CS) */
-int g_c197 = 0x0f0c;  /* control port (OPTi) */
-int g_c199 = 0x0800;  /* control port (ESS) */
-int g_c19b = 0x0310;  /* 2nd MPU port */
-int g_c19d = 0;  /* IDE port */
-int g_c19f = 5;  /* IRQ */
-int g_c1a1 = 0;  /* 2nd IRQ */
-int g_c1a3 = -1;  /* MPU IRQ */
-int g_c1a5 = 0;  /* IDE IRQ */
-int g_c1a7 = 1;  /* DMA 1 */
-int g_c1a9 = 1;  /* DMA 2 */
-int g_c1ab = 0;  /* WSS DMA */
-int g_c1ad = 0x0250;  /* control port (Rockwell / InterWave) */
-int g_c1af = 0x0240;  /* GUS port (ULTRASND) */
-int g_c1b1 = 3;  /* GUS DMA 1 */
-int g_c1b3 = 3;  /* GUS DMA 2 */
-int g_c1b5 = 0x000b;  /* GUS IRQ */
-int g_c1b7 = 0;  /* GUS IRQ 2 */
-unsigned g_c1b9 = 0x0279;  /* PnP address port (0x279) */
-unsigned g_c1bb = 0x0a79;  /* PnP write data port (0xa79) */
-int g_c1bd = 0;  /* PnP read data port */
-unsigned char g_c1bf = 0xdd;  /* master vol (register value) */
-int g_c1c0 = 0x0055;  /* master vol (0-99) */
-unsigned char g_c1c2 = 0xcc;  /* wave vol reg */
-int g_c1c3 = 0x0050;  /* wave vol */
-unsigned char g_c1c5 = 0xcc;  /* FM vol reg */
-int g_c1c6 = 0x0050;  /* FM vol */
-unsigned char g_c1c8 = 0;  /* line vol reg */
-int g_c1c9 = 0;  /* line vol */
-unsigned char g_c1cb = 0;  /* CD vol reg */
-int g_c1cc = 0;  /* CD vol */
-unsigned char g_c1ce = 0;  /* mic vol reg */
-int g_c1cf = 0;  /* mic vol */
-unsigned char g_c1d1 = 0;  /* PC speaker volume, mixer bits 7-5 */
-int g_c1d2 = 0;  /* PC speaker vol / AuxB */
-unsigned char g_c1d4 = 0x80;  /* treble level, mixer high nibble */
-int g_c1d5 = -1;  /* treble */
-unsigned char g_c1d7 = 0x80;  /* bass level, mixer high nibble */
-int g_c1d8 = -1;  /* bass */
-char g_c1da = 0;  /* /NOPNP mode */
-unsigned char g_c1db = 0;  /* read-only mode (/R) */
-int g_c1dc = 0;  /* disable mode (/D) */
-char g_c1de = 0;  /* resource data checksum state (2 = bad) */
-unsigned char g_c1df = 4;  /* selected card number */
-int g_c1e0 = 0;  /* AWE chorus amount 00-99 (/VUnn) */
-int g_c1e2 = 0;  /* AWE reverb amount 00-99 (/VRnn) */
-unsigned g_c1e4 = 0x0f8d;  /* codec index port */
-int g_c1e6 = -1;  /* extended option */
-int g_c1e8 = 0;  /* extended option */
-int g_c1ea = 2;  /* extended option (MPU enable) */
-int g_c1ec = -1;  /* IDE port override */
-int g_c1ee = 0;  /* /XGL */
-int g_c1f0 = 0;  /* gameport enable */
-int g_c1f2 = 0;  /* card mode (WSS) */
-int g_c1f4 = 0;  /* ESS option */
-int g_c1f6 = 0;  /* extra option */
-int g_c1f8 = 0;  /* mixer option (SPDIF/3D...) */
-int g_c1fa = 0;  /* mixer option 2 */
-int g_c1fc = 0;  /* non-PnP mode */
+    0x01, 0x22, 0xa2, 0xe1, 0xb0, 0xe7, 0x22, 0x0e, 0x01 };  /* CS4232 firmware body (0xc8d bytes) */  /* CS4232 firmware body (0xc8d bytes) */
+int sb_port = 0x0220;  /* SB base port (BLASTER A) */
+int opl_port = 0x0388;  /* OPL port (F) */
+int awe_port = 0x0620;  /* AWE port (E) */
+int mpu_port = 0x0330;  /* MPU-401 port (P) */
+int joy_port = 0x0299;  /* gameport (J); 0x299 = not set */
+int wss_port = 0x0530;  /* WSS codec port (W) */
+int yamaha_ctl_port = 0x0370;  /* Yamaha OPL3-SAx control port (R) */
+int crystal_ctl_port = 0x0120;  /* Crystal control port */
+int opti_ctl_port = 0x0f0c;  /* OPTi control port */
+int ess_ctl_port = 0x0800;  /* ESS control port (R) */
+int mpu2_port = 0x0310;  /* 2nd MPU port (M) */
+int ide_port = 0;  /* IDE port (C) */
+int sb_irq = 5;  /* IRQ (I) */
+int irq2 = 0;  /* 2nd IRQ (Q) */
+int mpu_irq = -1;  /* MPU IRQ (U); -1 = auto */
+int ide_irq = 0;  /* IDE IRQ (Y) */
+int sb_dma = 1;  /* DMA (D) */
+int sb_hdma = 1;  /* high DMA (H) */
+int wss_dma = 0;  /* WSS DMA (K) */
+int aux_ctl_port = 0x0250;  /* control port for Rockwell / GUS PnP / Ensoniq (R); TEA6330T port on GUS */
+int gus_port = 0x0240;  /* GUS port (ULTRASND) */
+int gus_dma = 3;  /* GUS DMA 1 */
+int gus_dma2 = 3;  /* GUS DMA 2 */
+int gus_irq = 0x000b;  /* GUS IRQ */
+int gus_irq2 = 0;  /* GUS IRQ 2 */
+unsigned pnp_addr_port = 0x0279;  /* PnP address port */
+unsigned pnp_wdata_port = 0x0a79;  /* PnP write data port */
+int pnp_rdata_port = 0;  /* PnP read data port (found by isolation) */
+unsigned char master_reg = 0xdd;  /* master volume, mixer register value */
+int master_vol = 0x0055;  /* master volume 0-99 (/Vnn) */
+unsigned char fm_reg = 0xcc;  /* FM volume register value */
+int fm_vol = 0x0050;  /* FM volume (/VFnn) */
+unsigned char wave_reg = 0xcc;  /* wave volume register value */
+int wave_vol = 0x0050;  /* wave volume (/VWnn) */
+unsigned char line_reg = 0;  /* line-in volume register value */
+int line_vol = 0;  /* line-in volume (/VLnn) */
+unsigned char cd_reg = 0;  /* CD volume register value */
+int cd_vol = 0;  /* CD volume (/VCnn) */
+unsigned char mic_reg = 0;  /* mic volume register value */
+int mic_vol = 0;  /* mic volume (/VMnn) */
+unsigned char pcspk_reg = 0;  /* PC speaker volume, mixer bits 7-5 */
+int pcspk_vol = 0;  /* PC speaker volume (/VPnn) */
+unsigned char treble_reg = 0x80;  /* treble, mixer high nibble */
+int treble_lvl = -1;  /* treble (/VTnn); -1 = not set */
+unsigned char bass_reg = 0x80;  /* bass, mixer high nibble */
+int bass_lvl = -1;  /* bass / AuxB (/VBnn); -1 = not set */
+char opt_cs = 0;  /* /CS: initialize a non-PnP Creative card */
+unsigned char opt_read = 0;  /* /R: read settings only */
+int opt_disable = 0;  /* /D: disable the card */
+char opt_xxf = 0;  /* /XXF: ignore bad checksums; set to 2 when one was bad, 1 when good */
+unsigned char isolate_limit = 4;  /* isolation gives up after this many bits without a response (/FS: 0x50) */
+int awe_chorus = 0;  /* AWE chorus amount 00-99 (/VUnn) */
+int awe_reverb = 0;  /* AWE reverb amount 00-99 (/VRnn) */
+unsigned opti93x_pwd_port = 0x0f8d;  /* OPTi 93x password port */
+int opt_xof = -1;  /* /XOFi = 1, /XOFe = 0, /XRU = 8; -1 = default */
+int opt_xos = 0;  /* /XOS1: S/PDIF on */
+int opt_xom = 2;  /* /XOM1 = 1, /XOM0 = 0; 2 = default */
+int opt_xgc = -1;  /* /XGCn: GUS PnP IDE port; -1 = default */
+int opt_xgl = 0;  /* /XGL: limit GUS RAM to 512K */
+int opt_xgj = 0;  /* /XGJ: GUS joystick */
+int opt_xwss = 0;  /* /XWSS: WSS mode */
+int opt_xea = 0;  /* /XEA: alternate ES1868 init */
+int opt_xnet = 0;  /* /XNET: Realtek PnP network card workaround */
+int opt_x3d = 0;  /* /X3Dn: 3D level */
+int opt_xxg = 0;  /* /XXGn: SB16 gain */
+int nopnp_mode = 0;  /* /NOPNP = 1; 2 = OPTi control chip found */
 
 /* ---- functions ---- */
-void f_0bad(void);
-void f_0be2(void);
-int f_0c8a(int a, int b, int pass, unsigned port);
-void f_3c21(void);
-void f_3c59(unsigned char reg, unsigned char val);
-unsigned char f_3c81(unsigned char reg);
-void f_3c93(unsigned char reg, unsigned val);
-unsigned f_3ccf(unsigned char reg);
-void f_3cfd(unsigned port, unsigned char idx, unsigned char val);
-void f_3d19(unsigned port, unsigned char idx, unsigned char val);
-void f_3d40(unsigned port, unsigned char idx, unsigned char val);
-unsigned char f_3d6c(unsigned port, unsigned char reg);
-void f_3daa(unsigned port, unsigned char reg, unsigned char val);
-void f_3def(unsigned port, unsigned char idx, unsigned char val);
-unsigned char f_3e1c(unsigned port, unsigned char idx);
-int f_3e51(unsigned port, unsigned char *buf);
-char *f_3fb6(unsigned long *id);
-int f_405e(void);
-int f_4192(void);
-int f_4425(unsigned char csn, unsigned char *buf, int type);
-int f_44fa(unsigned char csn, char *name, int *ld, int type);
-int f_4b76(unsigned char *buf, int n);
-int f_4bfc(unsigned char *tag, int *len);
-void f_4c96(unsigned port);
-void f_4dec(int port);
-int f_4e94(void);
-void f_5175(int port, unsigned char irq, unsigned char dma, unsigned char hdma);
-unsigned char f_5270(int port);
-unsigned char f_52d1(int port);
-unsigned char f_5378(int port);
-void f_5419(char *name, int d3, int gain);
-void f_54e9(void);
-void f_556d(void);
-void f_5715(void);
-void f_577f(int mode);
-void f_5c48(void);
-void f_5de3(unsigned base);
-unsigned char f_5fc9(unsigned long addr);
-void f_6008(unsigned long addr, unsigned char val);
-int f_604a(void);
-int f_62c1(unsigned long *dst);
-void f_6895(unsigned long reg, unsigned val);
-void f_6a91(void);
-void f_6d3d(int flag, unsigned char v);
-void f_6d8d(int flag, unsigned char v);
-void f_6ddd(int flag, unsigned char v);
-void f_6e2d(int flag, unsigned char v);
-void f_6e7d(int flag, unsigned char v);
-void f_6ecd(int flag, unsigned char v);
-void f_6f1d(void);
-void f_6f4a(void);
-int f_6f77(void);
-void f_70e5(int a);
-void f_71b2(void);
-void f_71ec(unsigned reg, unsigned port, unsigned long val);
-void f_721c(unsigned reg, unsigned port, unsigned val);
-unsigned f_723b(unsigned reg, unsigned port);
-unsigned long f_725e(unsigned reg, unsigned port);
-int f_72a5(int a);
-void f_7d59(void);
-void f_7d81(void);
-void f_7de9(void);
-void f_7ed9(int card);
-void f_8474(unsigned char reg, unsigned char val);
-void f_849f(unsigned char reg, unsigned char bits);
-void f_84e1(unsigned char unit, unsigned char val);
-int f_850e(void);
-void f_85ba();   /* no prototype in the original: callers push promoted ints */
-void f_85dd(int port);
-void f_86aa(unsigned char reg, unsigned char val);
-void f_86f1(unsigned char v);
-void f_8745(unsigned char v);
-unsigned char f_8760(unsigned port);
-void f_8777(unsigned port, unsigned char val);
-int f_8789(void);
-void f_8b2d(void);
-int f_8b68(void);
-int f_8f2f(void);
+void print_banner(void);
+void print_help(void);
+int configure_pnp(int card, int list, int pass, unsigned port);
+void pnp_send_key(void);
+void pnp_write(unsigned char reg, unsigned char val);
+unsigned char pnp_read(unsigned char reg);
+void pnp_write16(unsigned char reg, unsigned val);
+unsigned pnp_read16(unsigned char reg);
+void idx45_write(unsigned port, unsigned char idx, unsigned char val);
+void idx01_write(unsigned port, unsigned char idx, unsigned char val);
+void idx45_write_slow(unsigned port, unsigned char idx, unsigned char val);
+unsigned char opti92x_read(unsigned port, unsigned char reg);
+void opti92x_write(unsigned port, unsigned char reg, unsigned char val);
+void opti93x_write(unsigned port, unsigned char idx, unsigned char val);
+unsigned char opti93x_read(unsigned port, unsigned char idx);
+int pnp_isolate(unsigned port, unsigned char *buf);
+char *pnp_vendor_str(unsigned long *id);
+int parse_ultrasnd(void);
+int parse_blaster(void);
+int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
+int pnp_map_devices(unsigned char csn, char *name, int *ld, int type);
+int pnp_read_res(unsigned char *buf, int n);
+int pnp_read_tag(unsigned char *tag, int *len);
+void awe_init(unsigned port);
+void sb_print_dsp_ver(int port);
+int init_nonpnp_sb16(void);
+void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned char hdma);
+unsigned char sb16_get_irq(int port);
+unsigned char sb16_get_dma(int port);
+unsigned char awe_detect(int port);
+void print_mixer(char *name, int d3, int gain);
+void sbpro_mixer_set(void);
+void sb16_mixer_set(void);
+void sb16_mixer_switches(void);
+void opti92x_init(int mode);
+void opti93x_init(void);
+void sam9407_upload(unsigned base);
+unsigned char iw_mem_read(unsigned long addr);
+void iw_mem_write(unsigned long addr, unsigned char val);
+int iw_list_roms(void);
+int iw_detect_dram(unsigned long *dst);
+void iw_write(unsigned long reg, unsigned val);
+void iw_init(void);
+void iw_set_master(int flag, unsigned char v);
+void iw_set_dac(int flag, unsigned char v);
+void iw_set_synth(int flag, unsigned char v);
+void iw_set_line(int flag, unsigned char v);
+void iw_set_cd(int flag, unsigned char v);
+void iw_set_mic(int flag, unsigned char v);
+void emu_wait_read(void);
+void emu_wait_write(void);
+int emu_detect_dram(void);
+void emu_dma_open(int a);
+void emu_dma_close(void);
+void emu_write32(unsigned reg, unsigned port, unsigned long val);
+void emu_write16(unsigned reg, unsigned port, unsigned val);
+unsigned emu_read16(unsigned reg, unsigned port);
+unsigned long emu_read32(unsigned reg, unsigned port);
+int emu_init(int a);
+void use_alt_pnp_ports(void);
+void send_alt_pnp_key(void);
+void cs4232_upload_fw(void);
+void crystal_ext_init(int card);
+void cs_ctl_write(unsigned char reg, unsigned char val);
+void cs_ctl_setbits(unsigned char reg, unsigned char bits);
+void cs_xreg_write(unsigned char unit, unsigned char val);
+int opl_detect(void);
+void opl_write();   /* no prototype in the original: callers push promoted ints */
+void xnet_workaround(int port);
+void tea6330_write(unsigned char reg, unsigned char val);
+void i2c_write_byte(unsigned char v);
+void i2c_lines(unsigned char v);
+unsigned char opti928_read(unsigned port);
+void opti928_write(unsigned port, unsigned char val);
+int init_opti928(void);
+void probe_opti_ctl(void);
+int init_opti930(void);
+int init_es688(void);
 
 /* ======== chunk 1 ======== */
-#define g_c1da (*(unsigned char *)&g_c1da)
-#define g_c1de (*(unsigned char *)&g_c1de)
+#define opt_cs (*(unsigned char *)&opt_cs)
+#define opt_xxf (*(unsigned char *)&opt_xxf)
 /* main: parse command line options, then run the card configuration */
 int main(int argc, char *argv[])
 {
@@ -483,79 +483,79 @@ int main(int argc, char *argv[])
                         list = 1;
                     } else if (list < 1) {
                         if (argv[i][2] == 'S')
-                            g_c1da = 1;
+                            opt_cs = 1;
                         if (isdigit(argv[i][2]))
                             card = argv[i][2] - '0';
                     }
                 }
                 if (argv[i][1] == 'V') {
                     if (isdigit(argv[i][2]) && isdigit(argv[i][3])) {
-                        g_c1c0 = argv[i][3] + (argv[i][2] - '0') * 10 - '0';
-                        g_c1bf = g_c1c0 * 15 / 95 * 17;
+                        master_vol = argv[i][3] + (argv[i][2] - '0') * 10 - '0';
+                        master_reg = master_vol * 15 / 95 * 17;
                     }
                     if (argv[i][2] == 'F' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        g_c1c3 = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        g_c1c2 = g_c1c3 * 15 / 95 * 17;
+                        fm_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        fm_reg = fm_vol * 15 / 95 * 17;
                     }
                     if (argv[i][2] == 'W' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        g_c1c6 = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        g_c1c5 = g_c1c6 * 15 / 95 * 17;
+                        wave_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        wave_reg = wave_vol * 15 / 95 * 17;
                     }
                     if (argv[i][2] == 'L' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        g_c1c9 = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        g_c1c8 = g_c1c9 * 15 / 95 * 17;
+                        line_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        line_reg = line_vol * 15 / 95 * 17;
                     }
                     if (argv[i][2] == 'C' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        g_c1cc = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        g_c1cb = g_c1cc * 15 / 95 * 17;
+                        cd_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        cd_reg = cd_vol * 15 / 95 * 17;
                     }
                     if (argv[i][2] == 'M' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        g_c1cf = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        g_c1ce = g_c1cf * 15 / 95 * 17;
+                        mic_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        mic_reg = mic_vol * 15 / 95 * 17;
                     }
                     if (argv[i][2] == 'P' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        g_c1d2 = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        g_c1d1 = g_c1d2 * 7 / 95 << 5;
+                        pcspk_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        pcspk_reg = pcspk_vol * 7 / 95 << 5;
                     }
                     if (argv[i][2] == 'T' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        g_c1d5 = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        g_c1d4 = g_c1d5 * 15 / 93 << 4;
+                        treble_lvl = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        treble_reg = treble_lvl * 15 / 93 << 4;
                     }
                     if (argv[i][2] == 'B' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        g_c1d8 = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        g_c1d7 = g_c1d8 * 15 / 93 << 4;
+                        bass_lvl = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        bass_reg = bass_lvl * 15 / 93 << 4;
                     }
                     if (argv[i][2] == 'U' && isdigit(argv[i][3]) && isdigit(argv[i][4]))
-                        g_c1e0 = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        awe_chorus = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
                     if (argv[i][2] == 'R' && isdigit(argv[i][3]) && isdigit(argv[i][4]))
-                        g_c1e2 = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+                        awe_reverb = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
                 }
                 if (argv[i][1] == 'F') {
                     fs = 1;
                     if (argv[i][2] == 'S') {
                         fsval = 0x20b;
-                        g_c1df = 0x50;
+                        isolate_limit = 0x50;
                     }
                 }
                 if (argv[i][1] == 'R')
-                    g_c1db = 1;
+                    opt_read = 1;
                 if (argv[i][1] == 'D')
-                    g_c1dc = 1;
+                    opt_disable = 1;
                 if (argv[i][1] == 'X') {
                     if (argv[i][2] == 'O') {
                         if (argv[i][3] == 'F') {
                             if (argv[i][4] == 'I')
-                                g_c1e6 = 1;
+                                opt_xof = 1;
                             else if (argv[i][4] == 'E')
-                                g_c1e6 = 0;
+                                opt_xof = 0;
                         }
                         if (argv[i][3] == 'S' && argv[i][4] == '1')
-                            g_c1e8 = 1;
+                            opt_xos = 1;
                         if (argv[i][3] == 'M') {
                             if (argv[i][4] == '1')
-                                g_c1ea = 1;
+                                opt_xom = 1;
                             else if (argv[i][4] == '0')
-                                g_c1ea = 0;
+                                opt_xom = 0;
                         }
                     }
                     if (argv[i][2] == 'G') {
@@ -563,51 +563,51 @@ int main(int argc, char *argv[])
                             int n = argv[i][4] - '0';
                             if (n > 1 && n < 6) {
                                 switch (n) {
-                                case 2: g_c1ec = 0x170; break;
-                                case 3: g_c1ec = 0x1e8; break;
-                                case 4: g_c1ec = 0x168; break;
-                                case 5: g_c1ec = 0; break;
+                                case 2: opt_xgc = 0x170; break;
+                                case 3: opt_xgc = 0x1e8; break;
+                                case 4: opt_xgc = 0x168; break;
+                                case 5: opt_xgc = 0; break;
                                 }
                             }
                         }
                         if (argv[i][3] == 'L')
-                            g_c1ee = 1;
+                            opt_xgl = 1;
                         if (argv[i][3] == 'J')
-                            g_c1f0 = 1;
+                            opt_xgj = 1;
                     }
                     if (argv[i][2] == 'W' && argv[i][3] == 'S')
-                        g_c1f2 = 1;
+                        opt_xwss = 1;
                     if (argv[i][2] == 'E' && argv[i][3] == 'A')
-                        g_c1f4 = 1;
+                        opt_xea = 1;
                     if (argv[i][2] == 'X') {
                         if (argv[i][3] == 'F')
-                            g_c1de = 1;
+                            opt_xxf = 1;
                         if (argv[i][3] == 'G' && isdigit(argv[i][4]))
-                            g_c1fa = argv[i][4] - '0';
+                            opt_xxg = argv[i][4] - '0';
                     }
                     if (argv[i][2] == 'N' && argv[i][3] == 'E')
-                        g_c1f6 = 1;
+                        opt_xnet = 1;
                     if (argv[i][2] == '3' && isdigit(argv[i][4]))
-                        g_c1f8 = argv[i][4] - '0';
+                        opt_x3d = argv[i][4] - '0';
                     if (argv[i][2] == 'R' && argv[i][3] == 'U')
-                        g_c1e6 = 8;
+                        opt_xof = 8;
                 }
                 if (argv[i][1] == 'N' && argv[i][2] == 'O') {
-                    g_c1fc = 1;
-                    f_8b2d();
+                    nopnp_mode = 1;
+                    probe_opti_ctl();
                 }
                 if (argv[i][1] == 'H' || argv[i][1] == '?') {
-                    f_0be2();
+                    print_help();
                     return 0;
                 }
             }
         }
     }
-    return f_0c8a(card, list, fs, fsval);
+    return configure_pnp(card, list, fs, fsval);
 }
 
 /* print the program banner followed by a horizontal rule */
-void f_0bad(void)
+void print_banner(void)
 {
     char line[74];
 
@@ -618,9 +618,9 @@ void f_0bad(void)
 }
 
 /* print the usage/help screen */
-void f_0be2(void)
+void print_help(void)
 {
-    f_0bad();
+    print_banner();
     puts("Options:");
     puts("   /Cn    Select PnP card number 'n' to initialize/read (1-9)");
     puts("   /CL    List all PnP cards present in the system");
@@ -642,12 +642,12 @@ void f_0be2(void)
     puts("If BLASTER/ULTRASND env var is found, values will be used to configure");
     puts("the card. If not, default values will be used. This program is FREEWARE!");
 }
-#undef g_c1da
-#undef g_c1de
+#undef opt_cs
+#undef opt_xxf
 
 /* ======== chunk 2 ======== */
 /* main card detection / configuration routine */
-int f_0c8a(int a, int b, int pass, unsigned port)
+int configure_pnp(int card, int list, int pass, unsigned port)
 {
     char *id = 0;               /* EISA id string of the current card */
     char buf[9] = {0};          /* serial identifier read by isolation */
@@ -672,47 +672,47 @@ int f_0c8a(int a, int b, int pass, unsigned port)
     unsigned char r21 = 0x75;
     int ret = 0;                /* return value */
 
-    f_0bad();
-    if (g_c1da == 1) {
-        if (f_4e94() == 0)
+    print_banner();
+    if (opt_cs == 1) {
+        if (init_nonpnp_sb16() == 0)
             return 1;
         return 0;
     }
-    if (g_c1fc == 1) {
-        if (f_8f2f() == 0 && f_8b68() == 0 && f_8789() == 0 && f_4e94() == 0) {
+    if (nopnp_mode == 1) {
+        if (init_es688() == 0 && init_opti930() == 0 && init_opti928() == 0 && init_nonpnp_sb16() == 0) {
             puts("No card detected");
             return 1;
         }
         return 0;
     }
-    f_3c59(2, 2);
+    pnp_write(2, 2);
     delay(2);
-    f_3c21();
-    f_3c59(2, 4);
-    f_3c59(2, 2);
+    pnp_send_key();
+    pnp_write(2, 4);
+    pnp_write(2, 2);
     delay(2);
-    f_3c21();
-    f_3c59(3, 0);
+    pnp_send_key();
+    pnp_write(3, 0);
     while (found == 0 && pass < 2) {
         if (pass == 1)
-            f_3c59(0, port >> 1 >> 1);
+            pnp_write(0, port >> 1 >> 1);
         delay(1);
-        found = f_3e51(port, buf);
+        found = pnp_isolate(port, buf);
         if (found == 0) {
             if (pass == 1)
-                f_3c59(3, 0);
+                pnp_write(3, 0);
             delay(1);
         }
         if (found != 0) {
-            g_c1bd = port;
-            if (g_c1df < 10) {
-                f_3c59(3, 0);
-                f_3c59(0, g_c1bd >> 1 >> 1);
+            pnp_rdata_port = port;
+            if (isolate_limit < 10) {
+                pnp_write(3, 0);
+                pnp_write(0, pnp_rdata_port >> 1 >> 1);
                 delay(1);
-                f_3e51(g_c1bd, buf);
+                pnp_isolate(pnp_rdata_port, buf);
             }
         } else
-            g_c1bd = 0;
+            pnp_rdata_port = 0;
         if ((port >= 0x27b && pass == 0) || port >= 0x393) {
             pass++;
             port = 0x1eb;
@@ -724,9 +724,9 @@ int f_0c8a(int a, int b, int pass, unsigned port)
     }
     while (found != 0) {
         csn++;
-        f_3c59(6, csn);
+        pnp_write(6, csn);
         delay(1);
-        id = f_3fb6(buf);
+        id = pnp_vendor_str(buf);
         if (id && strlen(id) > 5 && nsup < 6) {
             if (memcmp(id, "CTL", 3) == 0) {
                 type = 1;
@@ -821,16 +821,16 @@ int f_0c8a(int a, int b, int pass, unsigned port)
                 type = 0x40;
         }
         cardno++;
-        if (a > 1) {
+        if (card > 1) {
             printf("Card #%d [%s] ", cardno, id);
-            if (b != 1)
+            if (list != 1)
                 printf("Skipped.");
             else {
                 char text[0x46] = {0};
-                if (f_4425(csn, text, type))
+                if (pnp_read_ansi_name(csn, text, type))
                     printf("%s", text);
             }
-            if (g_c1de == 2)
+            if (opt_xxf == 2)
                 printf(" (BAD CHECKSUM!)");
             type = 0;
             printf("\n");
@@ -840,67 +840,67 @@ int f_0c8a(int a, int b, int pass, unsigned port)
             nsup++;
             break;
         }
-        if (a > 1)
-            a--;
+        if (card > 1)
+            card--;
         else {
             printf("Unknown PnP card [%s] found. \nAborting...\n", id);
-            f_3c59(3, 0);
+            pnp_write(3, 0);
             delay(1);
-            f_3c59(2, 2);
+            pnp_write(2, 2);
             return 1;
         }
-        f_3c59(3, 0);
+        pnp_write(3, 0);
         delay(1);
-        found = f_3e51(g_c1bd, buf);
+        found = pnp_isolate(pnp_rdata_port, buf);
     }
     if (nsup > 0) {
         char name[0x48] = {0};
         unsigned char lcsn = 0; /* CSN of the supported card */
         struct ldinfo ld = {{-1, -1, -1, -1, -1, -1, -1, -1, -1}};
-        if (f_44fa(csn, name, &ld, type))
+        if (pnp_map_devices(csn, name, &ld, type))
             lcsn = csn;
         if (lcsn > 0) {
             printf("PnP card found: [%s] %s", id, name);
-            if (g_c1de == 2)
+            if (opt_xxf == 2)
                 printf(" (BAD CHECKSUM!)");
             puts("");
-            if (g_c1dc != 0 && !g_c1db) {
+            if (opt_disable != 0 && !opt_read) {
                 puts("Disabling card's logical devices...");
-                g_c187 = 0;
-                g_c189 = 0;
-                g_c18b = 0;
-                g_c18d = 0;
-                g_c18f = 0;
-                g_c191 = 0;
-                g_c193 = 0;
-                g_c195 = 0;
-                g_c197 = 0;
-                g_c199 = 0;
-                g_c19b = 0;
-                g_c19d = 0;
-                g_c19f = 0;
-                g_c1a1 = 0;
-                g_c1a3 = 0;
-                g_c1a7 = 4;
-                g_c1a9 = 4;
-                g_c1ab = 4;
-                g_c1ad = 0;
-                g_c1af = 0;
-                g_c1b1 = 4;
-                g_c1b3 = 4;
-                g_c1b5 = 0;
-                g_c1b7 = 0;
+                sb_port = 0;
+                opl_port = 0;
+                awe_port = 0;
+                mpu_port = 0;
+                joy_port = 0;
+                wss_port = 0;
+                yamaha_ctl_port = 0;
+                crystal_ctl_port = 0;
+                opti_ctl_port = 0;
+                ess_ctl_port = 0;
+                mpu2_port = 0;
+                ide_port = 0;
+                sb_irq = 0;
+                irq2 = 0;
+                mpu_irq = 0;
+                sb_dma = 4;
+                sb_hdma = 4;
+                wss_dma = 4;
+                aux_ctl_port = 0;
+                gus_port = 0;
+                gus_dma = 4;
+                gus_dma2 = 4;
+                gus_irq = 0;
+                gus_irq2 = 0;
             }
-            if (g_c1db != 0)
+            if (opt_read != 0)
                 puts("Reading card current settings...\n");
-            else if (g_c1dc == 0) {
+            else if (opt_disable == 0) {
                 if (type == 0x40) {
-                    if (f_405e() == 0)
+                    if (parse_ultrasnd() == 0)
                         puts("Loading Unisound default settings...");
                     else
                         printf("%s environment var found! Loading settings...\n", "ULTRASND");
                 } else {
-                    if (f_4192() == 0)
+                    if (parse_blaster() == 0)
                         puts("Loading Unisound default settings...");
                     else
                         printf("%s environment var found! Loading settings...\n", "BLASTER");
@@ -928,7 +928,7 @@ int f_0c8a(int a, int b, int pass, unsigned port)
             if (type == 5) {
                 r1b = 0x60;
                 r1c = 0x62;
-                g_c1a9 = 4;
+                sb_hdma = 4;
             }
             if (type == 6) {
                 r1b = 0x60;
@@ -942,15 +942,15 @@ int f_0c8a(int a, int b, int pass, unsigned port)
                 r1b = 0x60;
                 r1c = 0x64;
                 r1d = 0x62;
-                if (g_c1fc == 2)
-                    g_c197 += 0x80;
+                if (nopnp_mode == 2)
+                    opti_ctl_port += 0x80;
             }
             if (type == 0x10) {
                 r1b = 0x60;
                 r1c = 0x64;
                 r1d = 0x62;
-                if (g_c1fc == 2)
-                    g_c197 += 0x80;
+                if (nopnp_mode == 2)
+                    opti_ctl_port += 0x80;
             }
             if (type == 8) {
                 r1b = 0x60;
@@ -966,54 +966,54 @@ int f_0c8a(int a, int b, int pass, unsigned port)
                 r1b = 0x60;
                 r1c = 0x60;
                 r1d = 0x60;
-                g_c1a9 = 4;
+                sb_hdma = 4;
             }
             if (type == 0xa) {
                 r1b = 0x60;
                 r1c = 0x62;
                 r1d = 0x64;
-                if (g_c191 != 0)
-                    g_c191 += 4;
+                if (wss_port != 0)
+                    wss_port += 4;
             }
             if (type == 0xb) {
                 r1b = 0x60;
                 r1c = 0x62;
                 r1d = 0x60;
-                if (g_c191 != 0)
-                    g_c191 += 4;
+                if (wss_port != 0)
+                    wss_port += 4;
                 r1a = 0x64;
-                g_c1a1 = g_c19f;
+                irq2 = sb_irq;
             }
             if (type == 0xc) {
                 r1b = 0x60;
                 r1c = 0x62;
                 r1d = 0x60;
-                if (g_c191 != 0)
-                    g_c191 += 4;
+                if (wss_port != 0)
+                    wss_port += 4;
                 r1a = 0x64;
-                if (g_c191 != 0)
-                    g_c197 -= 0x100;
+                if (wss_port != 0)
+                    opti_ctl_port -= 0x100;
             }
             if (type == 0xe) {
                 r1b = 0x64;
                 r1c = 0x62;
-                if (g_c1f4 < 1 && (g_c199 == 0x800 || g_c199 == 0))
-                    g_c199 = 0x660;
+                if (opt_xea < 1 && (ess_ctl_port == 0x800 || ess_ctl_port == 0))
+                    ess_ctl_port = 0x660;
             }
             if (type == 0x40) {
                 r1b = 0x60;
                 r1c = 0x62;
-                g_c187 = g_c1af;
-                g_c1a7 = g_c1b1;
-                g_c1a9 = g_c1b3;
-                g_c19f = g_c1b5;
+                sb_port = gus_port;
+                sb_dma = gus_dma;
+                sb_hdma = gus_dma2;
+                sb_irq = gus_irq;
             }
             if (type == 3 && name[0] == 'M' && name[1] == 'a' && name[2] == 'x')
                 f11 = 1;
             if (type == 0xb && memcmp(name, "Orp", 3) == 0) {
                 f12 = 2;
-                if (g_c1e6 == -1)
-                    g_c1e6 = 0;
+                if (opt_xof == -1)
+                    opt_xof = 0;
             }
             if (type == 0xb && memcmp(name, "Tur", 3) == 0 && f12 != 1)
                 f12 = 3;
@@ -1021,210 +1021,210 @@ int f_0c8a(int a, int b, int pass, unsigned port)
                 r20 = 0x75;
                 r21 = 0x74;
             }
-            if (type == 0xb && (f12 == 1 || f12 == 4) && g_c195 == 0x120)
-                g_c195 = g_c191 + 4;
+            if (type == 0xb && (f12 == 1 || f12 == 4) && crystal_ctl_port == 0x120)
+                crystal_ctl_port = wss_port + 4;
             if (type == 8 && memcmp(name, "AD-", 3) == 0)
                 f15 = 1;
             if (type == 5 && f15 == 8 && memcmp(name, "Zol", 3) == 0)
-                g_c1e6 = 8;
-            if (((type == 0xe && g_c1f4 == 0) || (type == 3 && g_c1f4 == 1)) && !g_c1db)
-                f_7d59();
-            f_3c59(3, lcsn);
+                opt_xof = 8;
+            if (((type == 0xe && opt_xea == 0) || (type == 3 && opt_xea == 1)) && !opt_read)
+                use_alt_pnp_ports();
+            pnp_write(3, lcsn);
             delay(1);
             if (ld.ld[0] >= 0) {
-                f_3c59(7, ld.ld[0]);
-                f_3c93(r1a, g_c187);
-                if (g_c1db != 0)
-                    g_c187 = f_3ccf(r1a);
-                printf("ADD:%X", g_c187);
+                pnp_write(7, ld.ld[0]);
+                pnp_write16(r1a, sb_port);
+                if (opt_read != 0)
+                    sb_port = pnp_read16(r1a);
+                printf("ADD:%X", sb_port);
                 if (type == 0x40) {
                     int o1 = 0x100;
                     int o2 = 0x10c;
-                    if (g_c1dc != 0) {
+                    if (opt_disable != 0) {
                         o1 = 0;
                         o2 = 0;
                     }
-                    f_3c93(0x62, g_c187 + o1);
-                    f_3c93(0x64, g_c187 + o2);
-                    if (g_c1db != 0)
-                        g_c187 = f_3ccf(0x64) - o2;
-                    printf(" CODEC:%X", g_c187 + o2);
+                    pnp_write16(0x62, sb_port + o1);
+                    pnp_write16(0x64, sb_port + o2);
+                    if (opt_read != 0)
+                        sb_port = pnp_read16(0x64) - o2;
+                    printf(" CODEC:%X", sb_port + o2);
                 }
                 if (type == 4 || type == 7 || type == 9 || type == 0xa || type == 0xc ||
                     type == 0xb || type == 0x10) {
-                    f_3c93(r1d, g_c191);
-                    if (g_c1db != 0)
-                        g_c191 = f_3ccf(r1d);
-                    printf(" WSS:%X", g_c191);
+                    pnp_write16(r1d, wss_port);
+                    if (opt_read != 0)
+                        wss_port = pnp_read16(r1d);
+                    printf(" WSS:%X", wss_port);
                 }
                 if (type == 1 || type == 3 || type == 4 || type == 5 || type == 7 ||
                     type == 0x10 || type == 9 || type == 0xa || type == 0xc || type == 0xb ||
                     type == 0xd || type == 0xe) {
-                    f_3c93(r1c, g_c189);
-                    if (g_c1db != 0) {
-                        g_c189 = f_3ccf(r1c);
-                        if (type == 0xd && g_c189 == 0 && (f_3c81(r20) & 7) != 4)
-                            g_c189 = 0x388;
+                    pnp_write16(r1c, opl_port);
+                    if (opt_read != 0) {
+                        opl_port = pnp_read16(r1c);
+                        if (type == 0xd && opl_port == 0 && (pnp_read(r20) & 7) != 4)
+                            opl_port = 0x388;
                     }
                     if (type == 1 && f18 == 2)
-                        printf(" CQM:%X", g_c189);
+                        printf(" CQM:%X", opl_port);
                     else
-                        printf(" OPL:%X", g_c189);
+                        printf(" OPL:%X", opl_port);
                     if (type == 0xb)
-                        f_3c59(r1f, 0);
+                        pnp_write(r1f, 0);
                 }
                 if (type == 1 || type == 3 || type == 4 || type == 0xd || type == 0xe) {
                     if (type == 3 && f11 == 1) {
-                        f_3c93(r1b, g_c19b);
-                        if (g_c1db != 0)
-                            g_c19b = f_3ccf(r1b);
-                        printf(" MPU2:%X", g_c19b);
+                        pnp_write16(r1b, mpu2_port);
+                        if (opt_read != 0)
+                            mpu2_port = pnp_read16(r1b);
+                        printf(" MPU2:%X", mpu2_port);
                     } else {
-                        f_3c93(r1b, g_c18d);
-                        if (g_c1db != 0) {
-                            g_c18d = f_3ccf(r1b);
-                            if (type == 0xd && g_c18d == 0 && (f_3c81(r20) & 7) != 4)
-                                g_c18d = 0x330;
+                        pnp_write16(r1b, mpu_port);
+                        if (opt_read != 0) {
+                            mpu_port = pnp_read16(r1b);
+                            if (type == 0xd && mpu_port == 0 && (pnp_read(r20) & 7) != 4)
+                                mpu_port = 0x330;
                         }
-                        printf(" MPU:%X", g_c18d);
+                        printf(" MPU:%X", mpu_port);
                     }
                 }
                 if (type == 4) {
-                    f_3c93(0x68, g_c193);
-                    if (g_c1db != 0)
-                        g_c193 = f_3ccf(0x68);
-                    printf(" CTR:%X", g_c193);
+                    pnp_write16(0x68, yamaha_ctl_port);
+                    if (opt_read != 0)
+                        yamaha_ctl_port = pnp_read16(0x68);
+                    printf(" CTR:%X", yamaha_ctl_port);
                 }
                 if (type == 7 || type == 0xc) {
                     int o = 1;
-                    if (g_c1dc != 0)
+                    if (opt_disable != 0)
                         o = 0;
-                    f_3c93(0x66, g_c197 + o);
-                    if (g_c1db != 0)
-                        g_c197 = f_3ccf(0x66) - o;
-                    printf(" CTR:%X", g_c197 + o);
+                    pnp_write16(0x66, opti_ctl_port + o);
+                    if (opt_read != 0)
+                        opti_ctl_port = pnp_read16(0x66) - o;
+                    printf(" CTR:%X", opti_ctl_port + o);
                 }
                 if (type == 4 || type == 0x40)
-                    g_c1a1 = 0;
+                    irq2 = 0;
                 else if (type != 8)
-                    g_c1a1 = g_c19f;
-                f_3c59(r1e, g_c19f);
+                    irq2 = sb_irq;
+                pnp_write(r1e, sb_irq);
                 if (type != 4 && type != 7 && type != 0x10 && type != 0x40 && type != 0xc &&
                     type != 8)
-                    f_3c59(r1e + 1, 2);
+                    pnp_write(r1e + 1, 2);
                 if (type != 6 && type != 7 && type != 0x10 && type != 9 && type != 0x13 &&
                     type != 0xc && type != 0xb && type != 0xd && type != 8)
-                    f_3c59(r1f, g_c1a1);
+                    pnp_write(r1f, irq2);
                 if (type != 4 && type != 6 && type != 7 && type != 0x10 && type != 8 &&
                     type != 0x40 && type != 9 && type != 0xc && type != 0xd && type != 0x13)
-                    f_3c59(r1f + 1, 2);
-                if (g_c1db != 0)
-                    g_c19f = f_3c81(r1e) & 0xf;
-                if (g_c1db != 0)
-                    g_c1a1 = f_3c81(r1f) & 0xf;
-                printf(" IRQ:%d", g_c19f);
-                if ((type == 4 && g_c1a1 != 0) || (type == 4 && g_c1db != 0))
-                    printf("/%d", g_c1a1);
-                if (g_c1a7 == g_c1a9 && g_c1dc == 0) {
+                    pnp_write(r1f + 1, 2);
+                if (opt_read != 0)
+                    sb_irq = pnp_read(r1e) & 0xf;
+                if (opt_read != 0)
+                    irq2 = pnp_read(r1f) & 0xf;
+                printf(" IRQ:%d", sb_irq);
+                if ((type == 4 && irq2 != 0) || (type == 4 && opt_read != 0))
+                    printf("/%d", irq2);
+                if (sb_dma == sb_hdma && opt_disable == 0) {
                     if (type == 4 || type == 0xa) {
-                        g_c1a7 = 1;
-                        g_c1a9 = 3;
+                        sb_dma = 1;
+                        sb_hdma = 3;
                     }
                     if (type == 8)
-                        g_c1a9 = 5;
+                        sb_hdma = 5;
                     if (type == 2 && f14 == 3)
-                        g_c1a9 = 5;
+                        sb_hdma = 5;
                     if (type == 3 || type == 0xe)
-                        g_c1a9 = 0;
+                        sb_hdma = 0;
                 }
-                if (type == 0xb && g_c1a9 > 3)
-                    g_c1a9 = 4;
+                if (type == 0xb && sb_hdma > 3)
+                    sb_hdma = 4;
                 if (type == 7 || type == 0xc || type == 0x10) {
-                    if (g_c1a7 == g_c1a9 || g_c1a9 > 4)
-                        g_c1a9 = 4;
-                    f_3c59(r21, g_c1a9);
-                    if (g_c1db != 0)
-                        g_c1a9 = f_3c81(r21) & 7;
+                    if (sb_dma == sb_hdma || sb_hdma > 4)
+                        sb_hdma = 4;
+                    pnp_write(r21, sb_hdma);
+                    if (opt_read != 0)
+                        sb_hdma = pnp_read(r21) & 7;
                 }
-                f_3c59(r20, g_c1a7);
-                if (g_c1db != 0)
-                    g_c1a7 = f_3c81(r20) & 7;
-                printf(" DMA:%d", g_c1a7);
+                pnp_write(r20, sb_dma);
+                if (opt_read != 0)
+                    sb_dma = pnp_read(r20) & 7;
+                printf(" DMA:%d", sb_dma);
                 if (type != 6 && type != 0xd && f14 != 1 && f14 != 2 &&
-                    (g_c1a9 != 4 || (g_c1dc != 0 && g_c1a9 == 4) || (type == 8 && g_c1a9 == 4))) {
-                    f_3c59(r21, g_c1a9);
-                    if (g_c1db != 0)
-                        g_c1a9 = f_3c81(r21) & 7;
-                    printf("/%d", g_c1a9);
+                    (sb_hdma != 4 || (opt_disable != 0 && sb_hdma == 4) || (type == 8 && sb_hdma == 4))) {
+                    pnp_write(r21, sb_hdma);
+                    if (opt_read != 0)
+                        sb_hdma = pnp_read(r21) & 7;
+                    printf("/%d", sb_hdma);
                 }
-                f_3c59(0x30, g_c1dc != 0 ? 0 : 1);
+                pnp_write(0x30, opt_disable != 0 ? 0 : 1);
             }
             if (ld.ld[1] >= 0) {
-                f_3c59(7, ld.ld[1]);
+                pnp_write(7, ld.ld[1]);
                 if (type == 2 || type == 6 || (type == 8 && f15 < 1)) {
-                    f_3c93(r1c, g_c189);
-                    if (g_c1db != 0)
-                        g_c189 = f_3ccf(r1c);
-                    printf(" OPL:%X", g_c189);
+                    pnp_write16(r1c, opl_port);
+                    if (opt_read != 0)
+                        opl_port = pnp_read16(r1c);
+                    printf(" OPL:%X", opl_port);
                 }
                 if (type == 8 || type == 0x13) {
-                    unsigned char irq = g_c1a1;
-                    unsigned char dma = g_c1ab;
-                    if (g_c1dc != 0) {
+                    unsigned char irq = irq2;
+                    unsigned char dma = wss_dma;
+                    if (opt_disable != 0) {
                         irq = 0;
                         dma = 4;
                     }
-                    f_3c93(r1d, g_c191);
-                    f_3c59(r1e, irq);
-                    f_3c59(r1e + 1, 2);
-                    f_3c59(r20, dma);
+                    pnp_write16(r1d, wss_port);
+                    pnp_write(r1e, irq);
+                    pnp_write(r1e + 1, 2);
+                    pnp_write(r20, dma);
                     if (type == 0x13) {
-                        f_3c59(r21, dma);
-                        if (g_c1db != 0)
-                            dma = f_3c81(r21) & 7;
+                        pnp_write(r21, dma);
+                        if (opt_read != 0)
+                            dma = pnp_read(r21) & 7;
                     }
-                    if (g_c1db != 0)
-                        g_c191 = f_3ccf(r1d);
-                    if (g_c1db != 0)
-                        irq = f_3c81(r1e) & 0xf;
-                    if (g_c1db != 0)
-                        dma = f_3c81(r20) & 7;
-                    if (g_c1db != 0 && type == 0x13)
-                        dma = f_3c81(r21) & 7;
-                    printf(" WSS:%X/I%d/D%d", g_c191, irq, dma);
+                    if (opt_read != 0)
+                        wss_port = pnp_read16(r1d);
+                    if (opt_read != 0)
+                        irq = pnp_read(r1e) & 0xf;
+                    if (opt_read != 0)
+                        dma = pnp_read(r20) & 7;
+                    if (opt_read != 0 && type == 0x13)
+                        dma = pnp_read(r21) & 7;
+                    printf(" WSS:%X/I%d/D%d", wss_port, irq, dma);
                 }
                 if (type == 0xb && f12 == 4) {
-                    f_3c93(r1b, g_c19b);
-                    if (g_c1db != 0)
-                        g_c19b = f_3ccf(r1b);
-                    printf(" MPU2:%X", g_c19b);
+                    pnp_write16(r1b, mpu2_port);
+                    if (opt_read != 0)
+                        mpu2_port = pnp_read16(r1b);
+                    printf(" MPU2:%X", mpu2_port);
                 }
-                if (g_c1dc != 0)
-                    f_3c59(0x30, 0);
+                if (opt_disable != 0)
+                    pnp_write(0x30, 0);
                 if (type == 0x40) {
-                    f_3c93(0x60, 0);
-                    f_3c59(r1e, 0);
-                    f_3c59(0x30, 0);
-                    if (g_c1db != 0) {
-                        int p = f_3ccf(0x60);
-                        unsigned char q = f_3c81(r1e) & 0xf;
+                    pnp_write16(0x60, 0);
+                    pnp_write(r1e, 0);
+                    pnp_write(0x30, 0);
+                    if (opt_read != 0) {
+                        int p = pnp_read16(0x60);
+                        unsigned char q = pnp_read(r1e) & 0xf;
                         printf(" SB:%X/I%d", p, q);
                     }
                 } else
-                    f_3c59(0x30, g_c1dc != 0 ? 0 : 1);
+                    pnp_write(0x30, opt_disable != 0 ? 0 : 1);
             }
             if (ld.ld[2] >= 0) {
                 unsigned char en = 1;
-                unsigned char irq = g_c19f;
-                irq = g_c1a3 < 0 ? g_c19f : g_c1a3;
-                f_3c59(7, ld.ld[2]);
+                unsigned char irq = sb_irq;
+                irq = mpu_irq < 0 ? sb_irq : mpu_irq;
+                pnp_write(7, ld.ld[2]);
                 if (type == 2 || type == 5 || type == 6 || type == 7 || type == 0x10 ||
                     type == 8 || (type == 3 && f11 == 1) || type == 9 || type == 0x13 ||
                     type == 0xa || type == 0xc || type == 0xb || type == 0x2c || type == 0x3b) {
-                    if (type == 0xb && g_c1ea == 0)
-                        g_c18d = 0;
-                    f_3c93(0x60, g_c18d);
-                    if (g_c1a3 < 0) {
+                    if (type == 0xb && opt_xom == 0)
+                        mpu_port = 0;
+                    pnp_write16(0x60, mpu_port);
+                    if (mpu_irq < 0) {
                         if (type == 2 || (type == 3 && f11 == 1)) {
                             irq = 2;
                             if (f14 > 1)
@@ -1239,142 +1239,142 @@ int f_0c8a(int a, int b, int pass, unsigned port)
                         if (type == 6)
                             irq = 7;
                     } else
-                        irq = g_c1a3;
+                        irq = mpu_irq;
                 }
-                if (g_c18d == 0) {
+                if (mpu_port == 0) {
                     irq = 0;
                     en = 0;
                 }
                 if (type == 0x40) {
-                    f_3c93(0x60, 0);
-                    f_3c59(0x70, 0);
+                    pnp_write16(0x60, 0);
+                    pnp_write(0x70, 0);
                     en = 0;
                 } else {
-                    f_3c59(0x70, irq);
-                    f_3c59(0x71, 2);
+                    pnp_write(0x70, irq);
+                    pnp_write(0x71, 2);
                 }
-                if (g_c1db != 0)
-                    g_c18d = f_3ccf(r1b);
-                if (g_c1db != 0)
-                    irq = f_3c81(0x70) & 0xf;
-                f_3c59(0x30, (!en || g_c1dc != 0) ? 0 : 1);
-                if (en != 0 || g_c1db != 0)
-                    printf(" MPU:%X/I%d", g_c18d, irq);
+                if (opt_read != 0)
+                    mpu_port = pnp_read16(r1b);
+                if (opt_read != 0)
+                    irq = pnp_read(0x70) & 0xf;
+                pnp_write(0x30, (!en || opt_disable != 0) ? 0 : 1);
+                if (en != 0 || opt_read != 0)
+                    printf(" MPU:%X/I%d", mpu_port, irq);
             }
             if (ld.ld[6] >= 0) {
-                f_3c59(7, ld.ld[6]);
+                pnp_write(7, ld.ld[6]);
                 if (type == 3 || type == 0xe) {
-                    if ((type != 0xe && g_c1f4 == 0) || (type == 0xe && g_c1f4 == 1))
-                        f_3c93(0x60, g_c199);
-                    if (g_c1db != 0)
-                        g_c199 = f_3ccf(0x60);
-                    printf(" CTR:%X", g_c199);
+                    if ((type != 0xe && opt_xea == 0) || (type == 0xe && opt_xea == 1))
+                        pnp_write16(0x60, ess_ctl_port);
+                    if (opt_read != 0)
+                        ess_ctl_port = pnp_read16(0x60);
+                    printf(" CTR:%X", ess_ctl_port);
                 }
                 if (type == 0xb || (type == 8 && f15 == 1)) {
-                    f_3c93(0x60, g_c195);
-                    if (g_c1db != 0)
-                        g_c195 = f_3ccf(0x60);
-                    printf(" CTR:%X", g_c195);
+                    pnp_write16(0x60, crystal_ctl_port);
+                    if (opt_read != 0)
+                        crystal_ctl_port = pnp_read16(0x60);
+                    printf(" CTR:%X", crystal_ctl_port);
                 }
                 if (type == 5) {
-                    f_3c93(0x60, g_c1ad);
-                    if (g_c1db != 0)
-                        g_c1ad = f_3ccf(0x60);
-                    printf(" CTR:%X", g_c1ad);
+                    pnp_write16(0x60, aux_ctl_port);
+                    if (opt_read != 0)
+                        aux_ctl_port = pnp_read16(0x60);
+                    printf(" CTR:%X", aux_ctl_port);
                 }
                 if (type == 0x40) {
                     int p = 0x350;
-                    if (g_c1ad >= 0x300)
-                        p = g_c1ad;
+                    if (aux_ctl_port >= 0x300)
+                        p = aux_ctl_port;
                     else
-                        g_c1ad = p;
-                    f_3c93(0x60, p);
-                    if (g_c1db != 0)
-                        p = f_3ccf(0x60);
+                        aux_ctl_port = p;
+                    pnp_write16(0x60, p);
+                    if (opt_read != 0)
+                        p = pnp_read16(0x60);
                     printf(" CTR:%X", p);
                 }
                 if (type == 0x37) {
                     int p = 0x2180;
-                    if (g_c1ad >= 0x2100)
-                        p = g_c1ad;
-                    f_3c93(0x62, g_c191);
-                    f_3c59(0x70, g_c19f);
-                    if (g_c1db != 0)
-                        g_c191 = f_3ccf(0x62);
-                    if (g_c1db != 0)
-                        g_c19f = f_3ccf(0x70) & 0xf;
-                    printf(" WSS:%X/I%d", g_c191, g_c19f);
-                    if (g_c1a3 < 0)
-                        g_c1a3 = g_c19f;
-                    if (g_c1db != 0)
-                        g_c18d = f_3ccf(0x60);
-                    if (g_c1db != 0)
-                        g_c1a3 = f_3ccf(0x72) & 0xf;
-                    printf(" MPU:%X/I%d", g_c18d, g_c1a3);
-                    f_3c59(0x74, g_c1a7);
-                    f_3c59(0x75, g_c1a9);
-                    if (g_c1db != 0)
-                        g_c1a7 = f_3ccf(0x74) & 7;
-                    if (g_c1db != 0)
-                        g_c1a9 = f_3ccf(0x75) & 7;
-                    printf(" DMA:%d/%d", g_c1a7, g_c1a9);
-                    f_3c93(0x64, p);
-                    if (g_c1db != 0)
-                        p = f_3ccf(0x64);
+                    if (aux_ctl_port >= 0x2100)
+                        p = aux_ctl_port;
+                    pnp_write16(0x62, wss_port);
+                    pnp_write(0x70, sb_irq);
+                    if (opt_read != 0)
+                        wss_port = pnp_read16(0x62);
+                    if (opt_read != 0)
+                        sb_irq = pnp_read16(0x70) & 0xf;
+                    printf(" WSS:%X/I%d", wss_port, sb_irq);
+                    if (mpu_irq < 0)
+                        mpu_irq = sb_irq;
+                    if (opt_read != 0)
+                        mpu_port = pnp_read16(0x60);
+                    if (opt_read != 0)
+                        mpu_irq = pnp_read16(0x72) & 0xf;
+                    printf(" MPU:%X/I%d", mpu_port, mpu_irq);
+                    pnp_write(0x74, sb_dma);
+                    pnp_write(0x75, sb_hdma);
+                    if (opt_read != 0)
+                        sb_dma = pnp_read16(0x74) & 7;
+                    if (opt_read != 0)
+                        sb_hdma = pnp_read16(0x75) & 7;
+                    printf(" DMA:%d/%d", sb_dma, sb_hdma);
+                    pnp_write16(0x64, p);
+                    if (opt_read != 0)
+                        p = pnp_read16(0x64);
                     printf(" CTR:%X", p);
                 }
                 if (type == 0x10) {
                     int o = 1;
-                    if (g_c1dc != 0)
+                    if (opt_disable != 0)
                         o = 0;
-                    f_3c93(0x60, g_c197 + o);
-                    if (g_c1db != 0)
-                        g_c197 = f_3ccf(0x60) - o;
-                    printf(" CTR:%X", g_c197 + o);
-                    f_3c59(0x70, 0);
+                    pnp_write16(0x60, opti_ctl_port + o);
+                    if (opt_read != 0)
+                        opti_ctl_port = pnp_read16(0x60) - o;
+                    printf(" CTR:%X", opti_ctl_port + o);
+                    pnp_write(0x70, 0);
                 }
-                f_3c59(0x30, (g_c1dc != 0 || type == 0x10) ? 0 : 1);
+                pnp_write(0x30, (opt_disable != 0 || type == 0x10) ? 0 : 1);
             }
             if (ld.ld[3] >= 0) {
-                if (g_c18f == 0x299) {
+                if (joy_port == 0x299) {
                     if (type == 4 || type == 5 || type == 7 || type == 0x10 || type == 6 ||
                         type == 0xd || type == 0xe || type == 9 || type == 0x13 || type == 3)
-                        g_c18f = 0x201;
+                        joy_port = 0x201;
                     else
-                        g_c18f = 0x200;
+                        joy_port = 0x200;
                 }
                 if (type == 0x40) {
-                    if (g_c1f0 == 1)
-                        g_c18f = 0x201;
+                    if (opt_xgj == 1)
+                        joy_port = 0x201;
                     else
-                        g_c18f = 0;
+                        joy_port = 0;
                 }
-                f_3c59(7, ld.ld[3]);
-                f_3c93(0x60, g_c18f);
-                f_3c59(0x30, (g_c18f == 0 || g_c1dc != 0) ? 0 : 1);
-                if (g_c1db != 0 || g_c18f > 0) {
-                    if (g_c1db != 0)
-                        g_c18f = f_3ccf(0x60);
-                    printf(" JOY:%X", g_c18f);
+                pnp_write(7, ld.ld[3]);
+                pnp_write16(0x60, joy_port);
+                pnp_write(0x30, (joy_port == 0 || opt_disable != 0) ? 0 : 1);
+                if (opt_read != 0 || joy_port > 0) {
+                    if (opt_read != 0)
+                        joy_port = pnp_read16(0x60);
+                    printf(" JOY:%X", joy_port);
                 }
             }
             if (ld.ld[4] >= 0) {
-                f_3c59(7, ld.ld[4]);
+                pnp_write(7, ld.ld[4]);
                 if (type == 1) {
-                    f_3c93(0x60, g_c18b);
-                    if (g_c1db != 0)
-                        g_c18b = f_3ccf(0x60);
-                    printf(" AWE:%X", g_c18b);
-                    f_3c93(0x62, g_c18b + 0x400);
-                    f_3c93(0x64, g_c18b + 0x800);
-                    if (f18 == 2 && g_c189 != 0x388 && f_850e() == 1)
+                    pnp_write16(0x60, awe_port);
+                    if (opt_read != 0)
+                        awe_port = pnp_read16(0x60);
+                    printf(" AWE:%X", awe_port);
+                    pnp_write16(0x62, awe_port + 0x400);
+                    pnp_write16(0x64, awe_port + 0x800);
+                    if (f18 == 2 && opl_port != 0x388 && opl_detect() == 1)
                         printf(" OPL3 detected:388");
                     if (ld.ld[0] >= 0)
                         f18 = 1;
                     else
                         f18 = 3;
                 }
-                f_3c59(0x30, g_c1dc != 0 ? 0 : 1);
+                pnp_write(0x30, opt_disable != 0 ? 0 : 1);
             }
             if (ld.ld[5] >= 0) {
                 unsigned char irq = 0;
@@ -1388,517 +1388,517 @@ int f_0c8a(int a, int b, int pass, unsigned port)
                     rp = 0x62;
                     rp2 = 0x60;
                 }
-                if (type == 0x40 && g_c1ec > 0)
-                    g_c19d = g_c1ec;
-                if (g_c19d == 0x168)
+                if (type == 0x40 && opt_xgc > 0)
+                    ide_port = opt_xgc;
+                if (ide_port == 0x168)
                     irq = 0xa;
-                else if (g_c19d == 0x1e8)
+                else if (ide_port == 0x1e8)
                     irq = 0xb;
-                else if (g_c19d == 0x170)
+                else if (ide_port == 0x170)
                     irq = 0xf;
-                else if (g_c19d == 0)
+                else if (ide_port == 0)
                     irq = 0;
-                if (g_c1a5 > 0 && g_c19d > 0)
-                    irq = g_c1a5;
-                f_3c59(7, ld.ld[5]);
-                f_3c93(rp, g_c19d);
-                f_3c59(0x70, irq);
+                if (ide_irq > 0 && ide_port > 0)
+                    irq = ide_irq;
+                pnp_write(7, ld.ld[5]);
+                pnp_write16(rp, ide_port);
+                pnp_write(0x70, irq);
                 if (type == 1 || type == 0x40 || type == 2 || type == 7 || type == 0xc ||
                     type == 4 || type == 0xa || type == 0xe || type == 0xb || type == 0x10) {
-                    f_3c93(rp2, g_c19d + (irq > 0) * 0x206);
-                    f_3c59(0x71, 2);
+                    pnp_write16(rp2, ide_port + (irq > 0) * 0x206);
+                    pnp_write(0x71, 2);
                 }
                 if (type == 0x40)
-                    f_3c59(0x74, 0);
-                f_3c59(0x30, (g_c19d == 0 || g_c1dc != 0) ? 0 : 1);
-                if (g_c1db != 0 || g_c19d > 0) {
-                    if (g_c1db != 0)
-                        g_c19d = f_3ccf(0x60);
-                    printf(" IDE:%X", g_c19d);
-                    if (g_c1db != 0)
-                        irq = f_3c81(0x70) & 0xf;
+                    pnp_write(0x74, 0);
+                pnp_write(0x30, (ide_port == 0 || opt_disable != 0) ? 0 : 1);
+                if (opt_read != 0 || ide_port > 0) {
+                    if (opt_read != 0)
+                        ide_port = pnp_read16(0x60);
+                    printf(" IDE:%X", ide_port);
+                    if (opt_read != 0)
+                        irq = pnp_read(0x70) & 0xf;
                     printf("/I%d", irq);
                 }
             }
             if (ld.ld[7] >= 0) {
-                f_3c59(7, ld.ld[7]);
-                f_3c59(0x30, (type == 4 || type == 0xa || g_c1dc != 0) ? 0 : 1);
+                pnp_write(7, ld.ld[7]);
+                pnp_write(0x30, (type == 4 || type == 0xa || opt_disable != 0) ? 0 : 1);
                 if (type == 4 || type == 0xa) {
-                    f_3c93(0x60, 0);
-                    f_3c59(0x70, 0);
+                    pnp_write16(0x60, 0);
+                    pnp_write(0x70, 0);
                 }
             }
             if (ld.ld[8] >= 0) {
-                f_3c59(7, ld.ld[8]);
+                pnp_write(7, ld.ld[8]);
                 if (type == 0xb && f12 == 4) {
                     int p = 0x328;
-                    if (g_c19b > 0)
-                        p = g_c19b + 8;
-                    f_3c93(0x60, p);
-                    if (g_c1db != 0)
-                        g_c18d = f_3ccf(0x60);
+                    if (mpu2_port > 0)
+                        p = mpu2_port + 8;
+                    pnp_write16(0x60, p);
+                    if (opt_read != 0)
+                        mpu_port = pnp_read16(0x60);
                 }
                 if (type == 0x13) {
-                    f_3c93(r1c, g_c189);
-                    if (g_c1db != 0)
-                        g_c189 = f_3ccf(r1c);
-                    printf(" OPL:%X", g_c189);
+                    pnp_write16(r1c, opl_port);
+                    if (opt_read != 0)
+                        opl_port = pnp_read16(r1c);
+                    printf(" OPL:%X", opl_port);
                 }
-                f_3c59(0x30, (type == 0x63 || type == 0xa || g_c1dc != 0) ? 0 : 1);
+                pnp_write(0x30, (type == 0x63 || type == 0xa || opt_disable != 0) ? 0 : 1);
             }
             if (type == 7 || type == 0x10) {
                 delay(10);
-                f_3c59(7, 5);
-                f_3c59(0x70, 0);
-                f_3c59(0x30, 1);
+                pnp_write(7, 5);
+                pnp_write(0x70, 0);
+                pnp_write(0x30, 1);
             }
             printf("\n");
             if (type == 0x13) {
-                if (g_c1f2 != 0) {
-                    f_3c59(0x20, 8);
+                if (opt_xwss != 0) {
+                    pnp_write(0x20, 8);
                     delay(0x78);
-                    outportb(g_c191, 4);
-                    _AL = (100 - g_c1c3) * 0x1f / 0x61;
-                    outportb(g_c191 + 2, _AL);
-                    outportb(g_c191, 5);
-                    _AL = (100 - g_c1c3) * 0x1f / 0x61;
-                    outportb(g_c191 + 2, _AL);
+                    outportb(wss_port, 4);
+                    _AL = (100 - fm_vol) * 0x1f / 0x61;
+                    outportb(wss_port + 2, _AL);
+                    outportb(wss_port, 5);
+                    _AL = (100 - fm_vol) * 0x1f / 0x61;
+                    outportb(wss_port + 2, _AL);
                 } else {
-                    f_3c59(0x20, 0);
+                    pnp_write(0x20, 0);
                     delay(0x50);
                 }
             }
-            f_3c59(3, 0);
+            pnp_write(3, 0);
             delay(1);
-            if (g_c1db != 0) {
-                f_3c59(2, 2);
+            if (opt_read != 0) {
+                pnp_write(2, 2);
                 return 0;
             }
-            if ((ld.ld[4] < 0 || type != 1) && g_c1dc == 0) {
+            if ((ld.ld[4] < 0 || type != 1) && opt_disable == 0) {
                 printf("Initialization done. ");
                 if (type != 1)
                     puts("");
             }
-            if (g_c1dc != 0)
+            if (opt_disable != 0)
                 puts("Card disabled.");
         } else {
             type = 0;
             printf("No supported PnP card detected.");
             if (f19 < 1)
-                ret = !f_4e94();
+                ret = !init_nonpnp_sb16();
         }
     } else {
         type = 0;
-        if (b != 1)
+        if (list != 1)
             printf("No PnP card detected.");
-        if (f19 < 1 && b != 1)
-            ret = !f_4e94();
+        if (f19 < 1 && list != 1)
+            ret = !init_nonpnp_sb16();
     }
-    f_3c59(2, 2);
+    pnp_write(2, 2);
     delay(1);
-    f_3c59(2, 2);
+    pnp_write(2, 2);
     delay(1);
-    if (g_c1dc != 0)
+    if (opt_disable != 0)
         return 0;
     if (type == 4) {
-        int p = g_c191 + 4;
-        if (g_c1d5 < 0)
-            g_c1d5 = 0;
-        if (g_c1d8 < 0)
-            g_c1d8 = 0;
-        f_3d19(g_c193, 0xa, 0x80);
-        f_3d19(g_c193, 1, 0);
-        f_3d19(g_c193, 0x10, 0);
-        f_3d19(g_c193, 0x12, 0);
-        f_3d19(g_c193, 0x13, 0);
-        f_3d19(g_c193, 0x17, 0);
-        f_3d19(g_c193, 3, 3);
-        f_3d19(g_c193, 6, 0x34);
-        f_3d19(g_c193, 0x14, (g_c1f8 | g_c1f8 << 4) & 0x77);
-        f_3d19(g_c193, 0x15, g_c1d8 * 7 / 0x61 | (g_c1d8 * 7 / 0x61) << 4);
-        f_3d19(g_c193, 0x16, g_c1d5 * 7 / 0x61 | (g_c1d5 * 7 / 0x61) << 4);
-        outportb(g_c187 + 6, 1);
+        int p = wss_port + 4;
+        if (treble_lvl < 0)
+            treble_lvl = 0;
+        if (bass_lvl < 0)
+            bass_lvl = 0;
+        idx01_write(yamaha_ctl_port, 0xa, 0x80);
+        idx01_write(yamaha_ctl_port, 1, 0);
+        idx01_write(yamaha_ctl_port, 0x10, 0);
+        idx01_write(yamaha_ctl_port, 0x12, 0);
+        idx01_write(yamaha_ctl_port, 0x13, 0);
+        idx01_write(yamaha_ctl_port, 0x17, 0);
+        idx01_write(yamaha_ctl_port, 3, 3);
+        idx01_write(yamaha_ctl_port, 6, 0x34);
+        idx01_write(yamaha_ctl_port, 0x14, (opt_x3d | opt_x3d << 4) & 0x77);
+        idx01_write(yamaha_ctl_port, 0x15, bass_lvl * 7 / 0x61 | (bass_lvl * 7 / 0x61) << 4);
+        idx01_write(yamaha_ctl_port, 0x16, treble_lvl * 7 / 0x61 | (treble_lvl * 7 / 0x61) << 4);
+        outportb(sb_port + 6, 1);
         delay(4);
-        outportb(g_c187 + 6, 0);
-        inportb(g_c187 + 0xe);
+        outportb(sb_port + 6, 0);
+        inportb(sb_port + 0xe);
         delay(1);
-        inportb(g_c187 + 0xe);
-        inportb(g_c187 + 0xa);
+        inportb(sb_port + 0xe);
+        inportb(sb_port + 0xa);
         delay(1);
-        inportb(g_c187 + 0xa);
-        f_3cfd(g_c187, 0x22, g_c1bf);
-        f_3cfd(g_c187, 0xe, 2);
-        f_3d19(g_c193, 2, 0x30);
-        f_3cfd(g_c187, 0, 0xee);
-        f_3cfd(g_c187, 0x22, 0x11);
-        f_54e9();
-        if (g_c1bf > 0)
-            g_c1bf = (100 - g_c1c0) * 0xf / 0x61;
+        inportb(sb_port + 0xa);
+        idx45_write(sb_port, 0x22, master_reg);
+        idx45_write(sb_port, 0xe, 2);
+        idx01_write(yamaha_ctl_port, 2, 0x30);
+        idx45_write(sb_port, 0, 0xee);
+        idx45_write(sb_port, 0x22, 0x11);
+        sbpro_mixer_set();
+        if (master_reg > 0)
+            master_reg = (100 - master_vol) * 0xf / 0x61;
         else
-            g_c1bf = 0x80;
-        if (g_c1c2 > 0)
-            g_c1c2 = (100 - g_c1c3) * 0x1f / 0x61;
+            master_reg = 0x80;
+        if (fm_reg > 0)
+            fm_reg = (100 - fm_vol) * 0x1f / 0x61;
         else
-            g_c1c2 = 0x88;
-        if (g_c1c5 > 0)
-            g_c1c5 = (100 - g_c1c6) * 0x3f / 0x61;
+            fm_reg = 0x88;
+        if (wave_reg > 0)
+            wave_reg = (100 - wave_vol) * 0x3f / 0x61;
         else
-            g_c1c5 = 0x80;
-        if (g_c1c8 > 0)
-            g_c1c8 = (100 - g_c1c9) * 0x1f / 0x61;
+            wave_reg = 0x80;
+        if (line_reg > 0)
+            line_reg = (100 - line_vol) * 0x1f / 0x61;
         else
-            g_c1c8 = 0x88;
-        if (g_c1cb > 0)
-            g_c1cb = (100 - g_c1cc) * 0x1f / 0x61;
+            line_reg = 0x88;
+        if (cd_reg > 0)
+            cd_reg = (100 - cd_vol) * 0x1f / 0x61;
         else
-            g_c1cb = 0x88;
-        if (g_c1ce > 0)
-            g_c1ce = (100 - g_c1cf) * 0x1f / 0x61;
+            cd_reg = 0x88;
+        if (mic_reg > 0)
+            mic_reg = (100 - mic_vol) * 0x1f / 0x61;
         else
-            g_c1ce = 0x88;
-        f_3d19(p, 0xc, 0x40);
-        f_3d19(p, 4, g_c1c2);
-        f_3d19(p, 5, g_c1c2);
-        f_3d19(p, 6, g_c1c5);
-        f_3d19(p, 7, g_c1c5);
-        f_3d19(p, 0x12, g_c1c8);
-        f_3d19(p, 0x13, g_c1c8);
-        f_3d19(p, 2, g_c1cb);
-        f_3d19(p, 3, g_c1cb);
-        f_3d19(g_c193, 9, g_c1ce);
-        f_3d19(g_c193, 7, g_c1bf);
-        f_3d19(g_c193, 8, g_c1bf);
-        f_5419("Yamaha", g_c1f8 & 7, -1);
+            mic_reg = 0x88;
+        idx01_write(p, 0xc, 0x40);
+        idx01_write(p, 4, fm_reg);
+        idx01_write(p, 5, fm_reg);
+        idx01_write(p, 6, wave_reg);
+        idx01_write(p, 7, wave_reg);
+        idx01_write(p, 0x12, line_reg);
+        idx01_write(p, 0x13, line_reg);
+        idx01_write(p, 2, cd_reg);
+        idx01_write(p, 3, cd_reg);
+        idx01_write(yamaha_ctl_port, 9, mic_reg);
+        idx01_write(yamaha_ctl_port, 7, master_reg);
+        idx01_write(yamaha_ctl_port, 8, master_reg);
+        print_mixer("Yamaha", opt_x3d & 7, -1);
     }
     if (type == 1) {
-        if (f18 > 0 && g_c18b > 0) {
+        if (f18 > 0 && awe_port > 0) {
             delay(0x28);
-            outportb(g_c187 + 4, 0xfe);
-            outportb(g_c187 + 4, 0xfd);
+            outportb(sb_port + 4, 0xfe);
+            outportb(sb_port + 4, 0xfd);
             delay(1);
-            f_4c96(g_c18b);
+            awe_init(awe_port);
             delay(1);
-            outportb(g_c187 + 0xc, 0xdd);
+            outportb(sb_port + 0xc, 0xdd);
         }
         if (f18 < 3) {
-            f_4dec(g_c187);
-            f_556d();
-            f_5419("SB", g_c1f8 > 0 ? 1 : -1, g_c1fa);
+            sb_print_dsp_ver(sb_port);
+            sb16_mixer_set();
+            print_mixer("SB", opt_x3d > 0 ? 1 : -1, opt_xxg);
         }
     }
     if (type == 2) {
-        int x = g_c1f8;
+        int x = opt_x3d;
         if (f14 == 1 || f14 == 2) {
-            f_54e9();
-            g_c1f8 = -1;
+            sbpro_mixer_set();
+            opt_x3d = -1;
         } else if (f14 != 3) {
-            int y = g_c1f8 > 0 ? 0xc4 : 0x84;
-            f_556d();
-            f_3cfd(g_c187, 0x50, y);
-            y = g_c1f8 > 0 ? 0 : 0xa;
-            f_3cfd(g_c187, 0x51, y);
+            int y = opt_x3d > 0 ? 0xc4 : 0x84;
+            sb16_mixer_set();
+            idx45_write(sb_port, 0x50, y);
+            y = opt_x3d > 0 ? 0 : 0xa;
+            idx45_write(sb_port, 0x51, y);
         } else {
-            f_556d();
-            g_c1f8 = -1;
+            sb16_mixer_set();
+            opt_x3d = -1;
         }
-        if (g_c1f8 > 0)
+        if (opt_x3d > 0)
             x = 1;
         else
-            x = g_c1f8;
+            x = opt_x3d;
         if (f14 != 2)
-            f_5419("ALS", x, -1);
+            print_mixer("ALS", x, -1);
         else
-            f_5419("Diamond", -1, -1);
+            print_mixer("Diamond", -1, -1);
     }
     if (type == 3 && f11 == 1)
-        f_5de3(g_c18d);
+        sam9407_upload(mpu_port);
     if (type == 3 || type == 6 || type == 0xd || type == 0xe) {
         int x = -1;
-        f_54e9();
-        f_3cfd(g_c187, 0x3a, g_c1c2);
-        outportb(g_c18d + 1, 0xff);
+        sbpro_mixer_set();
+        idx45_write(sb_port, 0x3a, fm_reg);
+        outportb(mpu_port + 1, 0xff);
         delay(5);
-        outportb(g_c18d + 1, 0x3f);
+        outportb(mpu_port + 1, 0x3f);
         delay(5);
-        outportb(g_c18d, 0xf0);
+        outportb(mpu_port, 0xf0);
         delay(1);
-        outportb(g_c18d, 0);
+        outportb(mpu_port, 0);
         delay(1);
-        outportb(g_c18d, 0);
+        outportb(mpu_port, 0);
         delay(1);
-        outportb(g_c18d, 0x7b);
+        outportb(mpu_port, 0x7b);
         delay(1);
-        outportb(g_c18d, 1);
+        outportb(mpu_port, 1);
         delay(1);
-        outportb(g_c18d, 0xf7);
+        outportb(mpu_port, 0xf7);
         delay(1);
-        outportb(g_c18d, 0xf0);
+        outportb(mpu_port, 0xf0);
         delay(1);
-        outportb(g_c18d, 0);
+        outportb(mpu_port, 0);
         delay(1);
-        outportb(g_c18d, 0);
+        outportb(mpu_port, 0);
         delay(1);
-        outportb(g_c18d, 0x7b);
+        outportb(mpu_port, 0x7b);
         delay(1);
-        outportb(g_c18d, 4);
+        outportb(mpu_port, 4);
         delay(1);
-        outportb(g_c18d, 0xf7);
+        outportb(mpu_port, 0xf7);
         delay(1);
-        f_3cfd(g_c187, 0x48, 0x10);
-        f_3cfd(g_c187, 0x36, g_c1c2);
-        outportb(g_c18d + 1, 0xff);
+        idx45_write(sb_port, 0x48, 0x10);
+        idx45_write(sb_port, 0x36, fm_reg);
+        outportb(mpu_port + 1, 0xff);
         delay(5);
-        if (g_c1d8 > -1)
-            f_3cfd(g_c187, 0x3a, g_c1d8 * 0xf / 0x5f * 0x11);
+        if (bass_lvl > -1)
+            idx45_write(sb_port, 0x3a, bass_lvl * 0xf / 0x5f * 0x11);
         if (type == 0xe) {
-            int a = g_c1f8 > 0 ? 0xc : 0;
-            int b = g_c1f8 * 0x3f / 9;
-            f_3cfd(g_c187, 0x52, b);
-            f_3cfd(g_c187, 0x50, a);
-            x = g_c1f8;
+            int a = opt_x3d > 0 ? 0xc : 0;
+            int b = opt_x3d * 0x3f / 9;
+            idx45_write(sb_port, 0x52, b);
+            idx45_write(sb_port, 0x50, a);
+            x = opt_x3d;
         }
-        f_5419("ESS", x, -1);
+        print_mixer("ESS", x, -1);
     }
     if (type == 5) {
-        int v = g_c1c3 * 0x1f / 0x61;
-        f_54e9();
-        if (g_c1e6 == 8) {
-            outpw(g_c1ad, 0xc00e);
-            inportb(g_c1ad + 5);
+        int v = fm_vol * 0x1f / 0x61;
+        sbpro_mixer_set();
+        if (opt_xof == 8) {
+            outpw(aux_ctl_port, 0xc00e);
+            inportb(aux_ctl_port + 5);
             delay(200);
-            outp(g_c1ad, 0x15);
-            inportb(g_c1ad + 5);
+            outp(aux_ctl_port, 0x15);
+            inportb(aux_ctl_port + 5);
             delay(200);
-            f_3cfd(g_c187, 0x28, g_c1c2);
+            idx45_write(sb_port, 0x28, fm_reg);
         }
-        f_3cfd(g_c187, 0xe, 0x22);
+        idx45_write(sb_port, 0xe, 0x22);
         v = v << 6;
-        outpw(g_c1ad, 0x32);
-        inportb(g_c1ad + 5);
+        outpw(aux_ctl_port, 0x32);
+        inportb(aux_ctl_port + 5);
         delay(300);
-        outpw(g_c1ad, 0x282e | v);
-        inportb(g_c1ad + 5);
+        outpw(aux_ctl_port, 0x282e | v);
+        inportb(aux_ctl_port + 5);
         delay(300);
-        outpw(g_c1ad, 0x682e | v);
-        inportb(g_c1ad + 5);
-        f_5419("Rockwell", -1, -1);
+        outpw(aux_ctl_port, 0x682e | v);
+        inportb(aux_ctl_port + 5);
+        print_mixer("Rockwell", -1, -1);
     }
     if (type == 8) {
-        int a = g_c1f8 > 0 ? 0x20 : 0;
-        int b = g_c1fa > 0 ? 0 : 0x40;
-        int c = g_c1fa == 9 ? 0 : 0x40;
-        int d = g_c1fa;
-        f_3cfd(g_c191, 0xc, 0x4a);
-        f_3cfd(g_c191, 0x10, c | a);
-        f_3cfd(g_c191, 0x11, 0x3f | b);
-        f_3cfd(g_c191, 0x17, 3);
-        f_3cfd(g_c191, 0x16, g_c1c2);
-        f_3cfd(g_c191, 0x14, g_c1c8);
-        f_3cfd(g_c191, 0x18, 0xff);
-        f_3cfd(g_c191, 0xc, 0xa);
-        f_5175(g_c187, g_c19f, g_c1a7, g_c1a9);
-        f_556d();
+        int a = opt_x3d > 0 ? 0x20 : 0;
+        int b = opt_xxg > 0 ? 0 : 0x40;
+        int c = opt_xxg == 9 ? 0 : 0x40;
+        int d = opt_xxg;
+        idx45_write(wss_port, 0xc, 0x4a);
+        idx45_write(wss_port, 0x10, c | a);
+        idx45_write(wss_port, 0x11, 0x3f | b);
+        idx45_write(wss_port, 0x17, 3);
+        idx45_write(wss_port, 0x16, fm_reg);
+        idx45_write(wss_port, 0x14, line_reg);
+        idx45_write(wss_port, 0x18, 0xff);
+        idx45_write(wss_port, 0xc, 0xa);
+        sb16_set_irq_dma(sb_port, sb_irq, sb_dma, sb_hdma);
+        sb16_mixer_set();
         if (f15 == 1) {
-            if (g_c1c9 == 0)
-                g_c1c8 = 0;
-            else if (g_c1c9 > 0 && g_c1c9 < 0x32)
-                g_c1c8 = 0x60;
-            else if (g_c1c9 > 0x31)
-                g_c1c8 = 0x66;
-            if (g_c1cf == 0)
-                g_c1c8 &= 0xee;
-            else if (g_c1cf > 0 && g_c1cf < 0x32)
-                g_c1c8 |= 0x10;
-            else if (g_c1cf > 0x31)
-                g_c1c8 |= 0x11;
-            f_3cfd(g_c191, 4, (100 - g_c1c3) * 0x1f / 0x61);
-            f_3cfd(g_c191, 5, (100 - g_c1c3) * 0x1f / 0x61);
-            f_3cfd(g_c191, 6, (100 - g_c1c6) * 0x1f / 0x61);
-            f_3cfd(g_c191, 7, (100 - g_c1c6) * 0x1f / 0x61);
-            outportb(g_c195, g_c1c8);
+            if (line_vol == 0)
+                line_reg = 0;
+            else if (line_vol > 0 && line_vol < 0x32)
+                line_reg = 0x60;
+            else if (line_vol > 0x31)
+                line_reg = 0x66;
+            if (mic_vol == 0)
+                line_reg &= 0xee;
+            else if (mic_vol > 0 && mic_vol < 0x32)
+                line_reg |= 0x10;
+            else if (mic_vol > 0x31)
+                line_reg |= 0x11;
+            idx45_write(wss_port, 4, (100 - fm_vol) * 0x1f / 0x61);
+            idx45_write(wss_port, 5, (100 - fm_vol) * 0x1f / 0x61);
+            idx45_write(wss_port, 6, (100 - wave_vol) * 0x1f / 0x61);
+            idx45_write(wss_port, 7, (100 - wave_vol) * 0x1f / 0x61);
+            outportb(crystal_ctl_port, line_reg);
         }
-        f_5419("CMI", g_c1f8 > 0 ? 1 : 0, d > 0 ? 1 : 0);
+        print_mixer("CMI", opt_x3d > 0 ? 1 : 0, d > 0 ? 1 : 0);
     }
     if (type == 9) {
-        unsigned char v = (100 - g_c1c3) * 0x3f / 0x61;
-        int w = g_c1f8 * 0xf / 9 << 9;
-        f_54e9();
-        outportb(g_c191, 0x27);
-        outpw(g_c191 + 2, w);
-        outportb(g_c191, 0x2c);
-        outpw(g_c191 + 2, 0);
-        if (g_c1c3 > 2) {
-            outportb(g_c191, 0x10);
-            outpw(g_c191 + 2, v << 8 | v);
-            outportb(g_c191, 0x23);
-            outpw(g_c191 + 2, 0xac44);
-            outportb(g_c191, 0x24);
-            outpw(g_c191 + 2, 0xac44);
-            outportb(g_c191, 0x20);
-            outpw(g_c191 + 2, 0xf5);
-            outportb(g_c191, 6);
-            outpw(g_c191 + 2, v << 8 | v);
-            outportb(g_c191, 7);
-            outpw(g_c191 + 2, v << 8 | v);
+        unsigned char v = (100 - fm_vol) * 0x3f / 0x61;
+        int w = opt_x3d * 0xf / 9 << 9;
+        sbpro_mixer_set();
+        outportb(wss_port, 0x27);
+        outpw(wss_port + 2, w);
+        outportb(wss_port, 0x2c);
+        outpw(wss_port + 2, 0);
+        if (fm_vol > 2) {
+            outportb(wss_port, 0x10);
+            outpw(wss_port + 2, v << 8 | v);
+            outportb(wss_port, 0x23);
+            outpw(wss_port + 2, 0xac44);
+            outportb(wss_port, 0x24);
+            outpw(wss_port + 2, 0xac44);
+            outportb(wss_port, 0x20);
+            outpw(wss_port + 2, 0xf5);
+            outportb(wss_port, 6);
+            outpw(wss_port + 2, v << 8 | v);
+            outportb(wss_port, 7);
+            outpw(wss_port + 2, v << 8 | v);
         } else {
-            outportb(g_c191, 6);
-            outpw(g_c191 + 2, 0x8080);
-            outportb(g_c191, 7);
-            outpw(g_c191 + 2, 0x8080);
-            outportb(g_c191, 0x20);
-            outpw(g_c191 + 2, 0xf0);
-            outportb(g_c191, 0x10);
-            outpw(g_c191 + 2, 0x8888);
+            outportb(wss_port, 6);
+            outpw(wss_port + 2, 0x8080);
+            outportb(wss_port, 7);
+            outpw(wss_port + 2, 0x8080);
+            outportb(wss_port, 0x20);
+            outpw(wss_port + 2, 0xf0);
+            outportb(wss_port, 0x10);
+            outpw(wss_port + 2, 0x8888);
         }
-        f_5419("ADI", g_c1f8, -1);
+        print_mixer("ADI", opt_x3d, -1);
     }
     if (type == 0x13) {
-        if (g_c1f2 == 0)
-            f_54e9();
-        f_5419("ADI", -1, -1);
+        if (opt_xwss == 0)
+            sbpro_mixer_set();
+        print_mixer("ADI", -1, -1);
     }
     if (type == 0xa) {
-        f_54e9();
-        f_3cfd(g_c187, 0xe, 0x22);
-        f_5419("Aztech", -1, -1);
+        sbpro_mixer_set();
+        idx45_write(sb_port, 0xe, 0x22);
+        print_mixer("Aztech", -1, -1);
         printf("Card mode: ");
-        if (g_c1f2 > 0) {
-            outportb(g_c187 + 0xc, 9);
+        if (opt_xwss > 0) {
+            outportb(sb_port + 0xc, 9);
             delay(10);
-            outportb(g_c187 + 0xc, 0x80);
+            outportb(sb_port + 0xc, 0x80);
             puts("[WSS]");
         } else {
-            outportb(g_c187 + 0xc, 9);
+            outportb(sb_port + 0xc, 9);
             delay(10);
-            outportb(g_c187 + 0xc, 0x81);
+            outportb(sb_port + 0xc, 0x81);
             puts("[SBPro]");
         }
     }
     if (type == 7 || type == 0x10) {
         delay(0x14);
-        f_577f(type == 7 ? 5 : 4);
+        opti92x_init(type == 7 ? 5 : 4);
     }
     if (type == 0xc) {
         delay(0x14);
-        f_5c48();
-        f_5419("OPTi", g_c1f8 > 0 ? 1 : -1, -1);
+        opti93x_init();
+        print_mixer("OPTi", opt_x3d > 0 ? 1 : -1, -1);
     }
     if (type == 0xb) {
         int x = -1;
-        int y = g_c1f8 * 0xf / 9 | ~(g_c1f8 * 0xf / 9) << 4;
+        int y = opt_x3d * 0xf / 9 | ~(opt_x3d * 0xf / 9) << 4;
         if (f12 == 1)
-            f_7de9();
+            cs4232_upload_fw();
         if (f12 == 4)
             puts("EWS64 firmware not supported. Output will be silent.");
-        outportb(g_c187 + 6, 1);
+        outportb(sb_port + 6, 1);
         delay(1);
-        outportb(g_c187 + 6, 0);
+        outportb(sb_port + 6, 0);
         delay(0x14);
-        f_54e9();
+        sbpro_mixer_set();
         delay(10);
-        f_3cfd(g_c187, 0x22, 0);
-        f_3cfd(g_c187, 4, 0);
+        idx45_write(sb_port, 0x22, 0);
+        idx45_write(sb_port, 4, 0);
         if (f12 == 2 || f12 == 3 || f12 == 7) {
-            f_7ed9(f12);
+            crystal_ext_init(f12);
             delay(10);
-            if (g_c1f8 < 1)
+            if (opt_x3d < 1)
                 y = 0;
-            f_8474(2, y);
+            cs_ctl_write(2, y);
             if (f12 == 7)
-                f_8474(3, g_c1f8 > 0 ? 0x80 : 0);
-            x = g_c1f8;
+                cs_ctl_write(3, opt_x3d > 0 ? 0x80 : 0);
+            x = opt_x3d;
         }
-        if (g_c1a7 == g_c1a9) {
-            f_3d19(g_c191, 0x49, 4);
-            f_3d19(g_c191, 0x4a, 6);
+        if (sb_dma == sb_hdma) {
+            idx01_write(wss_port, 0x49, 4);
+            idx01_write(wss_port, 0x4a, 6);
             delay(5);
         }
         delay(5);
-        f_54e9();
-        if (f12 == 1 && g_c1cf > 0) {
-            f_3d19(g_c191, 0x40, (g_c1ce & 0xf) + 0x80);
-            f_3d19(g_c191, 0x41, (g_c1ce & 0xf) + 0x80);
-            f_3d19(g_c191, 0x46, 2);
-            f_3d19(g_c191, 0x47, 2);
+        sbpro_mixer_set();
+        if (f12 == 1 && mic_vol > 0) {
+            idx01_write(wss_port, 0x40, (mic_reg & 0xf) + 0x80);
+            idx01_write(wss_port, 0x41, (mic_reg & 0xf) + 0x80);
+            idx01_write(wss_port, 0x46, 2);
+            idx01_write(wss_port, 0x47, 2);
         }
-        if (f12 == 2 || (f12 == 3 && g_c1e8 == 1)) {
+        if (f12 == 2 || (f12 == 3 && opt_xos == 1)) {
             int i = 0;
-            f_3d19(g_c191, 0xc, 0xea);
-            if (g_c1c3 > 0)
+            idx01_write(wss_port, 0xc, 0xea);
+            if (fm_vol > 0)
                 for (i = 0; i < 2; i++)
-                    f_84e1(i, 0x20 | (100 - g_c1c3) * 0x1f / 0x61);
+                    cs_xreg_write(i, 0x20 | (100 - fm_vol) * 0x1f / 0x61);
             else
                 for (i = 0; i < 2; i++)
-                    f_84e1(i, 0xff);
+                    cs_xreg_write(i, 0xff);
         }
         if (f12 != 4)
-            f_5419("Crystal", x, -1);
+            print_mixer("Crystal", x, -1);
     }
     if (type == 0x37) {
-        f_3cfd(g_c191, 6, (100 - g_c1c6) * 0x3f / 0x61);
-        f_3cfd(g_c191, 7, (100 - g_c1c6) * 0x3f / 0x61);
-        f_3cfd(g_c191, 2, (100 - g_c1c9) * 0x1f / 0x61);
-        f_3cfd(g_c191, 3, (100 - g_c1c9) * 0x1f / 0x61);
-        f_3cfd(g_c191, 4, (100 - g_c1cc) * 0x1f / 0x61);
-        f_3cfd(g_c191, 5, (100 - g_c1cc) * 0x1f / 0x61);
-        printf("Ensoniq WSS Mixer [PCM:%d LIN:%d CD:%d]", g_c1c6, g_c1c9, g_c1cc);
+        idx45_write(wss_port, 6, (100 - wave_vol) * 0x3f / 0x61);
+        idx45_write(wss_port, 7, (100 - wave_vol) * 0x3f / 0x61);
+        idx45_write(wss_port, 2, (100 - line_vol) * 0x1f / 0x61);
+        idx45_write(wss_port, 3, (100 - line_vol) * 0x1f / 0x61);
+        idx45_write(wss_port, 4, (100 - cd_vol) * 0x1f / 0x61);
+        idx45_write(wss_port, 5, (100 - cd_vol) * 0x1f / 0x61);
+        printf("Ensoniq WSS Mixer [PCM:%d LIN:%d CD:%d]", wave_vol, line_vol, cd_vol);
     }
     if (type == 0x3b) {
-        outportb(g_c18d + 1, 0xff);
+        outportb(mpu_port + 1, 0xff);
         delay(5);
     }
     if (type == 0x40) {
         delay(10);
-        g_c1bf = (100 - g_c1c0) * 0x1f / 0x61;
-        g_c1c2 = (100 - g_c1c3) * 0x1f / 0x61;
-        g_c1c5 = (100 - g_c1c6) * 0x3f / 0x61;
-        g_c1c8 = (100 - g_c1c9) * 0x1f / 0x61;
-        g_c1cb = (100 - g_c1cc) * 0x1f / 0x61;
-        g_c1ce = (100 - g_c1cf) * 0x1f / 0x61;
-        f_6a91();
+        master_reg = (100 - master_vol) * 0x1f / 0x61;
+        fm_reg = (100 - fm_vol) * 0x1f / 0x61;
+        wave_reg = (100 - wave_vol) * 0x3f / 0x61;
+        line_reg = (100 - line_vol) * 0x1f / 0x61;
+        cd_reg = (100 - cd_vol) * 0x1f / 0x61;
+        mic_reg = (100 - mic_vol) * 0x1f / 0x61;
+        iw_init();
         printf("InterWave Mixer [VOL:%d DAC:%d SYNTH:%d LIN:%d CD:%d MIC:%d]\n",
-               g_c1c0, g_c1c6, g_c1c3, g_c1c9, g_c1cc, g_c1cf);
-        if (g_c1ad >= 0x300) {
-            outportb(g_c1ad, 0);
-            if (inportb(g_c1ad) == 0xfd) {
-                if (g_c1d5 < 0)
-                    g_c1d5 = 0x32;
-                if (g_c1d8 < 0)
-                    g_c1d8 = 0x32;
-                f_86aa(5, 0xc0);
-                f_86aa(3, g_c1d5 * 0xf / 0x60);
-                f_86aa(2, g_c1d8 * 0xf / 0x60);
-                f_86aa(5, 0x40);
-                f_86aa(0, 0x35);
-                f_86aa(1, 0x35);
-                f_86aa(4, g_c1d2);
-                printf("TEA6330T Init done. [TREB:%d BASS:%d]", g_c1d5, g_c1d8);
+               master_vol, wave_vol, fm_vol, line_vol, cd_vol, mic_vol);
+        if (aux_ctl_port >= 0x300) {
+            outportb(aux_ctl_port, 0);
+            if (inportb(aux_ctl_port) == 0xfd) {
+                if (treble_lvl < 0)
+                    treble_lvl = 0x32;
+                if (bass_lvl < 0)
+                    bass_lvl = 0x32;
+                tea6330_write(5, 0xc0);
+                tea6330_write(3, treble_lvl * 0xf / 0x60);
+                tea6330_write(2, bass_lvl * 0xf / 0x60);
+                tea6330_write(5, 0x40);
+                tea6330_write(0, 0x35);
+                tea6330_write(1, 0x35);
+                tea6330_write(4, pcspk_vol);
+                printf("TEA6330T Init done. [TREB:%d BASS:%d]", treble_lvl, bass_lvl);
             }
         }
     }
     printf("\n");
-    if (g_c1f6 > 0)
-        f_85dd(g_c1bd);
+    if (opt_xnet > 0)
+        xnet_workaround(pnp_rdata_port);
     return ret;
 }
 
 /* ======== chunk 3 ======== */
-#define g_c1de (*(unsigned char *)&g_c1de)
-#define g_c187 (*(unsigned *)&g_c187)
-#define g_c189 (*(unsigned *)&g_c189)
-#define g_c18b (*(unsigned *)&g_c18b)
-#define g_c18d (*(unsigned *)&g_c18d)
-#define g_c18f (*(unsigned *)&g_c18f)
-#define g_c191 (*(unsigned *)&g_c191)
-#define g_c193 (*(unsigned *)&g_c193)
-#define g_c199 (*(unsigned *)&g_c199)
-#define g_c19b (*(unsigned *)&g_c19b)
-#define g_c19d (*(unsigned *)&g_c19d)
-#define g_c1ad (*(unsigned *)&g_c1ad)
-#define g_c1af (*(unsigned *)&g_c1af)
-#define g_c1bd (*(unsigned *)&g_c1bd)
+#define opt_xxf (*(unsigned char *)&opt_xxf)
+#define sb_port (*(unsigned *)&sb_port)
+#define opl_port (*(unsigned *)&opl_port)
+#define awe_port (*(unsigned *)&awe_port)
+#define mpu_port (*(unsigned *)&mpu_port)
+#define joy_port (*(unsigned *)&joy_port)
+#define wss_port (*(unsigned *)&wss_port)
+#define yamaha_ctl_port (*(unsigned *)&yamaha_ctl_port)
+#define ess_ctl_port (*(unsigned *)&ess_ctl_port)
+#define mpu2_port (*(unsigned *)&mpu2_port)
+#define ide_port (*(unsigned *)&ide_port)
+#define aux_ctl_port (*(unsigned *)&aux_ctl_port)
+#define gus_port (*(unsigned *)&gus_port)
+#define pnp_rdata_port (*(unsigned *)&pnp_rdata_port)
 /* PnP initiation key */
-void f_3c21(void)
+void pnp_send_key(void)
 {
     unsigned char key[34] = {
         0x00, 0x00, 0x6a, 0xb5, 0xda, 0xed, 0xf6, 0xfb, 0x7d, 0xbe, 0xdf, 0x6f,
@@ -1906,45 +1906,45 @@ void f_3c21(void)
         0xa2, 0xd1, 0xe8, 0x74, 0x3a, 0x9d, 0xce, 0xe7, 0x73, 0x39 };
     int i = 0;
     for (i = 0; i < 34; i++)
-        outportb(g_c1b9, key[i]);
+        outportb(pnp_addr_port, key[i]);
     delay(1);
 }
 
-/* PnP register write (skipped for 0x30..0x80 when g_c1db set) */
-void f_3c59(unsigned char reg, unsigned char val)
+/* PnP register write (skipped for 0x30..0x80 when opt_read set) */
+void pnp_write(unsigned char reg, unsigned char val)
 {
-    if (g_c1db == 0 || reg < 0x30 || reg > 0x80) {
-        outportb(g_c1b9, reg);
-        outportb(g_c1bb, val);
+    if (opt_read == 0 || reg < 0x30 || reg > 0x80) {
+        outportb(pnp_addr_port, reg);
+        outportb(pnp_wdata_port, val);
     }
 }
 
 /* PnP register read */
-unsigned char f_3c81(unsigned char reg)
+unsigned char pnp_read(unsigned char reg)
 {
-    outportb(g_c1b9, reg);
-    return inportb(g_c1bd);
+    outportb(pnp_addr_port, reg);
+    return inportb(pnp_rdata_port);
 }
 
 /* PnP 16-bit register write (high byte first) */
-void f_3c93(unsigned char reg, unsigned val)
+void pnp_write16(unsigned char reg, unsigned val)
 {
-    if (g_c1db == 0 || reg < 0x60 || reg > 0x80) {
-        f_3c59(reg, (val >> 8) & 0xff);
-        f_3c59(reg + 1, val & 0xff);
+    if (opt_read == 0 || reg < 0x60 || reg > 0x80) {
+        pnp_write(reg, (val >> 8) & 0xff);
+        pnp_write(reg + 1, val & 0xff);
     }
 }
 
 /* PnP 16-bit register read (high byte first) */
-unsigned f_3ccf(unsigned char reg)
+unsigned pnp_read16(unsigned char reg)
 {
     unsigned v = 0;
-    v = (f_3c81(reg) << 8) & 0xff00;
-    return v + f_3c81(reg + 1);
+    v = (pnp_read(reg) << 8) & 0xff00;
+    return v + pnp_read(reg + 1);
 }
 
 /* indexed write: index at port+4, data at port+5 */
-void f_3cfd(unsigned port, unsigned char idx, unsigned char val)
+void idx45_write(unsigned port, unsigned char idx, unsigned char val)
 {
     register unsigned char a, b;    /* unused, but they reserve BX/CX */
     outportb(port + 4, idx);
@@ -1952,7 +1952,7 @@ void f_3cfd(unsigned port, unsigned char idx, unsigned char val)
 }
 
 /* indexed write: index at port, data at port+1, with delays */
-void f_3d19(unsigned port, unsigned char idx, unsigned char val)
+void idx01_write(unsigned port, unsigned char idx, unsigned char val)
 {
     outportb(port, idx);
     delay(1);
@@ -1961,7 +1961,7 @@ void f_3d19(unsigned port, unsigned char idx, unsigned char val)
 }
 
 /* indexed write: index at port+4, data at port+5, with delays */
-void f_3d40(unsigned port, unsigned char idx, unsigned char val)
+void idx45_write_slow(unsigned port, unsigned char idx, unsigned char val)
 {
     outportb(port + 4, idx);
     delay(0x11);
@@ -1970,7 +1970,7 @@ void f_3d40(unsigned port, unsigned char idx, unsigned char val)
 }
 
 /* banked register read (unlock 0xe5 at port+3; regs >7 via port+8/port+9) */
-unsigned char f_3d6c(unsigned port, unsigned char reg)
+unsigned char opti92x_read(unsigned port, unsigned char reg)
 {
     unsigned char v;
     outportb(port + 3, 0xe5);
@@ -1984,7 +1984,7 @@ unsigned char f_3d6c(unsigned port, unsigned char reg)
 }
 
 /* banked register write (unlock 0xe5 at port+3; regs >7 via port+8/port+9) */
-void f_3daa(unsigned port, unsigned char reg, unsigned char val)
+void opti92x_write(unsigned port, unsigned char reg, unsigned char val)
 {
     outportb(port + 3, 0xe5);
     if (reg > 7) {
@@ -1996,30 +1996,30 @@ void f_3daa(unsigned port, unsigned char reg, unsigned char val)
     delay(2);
 }
 
-/* unlocked indexed write (0xe4 to g_c1e4 before each access) */
-void f_3def(unsigned port, unsigned char idx, unsigned char val)
+/* unlocked indexed write (0xe4 to opti93x_pwd_port before each access) */
+void opti93x_write(unsigned port, unsigned char idx, unsigned char val)
 {
-    outportb(g_c1e4, 0xe4);
+    outportb(opti93x_pwd_port, 0xe4);
     outportb(port, idx);
-    outportb(g_c1e4, 0xe4);
+    outportb(opti93x_pwd_port, 0xe4);
     outportb(port + 1, val);
     delay(2);
 }
 
-/* unlocked indexed read (0xe4 to g_c1e4 before each access) */
-unsigned char f_3e1c(unsigned port, unsigned char idx)
+/* unlocked indexed read (0xe4 to opti93x_pwd_port before each access) */
+unsigned char opti93x_read(unsigned port, unsigned char idx)
 {
     unsigned char v;
-    outportb(g_c1e4, 0xe4);
+    outportb(opti93x_pwd_port, 0xe4);
     outportb(port, idx);
-    outportb(g_c1e4, 0xe4);
+    outportb(opti93x_pwd_port, 0xe4);
     v = inportb(port + 1);
     delay(5);
     return v;
 }
 
 /* PnP isolation: read 72 bit pairs from read port into 9-byte serial id, check LFSR checksum */
-int f_3e51(unsigned port, unsigned char *buf)
+int pnp_isolate(unsigned port, unsigned char *buf)
 {
     int i = 0;
     int bit = 0;
@@ -2027,7 +2027,7 @@ int f_3e51(unsigned port, unsigned char *buf)
     int lfsr = 0x6a;
     if (port < 0x200 || !buf)
         return 0;
-    outportb(g_c1b9, 1);
+    outportb(pnp_addr_port, 1);
     delay(1);
     memset(buf, 0, 9);
     for (i = 0; i < 0x48; i++) {
@@ -2036,34 +2036,34 @@ int f_3e51(unsigned port, unsigned char *buf)
         bit = inportb(port) == 0xaa && bit;
         delay(1);
         found = found || bit;
-        if (!found && g_c1df < i)
+        if (!found && isolate_limit < i)
             break;
         if (i < 0x40)
             lfsr = (lfsr >> 1) | (((lfsr ^ (lfsr >> 1) ^ bit) << 7) & 0xff);
         buf[i / 8] = (buf[i / 8] >> 1) | (bit ? 0x80 : 0);
     }
-    if (g_c1de)
+    if (opt_xxf)
         found = found != 0;
     else
         found = found && buf[8] == lfsr;
-    if (g_c1de) {
+    if (opt_xxf) {
         if (buf[8] != lfsr)
-            g_c1de = 2;
+            opt_xxf = 2;
         else
-            g_c1de = 1;
+            opt_xxf = 1;
     }
     return found != 0;
 }
 
 /* format compressed EISA/PnP vendor id as string */
-char g_c2d0[9] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };  /* vendor id string buffer */
+char vendor_str[9] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };  /* vendor id string buffer */  /* vendor id string buffer */
 
-char *f_3fb6(unsigned long *id)
+char *pnp_vendor_str(unsigned long *id)
 {
     register unsigned long *p = id;
     unsigned long v = *p;
-    sprintf(g_c2d0, "%c%c%c%X%X%X%X",
+    sprintf(vendor_str, "%c%c%c%X%X%X%X",
         (unsigned char)(((v >> 2) & 0x1f) + 0x40),
         (unsigned char)(((v & 3) << 1 << 1 << 1) + ((v >> 13) & 7) + 0x40),
         (unsigned char)(((v >> 8) & 0x1f) + 0x40),
@@ -2071,11 +2071,11 @@ char *f_3fb6(unsigned long *id)
         (unsigned char)((v >> 16) & 0xf),
         (unsigned char)((v >> 28) & 0xf),
         (unsigned char)((v >> 24) & 0xf));
-    return g_c2d0;
+    return vendor_str;
 }
 
 /* parse ULTRASND environment variable */
-int f_405e(void)
+int parse_ultrasnd(void)
 {
     char *env = 0;
     char *dup = 0;
@@ -2095,31 +2095,31 @@ int f_405e(void)
         switch (n) {
         case 0:
             if (hex == 0x220 || hex == 0x230 || hex == 0x240 || hex == 0x250 || hex == 0x260) {
-                g_c1af = hex;
+                gus_port = hex;
                 break;
             }
             break;
         case 1:
             if (dec >= 0 && dec <= 7) {
-                g_c1b1 = dec;
+                gus_dma = dec;
                 break;
             }
             break;
         case 2:
             if (dec >= 0 && dec <= 7) {
-                g_c1b3 = dec;
+                gus_dma2 = dec;
                 break;
             }
             break;
         case 3:
             if (dec >= 0 && dec <= 15) {
-                g_c1b5 = dec;
+                gus_irq = dec;
                 break;
             }
             break;
         case 4:
             if (dec >= 0 && dec <= 15) {
-                g_c1b7 = dec;
+                gus_irq2 = dec;
                 break;
             }
             break;
@@ -2136,7 +2136,7 @@ int f_405e(void)
 }
 
 /* parse BLASTER environment variable */
-int f_4192(void)
+int parse_blaster(void)
 {
     char *env = 0;
     char *dup = 0;
@@ -2160,93 +2160,93 @@ int f_4192(void)
             switch (toupper(c)) {
             case 'A':
                 if (hex >= 0x220 && hex <= 0x280) {
-                    g_c187 = hex;
+                    sb_port = hex;
                     break;
                 }
                 break;
             case 'I':
                 if (dec >= 0 && dec <= 15) {
-                    g_c19f = dec;
+                    sb_irq = dec;
                     break;
                 }
                 break;
             case 'D':
                 if (hex >= 0 && hex <= 7) {
-                    g_c1a7 = hex;
+                    sb_dma = hex;
                     break;
                 }
                 break;
             case 'H':
                 if (hex >= 0 && hex <= 7) {
-                    g_c1a9 = hex;
+                    sb_hdma = hex;
                     break;
                 }
                 break;
             case 'P':
                 if ((hex >= 0x300 && hex <= 0x3f0) || hex == 0) {
-                    g_c18d = hex;
+                    mpu_port = hex;
                     break;
                 }
                 break;
             case 'E':
                 if ((hex >= 0x620 && hex <= 0x680) || hex == 0) {
-                    g_c18b = hex;
+                    awe_port = hex;
                     break;
                 }
                 break;
             case 'J':
                 if ((hex >= 0x200 && hex < 0x212) || hex == 0) {
-                    g_c18f = hex;
+                    joy_port = hex;
                     break;
                 }
                 break;
             case 'W':
-                g_c191 = hex;
+                wss_port = hex;
                 break;
             case 'C':
                 if (hex == 0x168 || hex == 0x1e8 || hex == 0x170 || hex == 0) {
-                    g_c19d = hex;
+                    ide_port = hex;
                     break;
                 }
                 break;
             case 'R':
-                g_c193 = hex;
-                g_c199 = hex;
-                g_c1ad = hex;
+                yamaha_ctl_port = hex;
+                ess_ctl_port = hex;
+                aux_ctl_port = hex;
                 break;
             case 'M':
                 if ((hex >= 0x300 && hex <= 0x380) || hex == 0) {
-                    g_c19b = hex;
+                    mpu2_port = hex;
                     break;
                 }
                 break;
             case 'F':
                 if ((hex >= 0x300 && hex <= 0x3ff) || hex == 0) {
-                    g_c189 = hex;
+                    opl_port = hex;
                     break;
                 }
                 break;
             case 'U':
                 if (dec >= 0 && dec <= 15) {
-                    g_c1a3 = dec;
+                    mpu_irq = dec;
                     break;
                 }
                 break;
             case 'Q':
                 if (dec >= 0 && dec <= 15) {
-                    g_c1a1 = dec;
+                    irq2 = dec;
                     break;
                 }
                 break;
             case 'K':
                 if (hex >= 0 && hex <= 7) {
-                    g_c1ab = hex;
+                    wss_dma = hex;
                     break;
                 }
                 break;
             case 'Y':
                 if (dec >= 2 && dec <= 15) {
-                    g_c1a5 = dec;
+                    ide_irq = dec;
                     break;
                 }
                 break;
@@ -2264,7 +2264,7 @@ int f_4192(void)
 }
 
 /* read the ANSI identifier string (tag 0x82) of card csn into buf */
-int f_4425(unsigned char csn, unsigned char *buf, int type)
+int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type)
 {
     int done;
     int ok = 1;
@@ -2272,21 +2272,21 @@ int f_4425(unsigned char csn, unsigned char *buf, int type)
     unsigned len;
     if (csn > 0 && buf) {
         if (type == 11) {
-            f_3c59(2, 2);
+            pnp_write(2, 2);
             delay(1);
-            f_3c21();
+            pnp_send_key();
         }
-        f_3c59(3, csn);
+        pnp_write(3, csn);
         delay(1);
-        if (f_4b76(0, 9)) {
+        if (pnp_read_res(0, 9)) {
             tag = 0;
             len = 0;
             done = 0;
             *buf = 0;
             while (!done) {
-                if (f_4bfc(&tag, &len)) {
+                if (pnp_read_tag(&tag, &len)) {
                     if (tag == 0x82) {
-                        if (f_4b76(buf, len))
+                        if (pnp_read_res(buf, len))
                             buf[len] = 0;
                         else
                             ok = 0;
@@ -2300,14 +2300,14 @@ int f_4425(unsigned char csn, unsigned char *buf, int type)
                 }
             }
         }
-        f_3c59(3, 0);
+        pnp_write(3, 0);
     } else
         ok = 0;
     return ok;
 }
 
 /* walk the resource data of card csn: read its name and map logical devices to functions */
-int f_44fa(unsigned char csn, char *name, int *ld, int type)
+int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
 {
     int ok = csn > 0 && name != 0;
     unsigned char tag = 0;
@@ -2319,27 +2319,27 @@ int f_44fa(unsigned char csn, char *name, int *ld, int type)
     int ew = 0;
     int ma = 0;
     if (type == 11) {
-        f_3c59(2, 2);
+        pnp_write(2, 2);
         delay(1);
-        f_3c21();
+        pnp_send_key();
     }
-    f_3c59(3, csn);
+    pnp_write(3, csn);
     delay(1);
     if (ok)
-        ok = f_4b76(0, 9);
+        ok = pnp_read_res(0, 9);
     if (ok)
         *name = 0;
     while (ok && !done) {
         unsigned char id[7] = { 0 };
         delay(1);
-        ok = f_4bfc(&tag, &len);
+        ok = pnp_read_tag(&tag, &len);
         delay(1);
         if (!ok)
             break;
         switch (tag) {
         case 2:
             n++;
-            ok = f_4b76(id, len);
+            ok = pnp_read_res(id, len);
             if (n == 1) {
                 ((unsigned char *)ld)[0x15] = id[3];
                 if (type == 6 && id[3] == 0x68)
@@ -2435,7 +2435,7 @@ int f_44fa(unsigned char csn, char *name, int *ld, int type)
                 if (n == 3) ld[3] = 2;
                 if (n == 4) ld[1] = 3;
                 if (n == 5) ld[2] = 4;
-                if (n == 6 || g_c1ec == 0) ld[6] = 5;
+                if (n == 6 || opt_xgc == 0) ld[6] = 5;
             }
             if (type == 10) {
                 if (n == 1) ld[5] = 0;
@@ -2449,7 +2449,7 @@ int f_44fa(unsigned char csn, char *name, int *ld, int type)
                 if (n == 1) ld[0] = 0;
                 if (n == 2) ld[3] = 1;
                 if (n == 3) ld[6] = 2;
-                if (n == 4 || g_c1ea == 1) ld[2] = 3;
+                if (n == 4 || opt_xom == 1) ld[2] = 3;
                 if (ew == 4) {
                     if (n == 5) ld[1] = 4;
                     if (n == 6) ld[8] = 5;
@@ -2485,17 +2485,17 @@ int f_44fa(unsigned char csn, char *name, int *ld, int type)
             }
             break;
         case 0xf:
-            ok = f_4b76(0, len);
+            ok = pnp_read_res(0, len);
             done = 1;
             break;
         case 0x82:
             if (*name == 0) {
-                ok = f_4b76(name, len);
+                ok = pnp_read_res(name, len);
                 if (ok)
                     name[len] = 0;
             } else {
                 char str[64] = { 0 };
-                ok = f_4b76(str, len);
+                ok = pnp_read_res(str, len);
                 if (ok) {
                     if (str[0] == 'A' && str[1] == 'u' && str[2] == 'd')
                         ld[0] = n - 1;
@@ -2510,35 +2510,35 @@ int f_44fa(unsigned char csn, char *name, int *ld, int type)
             break;
         default:
             if (len > 0)
-                ok = f_4b76(0, len);
+                ok = pnp_read_res(0, len);
         }
     }
-    f_3c59(3, 0);
+    pnp_write(3, 0);
     delay(1);
     return ok;
 }
-#undef g_c1de
-#undef g_c187
-#undef g_c189
-#undef g_c18b
-#undef g_c18d
-#undef g_c18f
-#undef g_c191
-#undef g_c193
-#undef g_c199
-#undef g_c19b
-#undef g_c19d
-#undef g_c1ad
-#undef g_c1af
-#undef g_c1bd
+#undef opt_xxf
+#undef sb_port
+#undef opl_port
+#undef awe_port
+#undef mpu_port
+#undef joy_port
+#undef wss_port
+#undef yamaha_ctl_port
+#undef ess_ctl_port
+#undef mpu2_port
+#undef ide_port
+#undef aux_ctl_port
+#undef gus_port
+#undef pnp_rdata_port
 
 /* ======== chunk 4 ======== */
-#define g_c19f (*(unsigned char *)&g_c19f)
-#define g_c1a7 (*(unsigned char *)&g_c1a7)
-#define g_c1a9 (*(unsigned char *)&g_c1a9)
-#define g_c1bd (*(unsigned *)&g_c1bd)
+#define sb_irq (*(unsigned char *)&sb_irq)
+#define sb_dma (*(unsigned char *)&sb_dma)
+#define sb_hdma (*(unsigned char *)&sb_hdma)
+#define pnp_rdata_port (*(unsigned *)&pnp_rdata_port)
 /* read n bytes of PnP resource data (waits on status bit) into buf (may be NULL) */
-int f_4b76(unsigned char *buf, int n)
+int pnp_read_res(unsigned char *buf, int n)
 {
     int i = 0;
     unsigned char st = 0;
@@ -2546,17 +2546,17 @@ int f_4b76(unsigned char *buf, int n)
     unsigned char cnt = 15;
     while (i < n) {
         cnt = 15;
-        outportb(g_c1b9, 5);
+        outportb(pnp_addr_port, 5);
         while (cnt--) {
-            st = inportb(g_c1bd) & 1;
+            st = inportb(pnp_rdata_port) & 1;
             if (!st)
                 delay(1);
             else
                 break;
         }
-        outportb(g_c1b9, 4);
+        outportb(pnp_addr_port, 4);
         if (st != 0) {
-            d = inportb(g_c1bd);
+            d = inportb(pnp_rdata_port);
             if (buf)
                 buf[i] = d;
             i++;
@@ -2567,16 +2567,16 @@ int f_4b76(unsigned char *buf, int n)
 }
 
 /* read a PnP resource tag header: tag in *tag, length in *len */
-int f_4bfc(unsigned char *tag, int *len)
+int pnp_read_tag(unsigned char *tag, int *len)
 {
     int r = 0;
     unsigned char b = 0;
     unsigned char w[2] = { 0, 0 };
-    r = f_4b76(&b, 1);
+    r = pnp_read_res(&b, 1);
     if (r) {
         if (b & 0x80) {
             *tag = b;
-            r = f_4b76(w, 2);
+            r = pnp_read_res(w, 2);
             if (r)
                 *len = (w[1] << 8) | w[0];
         } else {
@@ -2589,7 +2589,7 @@ int f_4bfc(unsigned char *tag, int *len)
 }
 
 /* detect and initialize the AWE EMU8000 at port */
-void f_4c96(unsigned port)
+void awe_init(unsigned port)
 {
     unsigned char ver = 2;
     unsigned char a;
@@ -2624,16 +2624,16 @@ void f_4c96(unsigned port)
     if (a == 0xff && b == 0xff)
         ver = 1;
     printf("AWE [%Xh] EMU8000 v%d Synth chip found. ", port, ver);
-    f_721c(0x3f, port + 0x400, 0);
+    emu_write16(0x3f, port + 0x400, 0);
     printf("\nInitializing EMU8K... ");
-    printf("AWE RAM detected: [%dK] ", f_72a5(ver));
-    if (g_c1e0 > 0 || g_c1e2 > 0)
-        printf("\nEffects [Reverb:%d Chorus:%d] ", g_c1e2, g_c1e0);
+    printf("AWE RAM detected: [%dK] ", emu_init(ver));
+    if (awe_chorus > 0 || awe_reverb > 0)
+        printf("\nEffects [Reverb:%d Chorus:%d] ", awe_reverb, awe_chorus);
     printf("\nInitialization done. ");
 }
 
 /* print the SB DSP version at port */
-void f_4dec(int port)
+void sb_print_dsp_ver(int port)
 {
     unsigned char maj = 0;
     unsigned char min = 0;
@@ -2660,14 +2660,14 @@ void f_4dec(int port)
 }
 
 /* detect and configure a non-PnP SB16/AWE card */
-int f_4e94(void)
+int init_nonpnp_sb16(void)
 {
     int port = 0x220;
-    unsigned char irq = g_c19f;
-    unsigned char dma = g_c1a7;
-    unsigned char hdma = g_c1a9;
+    unsigned char irq = sb_irq;
+    unsigned char dma = sb_dma;
+    unsigned char hdma = sb_hdma;
     unsigned mpu = 0;
-    int awe = g_c18b;
+    int awe = awe_port;
     unsigned char i;
     unsigned char k;
     unsigned char maj = 0;
@@ -2714,31 +2714,31 @@ int f_4e94(void)
         port += 0x20;
     }
     if (type > 0) {
-        blaster = f_4192();
+        blaster = parse_blaster();
         if (blaster != 0) {
-            irq = g_c19f;
-            dma = g_c1a7;
-            hdma = g_c1a9;
-            awe = g_c18b;
+            irq = sb_irq;
+            dma = sb_dma;
+            hdma = sb_hdma;
+            awe = awe_port;
         }
         printf("\n%s detected at: [%Xh] DSP: v%d.%02d\n", name, port, maj, min);
-        f_5175(port, irq, dma, hdma);
+        sb16_set_irq_dma(port, irq, dma, hdma);
         outportb(port + 4, 0x84);
         delay(1);
         mr = inportb(port + 5);
         delay(1);
         if (mr > 0x7f && mr < 0xf0) {
-            if (g_c18d == 0)
+            if (mpu_port == 0)
                 outportb(port + 5, 0xe2);
-            else if (g_c18d == 0x300)
+            else if (mpu_port == 0x300)
                 outportb(port + 5, 0xe4);
             else
                 outportb(port + 5, 0xe0);
         }
         delay(20);
-        irqr = f_5270(port);
+        irqr = sb16_get_irq(port);
         delay(20);
-        dmar = f_52d1(port);
+        dmar = sb16_get_dma(port);
         delay(1);
         if (blaster == 0 && type < 2)
             puts("Loading default values...");
@@ -2752,24 +2752,24 @@ int f_4e94(void)
             mpu = 0;
         if (mpu > 0)
             printf(" MPU:%X", mpu);
-        if (f_5378(port)) {
+        if (awe_detect(port)) {
             awe = port + 0x400;
             printf(" AWE:%X\n", awe);
-            f_4c96(awe);
+            awe_init(awe);
             printf("\n");
         } else
             printf("\n");
-        f_556d();
-        f_5419("SB", -1, g_c1fa);
+        sb16_mixer_set();
+        print_mixer("SB", -1, opt_xxg);
         return 1;
     }
-    if (g_c1da == 1)
+    if (opt_cs == 1)
         puts("No SB16 or AWE non-PNP card detected.");
     return 0;
 }
 
 /* program SB16 mixer IRQ (0x80) and DMA (0x81) select registers */
-void f_5175(int port, unsigned char irq, unsigned char dma, unsigned char hdma)
+void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned char hdma)
 {
     unsigned char irqv = 2;
     unsigned char dmav = 2;
@@ -2805,7 +2805,7 @@ void f_5175(int port, unsigned char irq, unsigned char dma, unsigned char hdma)
 }
 
 /* read SB16 IRQ setting from mixer register 0x80 */
-unsigned char f_5270(int port)
+unsigned char sb16_get_irq(int port)
 {
     unsigned char v;
     outportb(port + 4, 0x80);
@@ -2821,7 +2821,7 @@ unsigned char f_5270(int port)
 }
 
 /* read SB16 DMA setting from mixer register 0x81 (HDMA<<4 | DMA) */
-unsigned char f_52d1(int port)
+unsigned char sb16_get_dma(int port)
 {
     unsigned char lo;
     unsigned char hi;
@@ -2849,7 +2849,7 @@ unsigned char f_52d1(int port)
 }
 
 /* check for an EMU8000 at port+0x400 */
-unsigned char f_5378(int port)
+unsigned char awe_detect(int port)
 {
     unsigned char st;
     port += 0x400;
@@ -2873,16 +2873,16 @@ unsigned char f_5378(int port)
 }
 
 /* print mixer settings line */
-void f_5419(char *name, int d3, int gain)
+void print_mixer(char *name, int d3, int gain)
 {
     printf("%s Mixer [VOL:%d WAV:%d FM:%d LIN:%d CD:%d MIC:%d", name,
-           g_c1c0, g_c1c6, g_c1c3, g_c1c9, g_c1cc, g_c1cf);
+           master_vol, wave_vol, fm_vol, line_vol, cd_vol, mic_vol);
     if (memcmp(name, "SB", 2) == 0)
-        printf(" PC:%d TRB:%d BAS:%d", g_c1d2, g_c1d5, g_c1d8);
+        printf(" PC:%d TRB:%d BAS:%d", pcspk_vol, treble_lvl, bass_lvl);
     if (memcmp(name, "Ya", 2) == 0)
-        printf(" TREB:%d BASS:%d", g_c1d5, g_c1d8);
-    if (memcmp(name, "ES", 2) == 0 && g_c1d8 > -1)
-        printf(" AUXB:%d", g_c1d8);
+        printf(" TREB:%d BASS:%d", treble_lvl, bass_lvl);
+    if (memcmp(name, "ES", 2) == 0 && bass_lvl > -1)
+        printf(" AUXB:%d", bass_lvl);
     if (gain > -1)
         printf(" GAIN:%d", gain);
     if (d3 > -1)
@@ -2891,233 +2891,233 @@ void f_5419(char *name, int d3, int gain)
 }
 
 /* write OPTi SB-compatible mixer registers */
-void f_54e9(void)
+void sbpro_mixer_set(void)
 {
     unsigned char mic;
-    mic = g_c1ce = g_c1cf * 7 / 97;
-    f_3cfd(g_c187, 0x22, g_c1bf);
-    f_3cfd(g_c187, 4, g_c1c5);
-    f_3cfd(g_c187, 0x26, g_c1c2);
-    f_3cfd(g_c187, 0x2e, g_c1c8);
-    f_3cfd(g_c187, 0x28, g_c1cb);
-    f_3cfd(g_c187, 0xa, mic);
+    mic = mic_reg = mic_vol * 7 / 97;
+    idx45_write(sb_port, 0x22, master_reg);
+    idx45_write(sb_port, 4, wave_reg);
+    idx45_write(sb_port, 0x26, fm_reg);
+    idx45_write(sb_port, 0x2e, line_reg);
+    idx45_write(sb_port, 0x28, cd_reg);
+    idx45_write(sb_port, 0xa, mic);
 }
 
 /* write SB16 mixer registers */
-void f_556d(void)
+void sb16_mixer_set(void)
 {
-    int idx = g_c187 + 4;
-    int dat = g_c187 + 5;
-    int master = g_c1bf & 0xf0;
-    int voice = g_c1c2 & 0xf0;
-    int fm = g_c1c5 & 0xf0;
-    int line = g_c1cb & 0xf0;
-    unsigned char mic = g_c1cf * 255 / 97;
+    int idx = sb_port + 4;
+    int dat = sb_port + 5;
+    int master = master_reg & 0xf0;
+    int voice = fm_reg & 0xf0;
+    int fm = wave_reg & 0xf0;
+    int line = cd_reg & 0xf0;
+    unsigned char mic = mic_vol * 255 / 97;
     int gain = 0x40;
-    int agc = g_c1f8 > 0 ? 1 : 0;
-    switch (g_c1fa) {
+    int agc = opt_x3d > 0 ? 1 : 0;
+    switch (opt_xxg) {
     case 1: gain = 0; break;
     case 4: gain = 0x80; break;
-    default: gain = 0x40; g_c1fa = 2;
+    default: gain = 0x40; opt_xxg = 2;
     }
-    if (g_c1d5 < 0)
-        g_c1d5 = 0x32;
-    if (g_c1d8 < 0)
-        g_c1d8 = 0x32;
-    f_5715();
+    if (treble_lvl < 0)
+        treble_lvl = 0x32;
+    if (bass_lvl < 0)
+        bass_lvl = 0x32;
+    sb16_mixer_switches();
     outportb(idx, 0x34); outportb(dat, voice);
     outportb(idx, 0x35); outportb(dat, voice);
     outportb(idx, 0x32); outportb(dat, fm);
     outportb(idx, 0x33); outportb(dat, fm);
     outportb(idx, 0x36); outportb(dat, line);
     outportb(idx, 0x37); outportb(dat, line);
-    outportb(idx, 0x2e); outportb(dat, g_c1c8);
-    outportb(idx, 0x38); outportb(dat, g_c1c8);
-    outportb(idx, 0x39); outportb(dat, g_c1c8);
-    outportb(idx, 0x0a); outportb(dat, g_c1ce);
+    outportb(idx, 0x2e); outportb(dat, line_reg);
+    outportb(idx, 0x38); outportb(dat, line_reg);
+    outportb(idx, 0x39); outportb(dat, line_reg);
+    outportb(idx, 0x0a); outportb(dat, mic_reg);
     outportb(idx, 0x3a); outportb(dat, mic);
     outportb(idx, 0x41); outportb(dat, gain);
     outportb(idx, 0x42); outportb(dat, gain);
-    outportb(idx, 0x3b); outportb(dat, g_c1d1);
-    outportb(idx, 0x44); outportb(dat, g_c1d4);
-    outportb(idx, 0x45); outportb(dat, g_c1d4);
-    outportb(idx, 0x46); outportb(dat, g_c1d7);
-    outportb(idx, 0x47); outportb(dat, g_c1d7);
+    outportb(idx, 0x3b); outportb(dat, pcspk_reg);
+    outportb(idx, 0x44); outportb(dat, treble_reg);
+    outportb(idx, 0x45); outportb(dat, treble_reg);
+    outportb(idx, 0x46); outportb(dat, bass_reg);
+    outportb(idx, 0x47); outportb(dat, bass_reg);
     outportb(idx, 0x30); outportb(dat, master);
     outportb(idx, 0x31); outportb(dat, master);
-    outportb(idx, 0x22); outportb(dat, g_c1bf);
+    outportb(idx, 0x22); outportb(dat, master_reg);
     outportb(idx, 0x90); outportb(dat, agc);
 }
 
 /* update SB16 mixer output switches (reg 0x3c) */
-void f_5715(void)
+void sb16_mixer_switches(void)
 {
     unsigned char v = 0;
-    outportb(g_c187 + 4, 0x3c);
-    v = inportb(g_c187 + 5);
-    if (g_c1ce > 0)
+    outportb(sb_port + 4, 0x3c);
+    v = inportb(sb_port + 5);
+    if (mic_reg > 0)
         v |= 1;
     else
         v &= 0xfe;
-    if (g_c1cb > 0)
+    if (cd_reg > 0)
         v |= 6;
     else
         v &= 0xf9;
-    if (g_c1c8 > 0)
+    if (line_reg > 0)
         v |= 0x18;
     else
         v &= 0xe7;
-    f_3cfd(g_c187 + 5, 0x3c, v);
+    idx45_write(sb_port + 5, 0x3c, v);
 }
 
 /* initialize OPTi 82C93x card in given mode */
-void f_577f(int mode)
+void opti92x_init(int mode)
 {
     unsigned char c = 0xf0;
     unsigned char d = 0x87;
     int e = 0;
     int f = 0;
     int g = 0;
-    g_c1cb = (100 - g_c1cc) * 31 / 97;
-    g_c1ce = 0xc0 | ((100 - g_c1cf) * 31 / 97) << 1;
-    g_c1c8 = (100 - g_c1c9) * 31 / 97;
-    g_c1c5 = (100 - g_c1c6) * 31 / 97;
-    g_c1c2 = (100 - g_c1c3) * 31 / 97;
-    if (g_c1c3 > g_c1c0)
-        g_c1c2 = (100 - g_c1c0) * 31 / 97;
-    if (g_c1cc < 1)
-        g_c1cb = 0x88;
-    if (g_c1cf < 1)
-        g_c1ce = 0x10;
-    if (g_c1c9 < 1)
-        g_c1c8 = 0x88;
-    if (g_c1c6 < 1)
-        g_c1c5 = 0x38;
-    if (g_c1c2 < 9)
-        g_c1c2 = 9;
-    if (g_c187 == 0x240)
+    cd_reg = (100 - cd_vol) * 31 / 97;
+    mic_reg = 0xc0 | ((100 - mic_vol) * 31 / 97) << 1;
+    line_reg = (100 - line_vol) * 31 / 97;
+    wave_reg = (100 - wave_vol) * 31 / 97;
+    fm_reg = (100 - fm_vol) * 31 / 97;
+    if (fm_vol > master_vol)
+        fm_reg = (100 - master_vol) * 31 / 97;
+    if (cd_vol < 1)
+        cd_reg = 0x88;
+    if (mic_vol < 1)
+        mic_reg = 0x10;
+    if (line_vol < 1)
+        line_reg = 0x88;
+    if (wave_vol < 1)
+        wave_reg = 0x38;
+    if (fm_reg < 9)
+        fm_reg = 9;
+    if (sb_port == 0x240)
         c = 0xf4;
-    if (g_c19d > 0)
+    if (ide_port > 0)
         f |= 8;
-    if (g_c1f2 > 0)
+    if (opt_xwss > 0)
         f |= 0x80;
-    switch (g_c18d) {
+    switch (mpu_port) {
     case 0x330: e = 4; break;
     case 0x320: e = 5; break;
     case 0x310: e = 6; break;
     case 0x300: e = 7; break;
     }
     d = 7 | e << 5;
-    g = f_3d6c(g_c197, 7) & 0x40;
-    f_3daa(g_c197, 1, 0x40);
-    f_3daa(g_c197, 1, 0);
+    g = opti92x_read(opti_ctl_port, 7) & 0x40;
+    opti92x_write(opti_ctl_port, 1, 0x40);
+    opti92x_write(opti_ctl_port, 1, 0);
     delay(120);
     if (mode == 5)
-        f_3daa(g_c197, 0xd, 2);
-    outportb(g_c191 + 6, 0);
+        opti92x_write(opti_ctl_port, 0xd, 2);
+    outportb(wss_port + 6, 0);
     delay(250);
-    f_3daa(g_c197, 1, f);
-    f_3daa(g_c197, 3, c);
-    f_3daa(g_c197, 4, 0xa2);
-    f_3daa(g_c197, 6, d);
-    f_3daa(g_c197, 7, g_c1c5 | g);
-    f_3daa(g_c197, 2, 0x23);
-    f_3daa(g_c197, 2, 3);
-    f_3daa(g_c197, 5, 0x9b);
-    outportb(g_c191, 0);
-    f_3d40(g_c191, 0x48, 7);
+    opti92x_write(opti_ctl_port, 1, f);
+    opti92x_write(opti_ctl_port, 3, c);
+    opti92x_write(opti_ctl_port, 4, 0xa2);
+    opti92x_write(opti_ctl_port, 6, d);
+    opti92x_write(opti_ctl_port, 7, wave_reg | g);
+    opti92x_write(opti_ctl_port, 2, 0x23);
+    opti92x_write(opti_ctl_port, 2, 3);
+    opti92x_write(opti_ctl_port, 5, 0x9b);
+    outportb(wss_port, 0);
+    idx45_write_slow(wss_port, 0x48, 7);
     delay(50);
-    f_3d40(g_c191, 0x49, 8);
+    idx45_write_slow(wss_port, 0x49, 8);
     delay(50);
-    f_3d40(g_c191, 0x49, 0);
+    idx45_write_slow(wss_port, 0x49, 0);
     delay(50);
-    f_3d40(g_c191, 0x2a, 2);
-    f_3d40(g_c191, 0x2b, 0);
+    idx45_write_slow(wss_port, 0x2a, 2);
+    idx45_write_slow(wss_port, 0x2b, 0);
     delay(50);
-    f_3d40(g_c191, 0x20, 0xc0);
-    f_3d40(g_c191, 0x21, 0);
-    f_3daa(g_c197, 5, 0xab);
-    f_3daa(g_c197, 5, 0xbb);
-    f_3d40(g_c191, 0x48, 3);
+    idx45_write_slow(wss_port, 0x20, 0xc0);
+    idx45_write_slow(wss_port, 0x21, 0);
+    opti92x_write(opti_ctl_port, 5, 0xab);
+    opti92x_write(opti_ctl_port, 5, 0xbb);
+    idx45_write_slow(wss_port, 0x48, 3);
     delay(50);
-    f_3d40(g_c191, 0x2a, 2);
-    f_3d40(g_c191, 0x2b, 0);
-    f_3d40(g_c191, 0x29, 0);
-    f_3daa(g_c197, 5, 0xab);
-    f_3daa(g_c197, 5, 0x9b);
-    f_3d40(g_c191, 0x24, g_c1c2);
-    f_3d40(g_c191, 0x25, g_c1c2);
-    f_3d40(g_c191, 0x22, g_c1cb);
-    f_3d40(g_c191, 0x23, g_c1cb);
-    f_3d40(g_c191, 0x2c, 0xca);
+    idx45_write_slow(wss_port, 0x2a, 2);
+    idx45_write_slow(wss_port, 0x2b, 0);
+    idx45_write_slow(wss_port, 0x29, 0);
+    opti92x_write(opti_ctl_port, 5, 0xab);
+    opti92x_write(opti_ctl_port, 5, 0x9b);
+    idx45_write_slow(wss_port, 0x24, fm_reg);
+    idx45_write_slow(wss_port, 0x25, fm_reg);
+    idx45_write_slow(wss_port, 0x22, cd_reg);
+    idx45_write_slow(wss_port, 0x23, cd_reg);
+    idx45_write_slow(wss_port, 0x2c, 0xca);
     if (mode == 5) {
-        f_3d40(g_c191, 0x10, 0x3f & g_c1ce);
-        f_3d40(g_c191, 0x11, g_c1ce);
+        idx45_write_slow(wss_port, 0x10, 0x3f & mic_reg);
+        idx45_write_slow(wss_port, 0x11, mic_reg);
     }
-    f_3d40(g_c191, 0x12, g_c1c8);
-    f_3d40(g_c191, 0x13, g_c1c8);
-    f_3d40(g_c191, 0x2c, 0x8a);
-    f_3daa(g_c197, 5, 0xab);
-    f_3d40(g_c187, 0x22, g_c1bf);
-    outportb(g_c187 + 6, 1);
+    idx45_write_slow(wss_port, 0x12, line_reg);
+    idx45_write_slow(wss_port, 0x13, line_reg);
+    idx45_write_slow(wss_port, 0x2c, 0x8a);
+    opti92x_write(opti_ctl_port, 5, 0xab);
+    idx45_write_slow(sb_port, 0x22, master_reg);
+    outportb(sb_port + 6, 1);
     delay(5);
-    outportb(g_c187 + 6, 0);
+    outportb(sb_port + 6, 0);
     delay(5);
-    outportb(g_c187 + 0xc, 0xf2);
+    outportb(sb_port + 0xc, 0xf2);
     delay(5);
     delay(50);
-    f_3daa(g_c197, 5, mode == 5 ? 0xa5 : 0xaf);
-    f_5419("OPTi", -1, -1);
+    opti92x_write(opti_ctl_port, 5, mode == 5 ? 0xa5 : 0xaf);
+    print_mixer("OPTi", -1, -1);
     printf("Card mode: ");
-    puts(g_c1f2 > 0 ? "[WSS]" : "[SBPro]");
+    puts(opt_xwss > 0 ? "[WSS]" : "[SBPro]");
 }
-#undef g_c19f
-#undef g_c1a7
-#undef g_c1a9
-#undef g_c1bd
+#undef sb_irq
+#undef sb_dma
+#undef sb_hdma
+#undef pnp_rdata_port
 
 /* ======== chunk 5 ======== */
-#define g_c191 (*(unsigned *)&g_c191)
-#define g_c197 (*(unsigned *)&g_c197)
+#define wss_port (*(unsigned *)&wss_port)
+#define opti_ctl_port (*(unsigned *)&opti_ctl_port)
 /* initialise the codec/mixer registers to defaults */
-void f_5c48(void)
+void opti93x_init(void)
 {
-    register unsigned codec = g_c191 + -4;
-    register unsigned mix = g_c197 + 2;
-    unsigned char b = g_c1f8 > 0 ? 0x60 : 0;
+    register unsigned codec = wss_port + -4;
+    register unsigned mix = opti_ctl_port + 2;
+    unsigned char b = opt_x3d > 0 ? 0x60 : 0;
 
-    f_3def(mix, 0x14, 0);
-    f_3def(mix, 4, 0x16);
-    f_3def(mix, 5, 0x7f);
-    f_3def(mix, 6, 0x83);
-    f_3def(mix, 10, 1);
-    f_3def(mix, 0x13, 0);
-    f_3def(mix, 0x14, 0);
-    f_3def(mix, 0x12, 0x89);
-    f_3def(mix, 0x15, 0x80);
-    f_3def(mix, 0x1a, 1);
+    opti93x_write(mix, 0x14, 0);
+    opti93x_write(mix, 4, 0x16);
+    opti93x_write(mix, 5, 0x7f);
+    opti93x_write(mix, 6, 0x83);
+    opti93x_write(mix, 10, 1);
+    opti93x_write(mix, 0x13, 0);
+    opti93x_write(mix, 0x14, 0);
+    opti93x_write(mix, 0x12, 0x89);
+    opti93x_write(mix, 0x15, 0x80);
+    opti93x_write(mix, 0x1a, 1);
     delay(20);
     outportb(codec, 0);
     delay(32);
-    f_3d40(codec, 0x29, 0);
-    f_3d40(codec, 0x2a, 2);
-    f_3d40(codec, 0x2b, 0);
-    f_3d40(codec, 0x48, 3);
+    idx45_write_slow(codec, 0x29, 0);
+    idx45_write_slow(codec, 0x2a, 2);
+    idx45_write_slow(codec, 0x2b, 0);
+    idx45_write_slow(codec, 0x48, 3);
     delay(100);
-    f_3d40(codec, 0x30, (unsigned char)((100 - g_c1c3) * 15 / 97) << 1);
-    f_3d40(codec, 0x31, (unsigned char)((100 - g_c1c3) * 15 / 97) << 1 | b);
-    f_3d40(codec, 0x20, 0xac);
-    f_3d40(codec, 0x21, 0xac);
-    f_3d40(codec, 0x36, 5);
-    f_3d40(codec, 0x37, 5);
-    f_3d40(codec, 0x26, 0x84);
-    f_3d40(codec, 0x27, 0x84);
+    idx45_write_slow(codec, 0x30, (unsigned char)((100 - fm_vol) * 15 / 97) << 1);
+    idx45_write_slow(codec, 0x31, (unsigned char)((100 - fm_vol) * 15 / 97) << 1 | b);
+    idx45_write_slow(codec, 0x20, 0xac);
+    idx45_write_slow(codec, 0x21, 0xac);
+    idx45_write_slow(codec, 0x36, 5);
+    idx45_write_slow(codec, 0x37, 5);
+    idx45_write_slow(codec, 0x26, 0x84);
+    idx45_write_slow(codec, 0x27, 0x84);
     delay(80);
-    f_54e9();
+    sbpro_mixer_set();
 }
 
 /* upload SAM9407.BIN firmware to the SAM9407 at port (needs -d: both "Bad" blocks get cross-jumped; matches only under TC 3.0) */
-unsigned g_c322[256] = {
+unsigned sam9407_boot[256] = {
     0xd0ce, 0x0111, 0xd0ce, 0x01d4, 0x0001, 0x0003, 0x0004, 0x0006, 0x0001, 0x0003, 0x0002, 0x0002,
     0x0006, 0x0002, 0x0001, 0x0006, 0x0006, 0x7a0c, 0xe628, 0x0001, 0xd448, 0x1010, 0xc4cb, 0xd1cb,
     0xe2fe, 0x4f01, 0xe3fc, 0x4e0d, 0xe0fa, 0x4700, 0x8407, 0xd148, 0x0104, 0x9107, 0x7a08, 0x7a09,
@@ -3139,14 +3139,14 @@ unsigned g_c322[256] = {
     0xc34d, 0xc24d, 0xc14d, 0xc04d, 0x7a05, 0x840c, 0x4100, 0xe101, 0x4104, 0xe301, 0x4201, 0xe501,
     0x4302, 0xd94a, 0xd94b, 0x3c0c, 0x0001, 0x0400, 0xc4cb, 0xd0c8, 0xd148, 0x0010, 0x0406, 0xc0c1,
     0xc04d, 0x7c01, 0x6cfc, 0xd0cf, 0x013b, 0xd448, 0x55aa, 0x78d5, 0x0000, 0x0000, 0x0000, 0x0000,
-    0x0000, 0x0000, 0x0000, 0x0000 };  /* SAM9407 boot loader words */
-unsigned char g_c522[37] = {
+    0x0000, 0x0000, 0x0000, 0x0000 };  /* SAM9407 boot loader words */  /* SAM9407 boot loader words */
+unsigned char sam9407_start[37] = {
     0x09, 0x00, 0x02, 0x3f, 0xc0, 0x00, 0xc1, 0x00, 0xc2, 0x00, 0xc3, 0x00,
     0xc4, 0x00, 0xc5, 0x00, 0xc6, 0x00, 0xc7, 0x00, 0xc8, 0x00, 0xc9, 0x00,
     0xca, 0x00, 0xcb, 0x00, 0xcc, 0x00, 0xcd, 0x00, 0xce, 0x00, 0xcf, 0x00,
-    0xff };  /* SAM9407 init byte sequence */
+    0xff };  /* SAM9407 init byte sequence */  /* SAM9407 init byte sequence */
 
-void f_5de3(unsigned base)
+void sam9407_upload(unsigned base)
 {
     register unsigned port = base;
     unsigned w = 0;
@@ -3185,7 +3185,7 @@ void f_5de3(unsigned base)
     outportb(port, 0x11);
     delay(20);
     for (i = 0; i < 0x100; i++)
-        outpw(port + 2, g_c322[i]);
+        outpw(port + 2, sam9407_boot[i]);
     delay(20);
     outportb(port + 1, 0x0b);
     outportb(port + 1, 0);
@@ -3214,32 +3214,32 @@ void f_5de3(unsigned base)
             p = port + 1;
         else
             p = port;
-        outportb(p, g_c522[i]);
+        outportb(p, sam9407_start[i]);
     }
 }
 
 /* read a byte from the card's ROM/RAM at 24-bit address addr */
-unsigned char f_5fc9(unsigned long addr)
+unsigned char iw_mem_read(unsigned long addr)
 {
-    outportb(g_c187 + 0x103, 0x43);
-    outpw(g_c187 + 0x104, (unsigned)addr);
-    outportb(g_c187 + 0x103, 0x44);
-    outportb(g_c187 + 0x105, (unsigned char)(addr >> 16));
-    return inportb(g_c187 + 0x107);
+    outportb(sb_port + 0x103, 0x43);
+    outpw(sb_port + 0x104, (unsigned)addr);
+    outportb(sb_port + 0x103, 0x44);
+    outportb(sb_port + 0x105, (unsigned char)(addr >> 16));
+    return inportb(sb_port + 0x107);
 }
 
 /* write a byte to the card's RAM at 24-bit address addr */
-void f_6008(unsigned long addr, unsigned char val)
+void iw_mem_write(unsigned long addr, unsigned char val)
 {
-    outportb(g_c187 + 0x103, 0x43);
-    outpw(g_c187 + 0x104, (unsigned)addr);
-    outportb(g_c187 + 0x103, 0x44);
-    outportb(g_c187 + 0x105, (unsigned char)(addr >> 16));
-    outportb(g_c187 + 0x107, val);
+    outportb(sb_port + 0x103, 0x43);
+    outpw(sb_port + 0x104, (unsigned)addr);
+    outportb(sb_port + 0x103, 0x44);
+    outportb(sb_port + 0x105, (unsigned char)(addr >> 16));
+    outportb(sb_port + 0x107, val);
 }
 
 /* scan the 4 ROM banks for "INTR" sample ROM headers and list them */
-int f_604a(void)
+int iw_list_roms(void)
 {
     unsigned char old = 0;
     unsigned char sum = 0;
@@ -3252,42 +3252,42 @@ int f_604a(void)
     register int i = 0;
     register int n = 0;
 
-    outportb(g_c187 + 0x103, 0x99);
-    old = inportb(g_c187 + 0x105);
-    outportb(g_c187 + 0x103, 0x19);
-    outportb(g_c187 + 0x105, old | 1);
-    outportb(g_c187 + 0x103, 0x53);
-    outportb(g_c187 + 0x105, 3);
-    outportb(g_c187 + 0x103, 0x52);
-    w = inpw(g_c187 + 0x104) & 0xff10;
-    outpw(g_c187 + 0x104, w | 0x4c);
+    outportb(sb_port + 0x103, 0x99);
+    old = inportb(sb_port + 0x105);
+    outportb(sb_port + 0x103, 0x19);
+    outportb(sb_port + 0x105, old | 1);
+    outportb(sb_port + 0x103, 0x53);
+    outportb(sb_port + 0x105, 3);
+    outportb(sb_port + 0x103, 0x52);
+    w = inpw(sb_port + 0x104) & 0xff10;
+    outpw(sb_port + 0x104, w | 0x4c);
     for (addr = 0; addr < 0x1000000L; addr += 0x400000L) {
         for (i = 0; i < 4; i++)
-            sig[i] = f_5fc9(addr + i);
+            sig[i] = iw_mem_read(addr + i);
         if (strncmp(sig, "INTR", 4) != 0)
             continue;
         sum = 0;
         for (i = 0; i < 0x200; i++)
-            sum += f_5fc9(addr + i);
+            sum += iw_mem_read(addr + i);
         if (sum != 0)
             continue;
         n++;
         mask |= 1 << (addr >> 22);
         for (i = 0; i < 16; i++)
-            name[i] = f_5fc9(addr + i + 10);
-        size = ((unsigned long)f_5fc9(addr + 0x2b) << 24) +
-               ((unsigned long)f_5fc9(addr + 0x2a) << 16) +
-               ((unsigned long)f_5fc9(addr + 0x29) << 8) +
-               (unsigned)f_5fc9(addr + 0x28);
+            name[i] = iw_mem_read(addr + i + 10);
+        size = ((unsigned long)iw_mem_read(addr + 0x2b) << 24) +
+               ((unsigned long)iw_mem_read(addr + 0x2a) << 16) +
+               ((unsigned long)iw_mem_read(addr + 0x29) << 8) +
+               (unsigned)iw_mem_read(addr + 0x28);
         if (n > 0)
             printf("ROM Bank #%d: [%s] Size: %dK \n", n, name, size >> 10);
     }
     if (n < 1)
         puts("ROM: Not found");
-    outportb(g_c187 + 0x103, 0x53);
-    outportb(g_c187 + 0x105, 0);
-    outportb(g_c187 + 0x103, 0x19);
-    outportb(g_c187 + 0x105, old);
+    outportb(sb_port + 0x103, 0x53);
+    outportb(sb_port + 0x105, 0);
+    outportb(sb_port + 0x103, 0x19);
+    outportb(sb_port + 0x105, old);
     return 0;
 }
 
@@ -3299,7 +3299,7 @@ int f_604a(void)
 #define SZ(i) sizes[i]
 #endif
 
-int f_62c1(unsigned long *dst)
+int iw_detect_dram(unsigned long *dst)
 {
     register unsigned long *out = dst;
     unsigned long sizes[4] = { 0 };
@@ -3313,28 +3313,28 @@ int f_62c1(unsigned long *dst)
     register unsigned w = 0;
     int total = 0;
 
-    outportb(g_c187 + 0x103, 0x99);
-    old = inportb(g_c187 + 0x105);
-    outportb(g_c187 + 0x103, 0x19);
-    outportb(g_c187 + 0x105, old | 1);
-    outportb(g_c187 + 0x103, 0x53);
-    outportb(g_c187 + 0x105, 1);
-    outportb(g_c187 + 0x103, 0x52);
-    w = inpw(g_c187 + 0x104) & 0xfff0;
-    outpw(g_c187 + 0x104, w | 0xc);
+    outportb(sb_port + 0x103, 0x99);
+    old = inportb(sb_port + 0x105);
+    outportb(sb_port + 0x103, 0x19);
+    outportb(sb_port + 0x105, old | 1);
+    outportb(sb_port + 0x103, 0x53);
+    outportb(sb_port + 0x105, 1);
+    outportb(sb_port + 0x103, 0x52);
+    w = inpw(sb_port + 0x104) & 0xfff0;
+    outpw(sb_port + 0x104, w | 0xc);
     for (; a < 0x1000000L; a += 0x10000L)
-        f_6008(a, 0);
+        iw_mem_write(a, 0);
     for (bank = 0; bank < 4; bank++) {
-        f_6008(base, 0xaa);
-        f_6008(base + 1, 0x55);
-        if (f_5fc9(base) == 0xaa && f_5fc9(base + 1) == 0x55)
+        iw_mem_write(base, 0xaa);
+        iw_mem_write(base + 1, 0x55);
+        if (iw_mem_read(base) == 0xaa && iw_mem_read(base + 1) == 0x55)
             found = 1;
         if (found) {
             while (off < 0x400000L) {
                 SZ(bank) += 0x10000L;
                 off += 0x10000L;
                 a = base + off;
-                if (f_5fc9(a) == 0xaa)
+                if (iw_mem_read(a) == 0xaa)
                     break;
             }
         }
@@ -3346,10 +3346,10 @@ int f_62c1(unsigned long *dst)
         found = 0;
     }
     for (a = 0; a < 0x200000L; a += 0x400) {
-        f_6008(a, 0);
-        f_6008(a + 1, 0);
+        iw_mem_write(a, 0);
+        iw_mem_write(a + 1, 0);
     }
-    outportb(g_c187 + 0x103, 0x52);
+    outportb(sb_port + 0x103, 0x52);
     if (sizes[0] == 0x100 && sizes[1] == 0 && sizes[2] == 0 && sizes[3] == 0)
         cfg = 0;
     else if (sizes[0] == 0x100 && sizes[1] == 0x100 && sizes[2] == 0 && sizes[3] == 0)
@@ -3384,22 +3384,22 @@ int f_62c1(unsigned long *dst)
         cfg = 3;
     else
         cfg = 12;
-    if (g_c1ee == 1)
+    if (opt_xgl == 1)
         cfg = 1;
     cfg |= 0x80;
-    outpw(g_c187 + 0x104, w | cfg);
-    outportb(g_c187 + 0x103, 0x19);
-    outportb(g_c187 + 0x105, old);
+    outpw(sb_port + 0x104, w | cfg);
+    outportb(sb_port + 0x103, 0x19);
+    outportb(sb_port + 0x105, old);
     total = sizes[0] + sizes[1] + sizes[2] + sizes[3];
     return total;
 }
-#undef g_c191
-#undef g_c197
+#undef wss_port
+#undef opti_ctl_port
 
 /* ======== chunk 6 ======== */
-#define g_c18b (*(unsigned *)&g_c18b)
+#define awe_port (*(unsigned *)&awe_port)
 /* InterWave register write: reg = type<<16 | index<<8 | width */
-void f_6895(unsigned long reg, unsigned val)
+void iw_write(unsigned long reg, unsigned val)
 {
     unsigned char sel;
     unsigned char t2;
@@ -3412,158 +3412,158 @@ void f_6895(unsigned long reg, unsigned val)
     sel = reg >> 8;
     if (type >= 1 && type <= 0x19) {
         if (type <= 0xe) {
-            outp(g_c187 + width, (unsigned char)val);
+            outp(sb_port + width, (unsigned char)val);
             return;
         }
         if (type == 0x19)
             return;
         {
-            outp(g_c187 + 0x103, 0x5b);
-            t3 = inp(g_c187 + 0x105);
-            outp(g_c187 + 0x105, (unsigned char)(t3 | 9));
-            t2 = inp(g_c187 + 0xf);
+            outp(sb_port + 0x103, 0x5b);
+            t3 = inp(sb_port + 0x105);
+            outp(sb_port + 0x105, (unsigned char)(t3 | 9));
+            t2 = inp(sb_port + 0xf);
             t2 = (t2 & 0xf8) | sel;
-            outp(g_c187 + 0xf, t2);
+            outp(sb_port + 0xf, t2);
             if (reg == 0xf000bL || reg == 0x10000bL) {
-                t2 = inp(g_c187);
-                outp(g_c187, (unsigned char)(reg == 0xf000bL ? t2 & 0xbf : t2 | 0x40));
+                t2 = inp(sb_port);
+                outp(sb_port, (unsigned char)(reg == 0xf000bL ? t2 & 0xbf : t2 | 0x40));
             }
-            outp(g_c187 + 0xb, (unsigned char)val);
-            outp(g_c187 + 0x103, 0x5b);
-            outp(g_c187 + 0x105, t3);
+            outp(sb_port + 0xb, (unsigned char)val);
+            outp(sb_port + 0x103, 0x5b);
+            outp(sb_port + 0x105, t3);
         }
     } else if (type >= 0x1a && type <= 0x5c) {
         if (type == 0x5c) {
-            outp(g_c187 + 0x107, (unsigned char)val);
+            outp(sb_port + 0x107, (unsigned char)val);
         } else if (type != 0x1b) {
             if (type >= 0x1a && type <= 0x21) {
                 if (width == 4)
-                    outpw(g_c187 + 0x104, val);
+                    outpw(sb_port + 0x104, val);
                 else
-                    outp(g_c187 + 0x100 + width, (unsigned char)val);
+                    outp(sb_port + 0x100 + width, (unsigned char)val);
             } else {
-                outp(g_c187 + 0x103, sel);
+                outp(sb_port + 0x103, sel);
                 if (width == 4)
-                    outpw(g_c187 + 0x104, val);
+                    outpw(sb_port + 0x104, val);
                 else
-                    outp(g_c187 + 0x105, (unsigned char)val);
+                    outp(sb_port + 0x105, (unsigned char)val);
             }
         }
     } else if (type >= 0x5c && type <= 0x81) {
         if (type <= 0x61) {
-            outp(g_c187 + 0x10c + width, (unsigned char)val);
+            outp(sb_port + 0x10c + width, (unsigned char)val);
         } else {
-            t3 = inp(g_c187 + 0x10c);
+            t3 = inp(sb_port + 0x10c);
             t3 = (t3 & 0xe0) + sel;
-            outp(g_c187 + 0x10c, t3);
-            outp(g_c187 + 0x10d, (unsigned char)val);
+            outp(sb_port + 0x10c, t3);
+            outp(sb_port + 0x10d, (unsigned char)val);
         }
     }
     return;
 }
 
 /* InterWave init for GUS mode: mixer, DRAM size detection, levels */
-void f_6a91(void)
+void iw_init(void)
 {
     int i;
     unsigned ram = 0;
 
-    f_6895(0x5b6005L, 0);
-    f_6895(0x565b05L, 0x15);
-    f_6895(0x10000L, g_c1cf > 0 ? 0xc : 8);
-    f_6895(0x555a05L, 0x7f);
-    f_6895(0x454505L, 0);
-    f_6895(0x545905L, 0x1f);
-    f_6895(0x565b05L, 0x15);
-    f_6895(0x4a4c05L, 0);
+    iw_write(0x5b6005L, 0);
+    iw_write(0x565b05L, 0x15);
+    iw_write(0x10000L, mic_vol > 0 ? 0xc : 8);
+    iw_write(0x555a05L, 0x7f);
+    iw_write(0x454505L, 0);
+    iw_write(0x545905L, 0x1f);
+    iw_write(0x565b05L, 0x15);
+    iw_write(0x4a4c05L, 0);
     delay(2);
-    f_6895(0x4a4c05L, 1);
-    f_6895(0x220005L, 2);
-    f_6895(0x2f0d05L, 2);
+    iw_write(0x4a4c05L, 1);
+    iw_write(0x220005L, 2);
+    iw_write(0x2f0d05L, 2);
     for (i = 0; i < 0x20; i++) {
-        f_6895(0x1e0002L, i);
-        f_6895(0x3d1b04L, 2);
-        f_6895(0x2e0c04L, 2);
-        f_6895(0x371505L, 2);
-        f_6895(0x220005L, 2);
-        f_6895(0x2f0d05L, 2);
+        iw_write(0x1e0002L, i);
+        iw_write(0x3d1b04L, 2);
+        iw_write(0x2e0c04L, 2);
+        iw_write(0x371505L, 2);
+        iw_write(0x220005L, 2);
+        iw_write(0x2f0d05L, 2);
     }
-    f_6895(0x4a4c05L, 7);
+    iw_write(0x4a4c05L, 7);
     delay(2);
-    f_6895(0x555a05L, 0x7f);
-    f_6895(0x6c0a01L, 0);
-    f_6895(0x6e0c01L, 0x6c);
-    f_6895(0x6b0901L, 0);
-    f_6895(0x721001L, 0x81);
-    f_6895(0x731101L, 0xc2);
-    f_6895(0x6c0a01L, 0);
+    iw_write(0x555a05L, 0x7f);
+    iw_write(0x6c0a01L, 0);
+    iw_write(0x6e0c01L, 0x6c);
+    iw_write(0x6b0901L, 0);
+    iw_write(0x721001L, 0x81);
+    iw_write(0x731101L, 0xc2);
+    iw_write(0x6c0a01L, 0);
     delay(10);
-    f_604a();
+    iw_list_roms();
     delay(10);
-    ram = f_62c1(0);
+    ram = iw_detect_dram(0);
     delay(10);
     printf("RAM detected: %d KB", ram);
     delay(2);
     if (ram < 1)
         printf(" - You need some RAM to get GUS mode working!!");
-    else if (g_c1ee == 1)
+    else if (opt_xgl == 1)
         printf(" (Forced to 512 KB)");
     printf("\n");
-    f_6ddd(0, g_c1c2);
-    f_6d8d(0, g_c1c5);
-    f_6d3d(0, g_c1bf);
-    f_6e2d(g_c1c9 <= 0, g_c1c8);
-    f_6e7d(g_c1cc <= 0, g_c1cb);
-    f_6ecd(g_c1cf <= 0, g_c1ce);
+    iw_set_synth(0, fm_reg);
+    iw_set_dac(0, wave_reg);
+    iw_set_master(0, master_reg);
+    iw_set_line(line_vol <= 0, line_reg);
+    iw_set_cd(cd_vol <= 0, cd_reg);
+    iw_set_mic(mic_vol <= 0, mic_reg);
 }
 
 /* set codec mixer pair 0x19/0x1b (bit 7 = mute) */
-void f_6d3d(int flag, unsigned char v)
+void iw_set_master(int flag, unsigned char v)
 {
-    f_6895(0x7b1901L, v | (flag ? 0x80 : 0));
-    f_6895(0x7d1b01L, v | (flag ? 0x80 : 0));
+    iw_write(0x7b1901L, v | (flag ? 0x80 : 0));
+    iw_write(0x7d1b01L, v | (flag ? 0x80 : 0));
 }
 
 /* set codec mixer pair 0x06/0x07 (bit 7 = mute) */
-void f_6d8d(int flag, unsigned char v)
+void iw_set_dac(int flag, unsigned char v)
 {
-    f_6895(0x680601L, v | (flag ? 0x80 : 0));
-    f_6895(0x690701L, v | (flag ? 0x80 : 0));
+    iw_write(0x680601L, v | (flag ? 0x80 : 0));
+    iw_write(0x690701L, v | (flag ? 0x80 : 0));
 }
 
 /* set codec mixer pair 0x02/0x03 (bit 7 = mute) */
-void f_6ddd(int flag, unsigned char v)
+void iw_set_synth(int flag, unsigned char v)
 {
-    f_6895(0x640201L, v | (flag ? 0x80 : 0));
-    f_6895(0x650301L, v | (flag ? 0x80 : 0));
+    iw_write(0x640201L, v | (flag ? 0x80 : 0));
+    iw_write(0x650301L, v | (flag ? 0x80 : 0));
 }
 
 /* set codec mixer pair 0x12/0x13 (bit 7 = mute) */
-void f_6e2d(int flag, unsigned char v)
+void iw_set_line(int flag, unsigned char v)
 {
-    f_6895(0x741201L, v | (flag ? 0x80 : 0));
-    f_6895(0x751301L, v | (flag ? 0x80 : 0));
+    iw_write(0x741201L, v | (flag ? 0x80 : 0));
+    iw_write(0x751301L, v | (flag ? 0x80 : 0));
 }
 
 /* set codec mixer pair 0x04/0x05 (bit 7 = mute) */
-void f_6e7d(int flag, unsigned char v)
+void iw_set_cd(int flag, unsigned char v)
 {
-    f_6895(0x660401L, v | (flag ? 0x80 : 0));
-    f_6895(0x670501L, v | (flag ? 0x80 : 0));
+    iw_write(0x660401L, v | (flag ? 0x80 : 0));
+    iw_write(0x670501L, v | (flag ? 0x80 : 0));
 }
 
 /* set codec mixer pair 0x16/0x17 (bit 7 = mute) */
-void f_6ecd(int flag, unsigned char v)
+void iw_set_mic(int flag, unsigned char v)
 {
-    f_6895(0x781601L, v | (flag ? 0x80 : 0));
-    f_6895(0x791701L, v | (flag ? 0x80 : 0));
+    iw_write(0x781601L, v | (flag ? 0x80 : 0));
+    iw_write(0x791701L, v | (flag ? 0x80 : 0));
 }
 
 /* EMU8000: wait until DRAM read (SMALR) is not busy */
-void f_6f1d(void)
+void emu_wait_read(void)
 {
     int i = 0;
-    while (f_725e(0x34, g_c18b + 0x400) & 0x80000000L) {
+    while (emu_read32(0x34, awe_port + 0x400) & 0x80000000L) {
         i++;
         if (i > 0x834)
             break;
@@ -3571,10 +3571,10 @@ void f_6f1d(void)
 }
 
 /* EMU8000: wait until DRAM write (SMALW) is not busy */
-void f_6f4a(void)
+void emu_wait_write(void)
 {
     int i = 0;
-    while (f_725e(0x36, g_c18b + 0x400) & 0x80000000L) {
+    while (emu_read32(0x36, awe_port + 0x400) & 0x80000000L) {
         i++;
         if (i > 0x834)
             break;
@@ -3582,38 +3582,38 @@ void f_6f4a(void)
 }
 
 /* EMU8000: detect onboard DRAM size, returns KB */
-int f_6f77(void)
+int emu_detect_dram(void)
 {
     int size = 0;
 
-    f_70e5(1);
-    f_6f4a();
-    f_71ec(0x36, g_c18b + 0x400, 0x200000L);
-    f_721c(0x3a, g_c18b + 0x400, 0xa5b6);
-    f_6f4a();
-    f_6f1d();
-    f_71ec(0x34, g_c18b + 0x400, 0x200000L);
-    f_723b(0x3a, g_c18b + 0x400);
-    if (f_723b(0x3a, g_c18b + 0x400) == 0xa5b6)
+    emu_dma_open(1);
+    emu_wait_write();
+    emu_write32(0x36, awe_port + 0x400, 0x200000L);
+    emu_write16(0x3a, awe_port + 0x400, 0xa5b6);
+    emu_wait_write();
+    emu_wait_read();
+    emu_write32(0x34, awe_port + 0x400, 0x200000L);
+    emu_read16(0x3a, awe_port + 0x400);
+    if (emu_read16(0x3a, awe_port + 0x400) == 0xa5b6)
         size += 0x20;
-    f_6f1d();
+    emu_wait_read();
     while (size < 0x7000) {
-        f_71ec(0x36, g_c18b + 0x400, ((long)size << 9) + 0x200000L);
-        f_721c(0x3a, g_c18b + 0x400, 0x9de3);
-        f_6f4a();
-        f_71ec(0x34, g_c18b + 0x400, ((long)size << 9) + 0x200000L);
-        f_723b(0x3a, g_c18b + 0x400);
-        if (f_723b(0x3a, g_c18b + 0x400) != 0x9de3)
+        emu_write32(0x36, awe_port + 0x400, ((long)size << 9) + 0x200000L);
+        emu_write16(0x3a, awe_port + 0x400, 0x9de3);
+        emu_wait_write();
+        emu_write32(0x34, awe_port + 0x400, ((long)size << 9) + 0x200000L);
+        emu_read16(0x3a, awe_port + 0x400);
+        if (emu_read16(0x3a, awe_port + 0x400) != 0x9de3)
             break;
-        f_6f1d();
-        f_71ec(0x34, g_c18b + 0x400, 0x200000L);
-        f_723b(0x3a, g_c18b + 0x400);
-        if (f_723b(0x3a, g_c18b + 0x400) != 0xa5b6)
+        emu_wait_read();
+        emu_write32(0x34, awe_port + 0x400, 0x200000L);
+        emu_read16(0x3a, awe_port + 0x400);
+        if (emu_read16(0x3a, awe_port + 0x400) != 0xa5b6)
             break;
-        f_6f1d();
+        emu_wait_read();
         size += 0x20;
     }
-    f_71b2();
+    emu_dma_close();
     if (size == 0x7000)
         size--;
     if (size == 0x20)
@@ -3622,61 +3622,61 @@ int f_6f77(void)
 }
 
 /* EMU8000: set up the 30 DRAM DMA channels (odd ones read if a != 0) */
-void f_70e5(int a)
+void emu_dma_open(int a)
 {
     unsigned i;
     for (i = 0; i < 0x1e; i++) {
-        f_721c(i + 0xa0, g_c18b + 0x400, 0x80);
-        f_71ec(i + 0x60, g_c18b, 0L);
-        f_71ec(i + 0x40, g_c18b, 0L);
-        f_71ec(i + 0x20, g_c18b, 0x40000000L);
-        f_71ec(i, g_c18b, 0x40000000L);
-        f_71ec(i + 0xc0, g_c18b, 0L);
-        f_71ec(i + 0xe0, g_c18b, 0L);
-        f_71ec(i, g_c18b + 0x400, (i & 1) && a ? 0x04000000L : 0x06000000L);
+        emu_write16(i + 0xa0, awe_port + 0x400, 0x80);
+        emu_write32(i + 0x60, awe_port, 0L);
+        emu_write32(i + 0x40, awe_port, 0L);
+        emu_write32(i + 0x20, awe_port, 0x40000000L);
+        emu_write32(i, awe_port, 0x40000000L);
+        emu_write32(i + 0xc0, awe_port, 0L);
+        emu_write32(i + 0xe0, awe_port, 0L);
+        emu_write32(i, awe_port + 0x400, (i & 1) && a ? 0x04000000L : 0x06000000L);
     }
 }
 
 /* EMU8000: release the DRAM DMA channels */
-void f_71b2(void)
+void emu_dma_close(void)
 {
     unsigned i;
     for (i = 0; i < 0x1e; i++) {
-        f_71ec(i, g_c18b + 0x400, 0L);
-        f_721c(i + 0xa0, g_c18b + 0x400, 0x807f);
+        emu_write32(i, awe_port + 0x400, 0L);
+        emu_write16(i + 0xa0, awe_port + 0x400, 0x807f);
     }
 }
 
 /* EMU8000: write dword register */
-void f_71ec(unsigned reg, unsigned port, unsigned long val)
+void emu_write32(unsigned reg, unsigned port, unsigned long val)
 {
-    outpw(g_c18b + 0x802, reg);
+    outpw(awe_port + 0x802, reg);
     outpw(port, (unsigned)val);
     outpw(port + 2, (unsigned)(val >> 16));
 }
 
 /* EMU8000: write word register */
-void f_721c(unsigned reg, unsigned port, unsigned val)
+void emu_write16(unsigned reg, unsigned port, unsigned val)
 {
-    outpw(g_c18b + 0x802, reg);
+    outpw(awe_port + 0x802, reg);
     outpw(port, val);
 }
 
 /* EMU8000: read word register */
-unsigned f_723b(unsigned reg, unsigned port)
+unsigned emu_read16(unsigned reg, unsigned port)
 {
     unsigned v;
-    outpw(g_c18b + 0x802, reg);
+    outpw(awe_port + 0x802, reg);
     v = inpw(port);
     return v;
 }
 
 /* EMU8000: read dword register */
-unsigned long f_725e(unsigned reg, unsigned port)
+unsigned long emu_read32(unsigned reg, unsigned port)
 {
     unsigned long lo;
     unsigned long hi;
-    outpw(g_c18b + 0x802, reg);
+    outpw(awe_port + 0x802, reg);
     lo = inpw(port);
     hi = inpw(port + 2);
     lo |= hi << 16;
@@ -3684,7 +3684,7 @@ unsigned long f_725e(unsigned reg, unsigned port)
 }
 
 /* EMU8000 (AWE32) initialisation, returns DRAM size in KB */
-int f_72a5(int a)
+int emu_init(int a)
 {
     int i = 0;
     int j = 1;
@@ -3694,54 +3694,54 @@ int f_72a5(int a)
     unsigned cnt = 0;
     unsigned t = 0;
     int mem = 0;
-    long rev = g_c1e0 * 0xff / 0x63;
-    int cho = (g_c1e2 * 0xff / 0x63) << 8;
+    long rev = awe_chorus * 0xff / 0x63;
+    int cho = (awe_reverb * 0xff / 0x63) << 8;
 
-    f_721c(0x3d, g_c18b + 0x400, 0x59);
-    f_721c(0x3e, g_c18b + 0x400, 0x20);
-    f_721c(0x3f, g_c18b + 0x400, 0);
+    emu_write16(0x3d, awe_port + 0x400, 0x59);
+    emu_write16(0x3e, awe_port + 0x400, 0x20);
+    emu_write16(0x3f, awe_port + 0x400, 0);
     for (i = 0; i < 0x20; i++) {
-        f_721c(i + 0xa0, g_c18b + 0x400, 0x80);
-        f_721c(i + 0xc0, g_c18b + 0x402, 0);
-        f_721c(i + 0xe0, g_c18b + 0x400, 0);
-        f_721c(i, g_c18b + 0x800, 0xd000);
-        f_721c(i + 0x20, g_c18b + 0x800, 0xff00);
-        f_721c(i + 0x40, g_c18b + 0x800, 0);
-        f_721c(i + 0x60, g_c18b + 0x800, 0);
-        f_721c(i + 0x80, g_c18b + 0x800, 0x18);
-        f_721c(i + 0xa0, g_c18b + 0x800, 0x18);
-        f_721c(i + 0xc0, g_c18b + 0x800, 0);
-        f_721c(i + 0xe0, g_c18b + 0x402, 0);
-        f_721c(i + 0xa0, g_c18b + 0x402, 0);
-        f_721c(i + 0x80, g_c18b + 0x402, 0);
-        f_721c(i + 0x80, g_c18b + 0x400, 0);
-        f_721c(i + 0xc0, g_c18b + 0x400, 0);
+        emu_write16(i + 0xa0, awe_port + 0x400, 0x80);
+        emu_write16(i + 0xc0, awe_port + 0x402, 0);
+        emu_write16(i + 0xe0, awe_port + 0x400, 0);
+        emu_write16(i, awe_port + 0x800, 0xd000);
+        emu_write16(i + 0x20, awe_port + 0x800, 0xff00);
+        emu_write16(i + 0x40, awe_port + 0x800, 0);
+        emu_write16(i + 0x60, awe_port + 0x800, 0);
+        emu_write16(i + 0x80, awe_port + 0x800, 0x18);
+        emu_write16(i + 0xa0, awe_port + 0x800, 0x18);
+        emu_write16(i + 0xc0, awe_port + 0x800, 0);
+        emu_write16(i + 0xe0, awe_port + 0x402, 0);
+        emu_write16(i + 0xa0, awe_port + 0x402, 0);
+        emu_write16(i + 0x80, awe_port + 0x402, 0);
+        emu_write16(i + 0x80, awe_port + 0x400, 0);
+        emu_write16(i + 0xc0, awe_port + 0x400, 0);
     }
-    f_723b(0x3b, g_c18b + 0x402);
-    f_723b(0x3b, g_c18b + 0x402);
-    f_723b(0x3b, g_c18b + 0x402);
+    emu_read16(0x3b, awe_port + 0x402);
+    emu_read16(0x3b, awe_port + 0x402);
+    emu_read16(0x3b, awe_port + 0x402);
     for (i = 0; i < 0x20; i++) {
-        f_71ec(i + 0x20, g_c18b, 0L);
-        f_71ec(i + 0x60, g_c18b, 0xffffL);
-        f_71ec(i + 0xc0, g_c18b, 0L);
-        f_71ec(i + 0xe0, g_c18b, 0L);
-        f_71ec(i, g_c18b, 0L);
-        f_71ec(i + 0x40, g_c18b, 0xffffL);
-        f_71ec(i, g_c18b + 0x400, 0L);
-        f_71ec(i + 0xa0, g_c18b, 0L);
-        f_71ec(i + 0x80, g_c18b, 0L);
-        f_721c(i + 0xe0, g_c18b + 0x400, 0x807f);
-        f_721c(i + 0xa0, g_c18b + 0x400, 0x807f);
+        emu_write32(i + 0x20, awe_port, 0L);
+        emu_write32(i + 0x60, awe_port, 0xffffL);
+        emu_write32(i + 0xc0, awe_port, 0L);
+        emu_write32(i + 0xe0, awe_port, 0L);
+        emu_write32(i, awe_port, 0L);
+        emu_write32(i + 0x40, awe_port, 0xffffL);
+        emu_write32(i, awe_port + 0x400, 0L);
+        emu_write32(i + 0xa0, awe_port, 0L);
+        emu_write32(i + 0x80, awe_port, 0L);
+        emu_write16(i + 0xe0, awe_port + 0x400, 0x807f);
+        emu_write16(i + 0xa0, awe_port + 0x400, 0x807f);
     }
-    f_71ec(0x34, g_c18b + 0x400, 0L);
-    f_71ec(0x35, g_c18b + 0x400, 0L);
-    f_71ec(0x36, g_c18b + 0x400, 0L);
-    f_71ec(0x35, g_c18b + 0x400, 0L);
+    emu_write32(0x34, awe_port + 0x400, 0L);
+    emu_write32(0x35, awe_port + 0x400, 0L);
+    emu_write32(0x36, awe_port + 0x400, 0L);
+    emu_write32(0x35, awe_port + 0x400, 0L);
 
     j = 1;
     for (i = 0; i < 0x20; i += 2) {
-        f_721c(i + 0x40, g_c18b + 0x400, v1);
-        f_721c(j + 0x40, g_c18b + 0x400, v2);
+        emu_write16(i + 0x40, awe_port + 0x400, v1);
+        emu_write16(j + 0x40, awe_port + 0x400, v2);
         v1 += 0x400;
         v2 += 0x100;
         j += 2;
@@ -3749,8 +3749,8 @@ int f_72a5(int a)
     j = 1;
     v2 = 0x30;
     for (i = 0; i < 0x20; i += 2) {
-        f_721c(i + 0x40, g_c18b + 0x402, v1);
-        f_721c(j + 0x40, g_c18b + 0x402, v2);
+        emu_write16(i + 0x40, awe_port + 0x402, v1);
+        emu_write16(j + 0x40, awe_port + 0x402, v2);
         v1 += 0x400;
         v2 += 0x100;
         j += 2;
@@ -3758,8 +3758,8 @@ int f_72a5(int a)
     j = 1;
     v2 = 0x30;
     for (i = 0; i < 0x20; i += 2) {
-        f_721c(i + 0x60, g_c18b + 0x400, v1);
-        f_721c(j + 0x60, g_c18b + 0x400, v2);
+        emu_write16(i + 0x60, awe_port + 0x400, v1);
+        emu_write16(j + 0x60, awe_port + 0x400, v2);
         v1 += 0x400;
         v2 += 0x100;
         j += 2;
@@ -3767,33 +3767,33 @@ int f_72a5(int a)
     j = 1;
     v2 = 0x30;
     for (i = 0; i < 0x20; i += 2) {
-        f_721c(i + 0x60, g_c18b + 0x402, v1);
-        f_721c(j + 0x60, g_c18b + 0x402, v2);
+        emu_write16(i + 0x60, awe_port + 0x402, v1);
+        emu_write16(j + 0x60, awe_port + 0x402, v2);
         v1 += 0x400;
         v2 += 0x100;
         j += 2;
     }
     for (i = 0; i < 0x14; i++)
-        f_723b(0x3b, g_c18b + 0x402);
+        emu_read16(0x3b, awe_port + 0x402);
 
     cnt = 0;
-    outpw(g_c18b + 0x802, 0x3b);
-    t = inpw(g_c18b + 0x402);
+    outpw(awe_port + 0x802, 0x3b);
+    t = inpw(awe_port + 0x402);
     t += 0x400;
     if (t - 0x400 < t) {
-        while (inpw(g_c18b + 0x402) > t && cnt < 0xfff0)
+        while (inpw(awe_port + 0x402) > t && cnt < 0xfff0)
             cnt++;
     }
     cnt = 0;
-    while (inpw(g_c18b + 0x402) < t && cnt < 0xfff0)
+    while (inpw(awe_port + 0x402) < t && cnt < 0xfff0)
         cnt++;
 
     j = 1;
     v1 = 0x3ff;
     v3 = 0x8030;
     for (i = 0; i < 0x20; i += 2) {
-        f_721c(i + 0x40, g_c18b + 0x400, v1);
-        f_721c(j + 0x40, g_c18b + 0x400, v3);
+        emu_write16(i + 0x40, awe_port + 0x400, v1);
+        emu_write16(j + 0x40, awe_port + 0x400, v3);
         v1 += 0x400;
         v3 += 0x100;
         j += 2;
@@ -3801,8 +3801,8 @@ int f_72a5(int a)
     j = 1;
     v3 = 0x8030;
     for (i = 0; i < 0x20; i += 2) {
-        f_721c(i + 0x40, g_c18b + 0x402, v1);
-        f_721c(j + 0x40, g_c18b + 0x402, v3);
+        emu_write16(i + 0x40, awe_port + 0x402, v1);
+        emu_write16(j + 0x40, awe_port + 0x402, v3);
         v1 += 0x400;
         v3 += 0x100;
         j += 2;
@@ -3810,8 +3810,8 @@ int f_72a5(int a)
     j = 1;
     v3 = 0x8030;
     for (i = 0; i < 0x20; i += 2) {
-        f_721c(i + 0x60, g_c18b + 0x400, v1);
-        f_721c(j + 0x60, g_c18b + 0x400, v3);
+        emu_write16(i + 0x60, awe_port + 0x400, v1);
+        emu_write16(j + 0x60, awe_port + 0x400, v3);
         v1 += 0x400;
         v3 += 0x100;
         j += 2;
@@ -3819,113 +3819,113 @@ int f_72a5(int a)
     j = 1;
     v3 = 0x8030;
     for (i = 0; i < 0x20; i += 2) {
-        f_721c(i + 0x60, g_c18b + 0x402, v1);
-        f_721c(j + 0x60, g_c18b + 0x402, v3);
+        emu_write16(i + 0x60, awe_port + 0x402, v1);
+        emu_write16(j + 0x60, awe_port + 0x402, v3);
         v1 += 0x400;
         v3 += 0x100;
         j += 2;
     }
     for (i = 0; i < 0x14; i++)
-        f_71ec(i + 0x20, g_c18b + 0x400, 0L);
+        emu_write32(i + 0x20, awe_port + 0x400, 0L);
 
     for (i = 0; i < 0x20; i++)
-        f_721c(i + 0x40, g_c18b + 0x400, g_b3f2[i]);
+        emu_write16(i + 0x40, awe_port + 0x400, emu_init1[i]);
     for (i = 0; i < 0x20; i++)
-        f_721c(i + 0x40, g_c18b + 0x402, g_b432[i]);
+        emu_write16(i + 0x40, awe_port + 0x402, emu_init2[i]);
     for (i = 0; i < 0x20; i++)
-        f_721c(i + 0x60, g_c18b + 0x400, g_b472[i]);
+        emu_write16(i + 0x60, awe_port + 0x400, emu_init3[i]);
     for (i = 0; i < 0x20; i++)
-        f_721c(i + 0x60, g_c18b + 0x402, g_b4b2[i]);
+        emu_write16(i + 0x60, awe_port + 0x402, emu_init4[i]);
 
-    f_71ec(0x29, g_c18b + 0x400, 0L);
-    f_71ec(0x2a, g_c18b + 0x400, 0x83L);
-    f_71ec(0x2d, g_c18b + 0x400, 0x8000L);
-    f_71ec(0x2e, g_c18b + 0x400, 0L);
+    emu_write32(0x29, awe_port + 0x400, 0L);
+    emu_write32(0x2a, awe_port + 0x400, 0x83L);
+    emu_write32(0x2d, awe_port + 0x400, 0x8000L);
+    emu_write32(0x2e, awe_port + 0x400, 0L);
 
-    g_b3f2[13] = 0xf7c;
-    g_b3f2[15] = 0x7254;
-    g_b3f2[21] = 0xbaa;
-    g_b3f2[23] = 0x7234;
-    g_b3f2[29] = 0x6e7;
-    g_b3f2[31] = 0x7224;
-    g_b432[5] = 0x7f6;
-    g_b432[7] = 0x7254;
-    g_b432[13] = 0xf02;
-    g_b432[15] = 0x7264;
-    g_b432[21] = 0xfa9;
-    g_b432[23] = 0x7294;
-    g_b432[29] = 0x44c3;
-    g_b432[31] = 0x45c3;
-    g_b472[5] = 0x671;
-    g_b472[7] = 0x287;
-    g_b472[11] = 0xc7b;
-    g_b472[13] = 0x7e6;
-    g_b472[21] = 0x21f;
-    g_b472[23] = 0x386;
-    g_b472[25] = 0xc03;
-    g_b472[27] = 0x31e;
-    g_b472[31] = 0xc55;
-    g_b4b2[5] = 0xead;
-    g_b4b2[11] = 0x129;
-    g_b4b2[15] = 0x31f;
-    g_b4b2[19] = 0x327f;
-    g_b4b2[21] = 0x265;
-    g_b4b2[27] = 0x337f;
+    emu_init1[13] = 0xf7c;
+    emu_init1[15] = 0x7254;
+    emu_init1[21] = 0xbaa;
+    emu_init1[23] = 0x7234;
+    emu_init1[29] = 0x6e7;
+    emu_init1[31] = 0x7224;
+    emu_init2[5] = 0x7f6;
+    emu_init2[7] = 0x7254;
+    emu_init2[13] = 0xf02;
+    emu_init2[15] = 0x7264;
+    emu_init2[21] = 0xfa9;
+    emu_init2[23] = 0x7294;
+    emu_init2[29] = 0x44c3;
+    emu_init2[31] = 0x45c3;
+    emu_init3[5] = 0x671;
+    emu_init3[7] = 0x287;
+    emu_init3[11] = 0xc7b;
+    emu_init3[13] = 0x7e6;
+    emu_init3[21] = 0x21f;
+    emu_init3[23] = 0x386;
+    emu_init3[25] = 0xc03;
+    emu_init3[27] = 0x31e;
+    emu_init3[31] = 0xc55;
+    emu_init4[5] = 0xead;
+    emu_init4[11] = 0x129;
+    emu_init4[15] = 0x31f;
+    emu_init4[19] = 0x327f;
+    emu_init4[21] = 0x265;
+    emu_init4[27] = 0x337f;
 
     for (i = 0; i < 0x20; i++)
-        f_721c(i + 0x40, g_c18b + 0x400, g_b3f2[i]);
+        emu_write16(i + 0x40, awe_port + 0x400, emu_init1[i]);
     for (i = 0; i < 0x20; i++)
-        f_721c(i + 0x40, g_c18b + 0x402, g_b432[i]);
+        emu_write16(i + 0x40, awe_port + 0x402, emu_init2[i]);
     for (i = 0; i < 0x20; i++)
-        f_721c(i + 0x60, g_c18b + 0x400, g_b472[i]);
+        emu_write16(i + 0x60, awe_port + 0x400, emu_init3[i]);
     for (i = 0; i < 0x20; i++)
-        f_721c(i + 0x60, g_c18b + 0x402, g_b4b2[i]);
+        emu_write16(i + 0x60, awe_port + 0x402, emu_init4[i]);
 
     rev = rev << 24;
-    f_721c(0xbe, g_c18b + 0x400, 0x80);
-    f_71ec(0xde, g_c18b, 0xffffffe0L);
-    f_71ec(0xfe, g_c18b, 0xffffe8L | rev);
-    f_71ec(0x3e, g_c18b, (long)cho);
-    f_71ec(0x1e, g_c18b, 0L);
-    f_71ec(0x1e, g_c18b + 0x400, 0xffffe3L);
-    f_721c(0xbf, g_c18b + 0x400, 0x80);
-    f_71ec(0xdf, g_c18b, 0xfffff0L);
-    f_71ec(0xff, g_c18b, 0xfffff8L | rev);
-    f_71ec(0x3f, g_c18b, (long)(0xff | cho));
-    f_71ec(0x1f, g_c18b, 0x8000L);
-    f_71ec(0x1f, g_c18b + 0x400, 0xfffff3L);
-    f_71ec(0x3e, g_c18b, (unsigned long)(a == 1 ? 0x4828u : 0x4800u) << 16);
-    outpw(g_c18b + 0x802, 0x3c);
-    outpw(g_c18b + 0x400, 0);
-    f_71ec(0x7e, g_c18b, 0xffffffffL);
-    f_71ec(0x7f, g_c18b, 0xffffffffL);
-    f_721c(0x3e, g_c18b + 0x400, 0x20);
-    f_721c(0x3f, g_c18b + 0x400, 0);
-    mem = f_6f77();
-    f_721c(0x3f, g_c18b + 0x400, 4);
-    outpw(g_c18b + 0x802, 0x3e);
-    outpw(g_c18b + 0x802, 0xa0);
-    outpw(g_c18b + 0x802, 0x3e);
-    outpw(g_c18b + 0x802, 0xfe);
+    emu_write16(0xbe, awe_port + 0x400, 0x80);
+    emu_write32(0xde, awe_port, 0xffffffe0L);
+    emu_write32(0xfe, awe_port, 0xffffe8L | rev);
+    emu_write32(0x3e, awe_port, (long)cho);
+    emu_write32(0x1e, awe_port, 0L);
+    emu_write32(0x1e, awe_port + 0x400, 0xffffe3L);
+    emu_write16(0xbf, awe_port + 0x400, 0x80);
+    emu_write32(0xdf, awe_port, 0xfffff0L);
+    emu_write32(0xff, awe_port, 0xfffff8L | rev);
+    emu_write32(0x3f, awe_port, (long)(0xff | cho));
+    emu_write32(0x1f, awe_port, 0x8000L);
+    emu_write32(0x1f, awe_port + 0x400, 0xfffff3L);
+    emu_write32(0x3e, awe_port, (unsigned long)(a == 1 ? 0x4828u : 0x4800u) << 16);
+    outpw(awe_port + 0x802, 0x3c);
+    outpw(awe_port + 0x400, 0);
+    emu_write32(0x7e, awe_port, 0xffffffffL);
+    emu_write32(0x7f, awe_port, 0xffffffffL);
+    emu_write16(0x3e, awe_port + 0x400, 0x20);
+    emu_write16(0x3f, awe_port + 0x400, 0);
+    mem = emu_detect_dram();
+    emu_write16(0x3f, awe_port + 0x400, 4);
+    outpw(awe_port + 0x802, 0x3e);
+    outpw(awe_port + 0x802, 0xa0);
+    outpw(awe_port + 0x802, 0x3e);
+    outpw(awe_port + 0x802, 0xfe);
     return mem;
 }
-#undef g_c18b
+#undef awe_port
 
 /* ======== chunk 7 ======== */
-#define g_c191 (*(unsigned *)&g_c191)
-#define g_c195 (*(unsigned *)&g_c195)
-/* switch PnP to alternate address port (Crystal key, then use g_c199) */
-void f_7d59(void)
+#define wss_port (*(unsigned *)&wss_port)
+#define crystal_ctl_port (*(unsigned *)&crystal_ctl_port)
+/* switch PnP to alternate address port (Crystal key, then use ess_ctl_port) */
+void use_alt_pnp_ports(void)
 {
-    f_3c59(2, 2);
+    pnp_write(2, 2);
     delay(2);
-    f_7d81();
-    g_c1b9 = g_c199;
-    g_c1bb = g_c199 + 1;
+    send_alt_pnp_key();
+    pnp_addr_port = ess_ctl_port;
+    pnp_wdata_port = ess_ctl_port + 1;
 }
 
 /* send Crystal key sequence + alternate address 4 times */
-void f_7d81(void)
+void send_alt_pnp_key(void)
 {
     unsigned char key[32] = {
         0x66, 0xa1, 0xc2, 0xf1, 0xea, 0xe7, 0x71, 0xaa, 0xc7, 0x63, 0x33, 0x1b,
@@ -3935,36 +3935,36 @@ void f_7d81(void)
     int j = 0;
     for (j = 0; j < 4; j++) {
         for (i = 0; i < 32; i++)
-            outportb(g_c1b9, key[i] ^ j);
+            outportb(pnp_addr_port, key[i] ^ j);
         delay(1);
-        outportb(g_c1b9, g_c199 & 0xff);
-        outportb(g_c1b9, (g_c199 >> 8) & 0xff);
+        outportb(pnp_addr_port, ess_ctl_port & 0xff);
+        outportb(pnp_addr_port, (ess_ctl_port >> 8) & 0xff);
     }
 }
 
 /* upload CS4232 firmware */
-void f_7de9(void)
+void cs4232_upload_fw(void)
 {
     int i = 0;
     printf("Loading CS4232 Firmware");
-    f_3cfd(g_c191, 0x0c, 0xc0);
+    idx45_write(wss_port, 0x0c, 0xc0);
     putchar('.');
     for (i = 0; i < 8; i++)
-        outportb(g_c195 + 5, g_b4f2[i]);
-    outportb(g_c195 + 6, 0);
+        outportb(crystal_ctl_port + 5, cs4232_fw_hdr[i]);
+    outportb(crystal_ctl_port + 6, 0);
     delay(2);
     putchar('.');
     for (i = 0; i < 0xc8d; i++)
-        outportb(g_c195 + 5, g_b4fa[i]);
-    outportb(g_c195 + 6, 0);
+        outportb(crystal_ctl_port + 5, cs4232_fw[i]);
+    outportb(crystal_ctl_port + 6, 0);
     delay(2);
     putchar('.');
-    f_3cfd(g_c191, 0x0c, 0);
+    idx45_write(wss_port, 0x0c, 0);
     puts(" done.");
 }
 
 /* apply Orpheus/special card settings (FM, S/PDIF, volumes) */
-void f_7ed9(int card)
+void crystal_ext_init(int card)
 {
     unsigned char ctl = 0;
     unsigned char vol1 = 0;
@@ -3973,11 +3973,11 @@ void f_7ed9(int card)
     int val;
     int i;
 
-    surr = (g_c1f8 * 15 / 9) | (~(g_c1f8 * 15 / 9) << 4);
-    if (g_c1f8 < 1)
+    surr = (opt_x3d * 15 / 9) | (~(opt_x3d * 15 / 9) << 4);
+    if (opt_x3d < 1)
         surr = 0;
-    vol1 = (100 - g_c1c0) * 63 / 97;
-    vol2 = (100 - g_c1c6) * 63 / 97;
+    vol1 = (100 - master_vol) * 63 / 97;
+    vol2 = (100 - wave_vol) * 63 / 97;
     if (vol1 > 63)
         vol1 = 63;
     if (vol2 > 63)
@@ -3986,184 +3986,184 @@ void f_7ed9(int card)
         printf("Orpheus");
     else {
         printf("Special");
-        if (g_c1e6 == -1)
-            g_c1e6 = 1;
+        if (opt_xof == -1)
+            opt_xof = 1;
     }
     printf(" settings: ");
-    f_3d19(g_c191, 0x0c, 0xea);
-    f_3d19(g_c191, 0x17, 0x48);
+    idx01_write(wss_port, 0x0c, 0xea);
+    idx01_write(wss_port, 0x17, 0x48);
     delay(5);
-    ctl = inportb(g_c191 + 1);
+    ctl = inportb(wss_port + 1);
     if (card == 2 || card == 7) {
-        if (g_c1e6 == 1) {
-            f_3d19(g_c191, 0x17, 0x48);
-            outportb(g_c191 + 1, ctl | 0x10);
+        if (opt_xof == 1) {
+            idx01_write(wss_port, 0x17, 0x48);
+            outportb(wss_port + 1, ctl | 0x10);
             printf("FM: [CrystalFM]  ");
         } else {
-            f_3d19(g_c191, 0x17, 0x48);
-            outportb(g_c191 + 1, ctl & 0xef);
+            idx01_write(wss_port, 0x17, 0x48);
+            outportb(wss_port + 1, ctl & 0xef);
             delay(5);
             if (card == 2)
-                f_849f(8, 8);
+                cs_ctl_setbits(8, 8);
             printf("FM: [Yamaha OPL3]  ");
         }
     }
     delay(10);
     if (card == 2 || card == 3) {
-        if (g_c1e8 == 1) {
-            f_849f(8, 4);
-            f_3d19(g_c191, 0x4c, 0x60);
-            f_3d19(g_c191, 0x10, 0x02);
+        if (opt_xos == 1) {
+            cs_ctl_setbits(8, 4);
+            idx01_write(wss_port, 0x4c, 0x60);
+            idx01_write(wss_port, 0x10, 0x02);
             delay(10);
-            f_3d19(g_c191, 0x51, 0x02);
+            idx01_write(wss_port, 0x51, 0x02);
             delay(5);
-            f_3d19(g_c191, 0x50, 0x82);
+            idx01_write(wss_port, 0x50, 0x82);
             delay(10);
-            f_3d19(g_c191, 0x5c, 0x50);
-            f_3d19(g_c191, 0x48, 0x5b);
+            idx01_write(wss_port, 0x5c, 0x50);
+            idx01_write(wss_port, 0x48, 0x5b);
             delay(5);
-            f_3d19(g_c191, 0x49, 0x00);
-            f_3d19(g_c191, 0x4a, 0x06);
-            f_3d19(g_c191, 0x4d, 0x01);
-            f_3d19(g_c191, 0x40, 0x00);
-            f_3d19(g_c191, 0x41, 0x00);
+            idx01_write(wss_port, 0x49, 0x00);
+            idx01_write(wss_port, 0x4a, 0x06);
+            idx01_write(wss_port, 0x4d, 0x01);
+            idx01_write(wss_port, 0x40, 0x00);
+            idx01_write(wss_port, 0x41, 0x00);
             delay(5);
-            f_8474(4, 0x40);
-            f_8474(3, 0x20);
-            f_8474(6, 0x00);
-            f_8474(5, 0x04);
-            f_8474(4, 0x80);
-            f_8474(4, 0xc0);
-            f_8474(2, 0x77);
-            f_8474(3, 0xa0);
+            cs_ctl_write(4, 0x40);
+            cs_ctl_write(3, 0x20);
+            cs_ctl_write(6, 0x00);
+            cs_ctl_write(5, 0x04);
+            cs_ctl_write(4, 0x80);
+            cs_ctl_write(4, 0xc0);
+            cs_ctl_write(2, 0x77);
+            cs_ctl_write(3, 0xa0);
             delay(20);
-            f_3d19(g_c191, 0x1a, 0xc2);
+            idx01_write(wss_port, 0x1a, 0xc2);
             delay(60);
-            f_3d19(g_c191, 0x0f, 0xaf);
-            f_3d19(g_c191, 0x0e, 0x02);
-            f_3d19(g_c191, 0x48, 0x5b);
+            idx01_write(wss_port, 0x0f, 0xaf);
+            idx01_write(wss_port, 0x0e, 0x02);
+            idx01_write(wss_port, 0x48, 0x5b);
             delay(5);
-            f_3d19(g_c191, 0x49, 0x00);
-            f_3d19(g_c191, 0x4a, 0x06);
+            idx01_write(wss_port, 0x49, 0x00);
+            idx01_write(wss_port, 0x4a, 0x06);
             delay(5);
-            f_84e1(0x0b, 0xe0);
-            f_84e1(0x0d, 0x60);
+            cs_xreg_write(0x0b, 0xe0);
+            cs_xreg_write(0x0d, 0x60);
             delay(10);
-            f_8474(2, surr);
+            cs_ctl_write(2, surr);
             printf("S/PDIF: [ON]");
         } else {
-            f_3d19(g_c191, 0x10, 0x00);
+            idx01_write(wss_port, 0x10, 0x00);
             delay(10);
-            f_84e1(0x0b, 0xc0);
-            f_84e1(0x0d, 0x18);
-            f_84e1(0x0a, 0x3f);
-            f_3d19(g_c191, 0x5c, 0x00);
-            f_3d19(g_c191, 0x4d, 0x00);
-            f_3d19(g_c191, 0x50, 0x00);
+            cs_xreg_write(0x0b, 0xc0);
+            cs_xreg_write(0x0d, 0x18);
+            cs_xreg_write(0x0a, 0x3f);
+            idx01_write(wss_port, 0x5c, 0x00);
+            idx01_write(wss_port, 0x4d, 0x00);
+            idx01_write(wss_port, 0x50, 0x00);
             delay(20);
-            f_3d19(g_c191, 0x51, 0x00);
-            f_8474(2, surr);
-            f_8474(3, g_c1f8 > 0 ? 0x80 : 0);
-            f_8474(4, 0x00);
+            idx01_write(wss_port, 0x51, 0x00);
+            cs_ctl_write(2, surr);
+            cs_ctl_write(3, opt_x3d > 0 ? 0x80 : 0);
+            cs_ctl_write(4, 0x00);
             printf("S/PDIF: [OFF]");
         }
     }
     delay(10);
-    f_3d19(g_c191, 0x06, vol2);
-    f_3d19(g_c191, 0x07, vol2);
-    f_84e1(0x0e, vol1);
-    f_84e1(0x0f, vol1);
-    if ((card == 2 || card == 3) && g_c1e8 == 1) {
+    idx01_write(wss_port, 0x06, vol2);
+    idx01_write(wss_port, 0x07, vol2);
+    cs_xreg_write(0x0e, vol1);
+    cs_xreg_write(0x0f, vol1);
+    if ((card == 2 || card == 3) && opt_xos == 1) {
         val = 0;
         i = 0;
-        if (g_c1c9 > 0) {
+        if (line_vol > 0) {
             for (i = 2; i < 4; i++) {
-                outportb(g_c191, i);
-                val = inportb(g_c191 + 1);
-                outportb(g_c191 + 1, (val & 0x1f) | 0xa0);
+                outportb(wss_port, i);
+                val = inportb(wss_port + 1);
+                outportb(wss_port + 1, (val & 0x1f) | 0xa0);
             }
         }
-        if (g_c1cc > 0) {
+        if (cd_vol > 0) {
             for (i = 4; i < 6; i++) {
-                outportb(g_c191, i);
-                val = inportb(g_c191 + 1);
-                outportb(g_c191 + 1, (val & 0x1f) | 0xa0);
+                outportb(wss_port, i);
+                val = inportb(wss_port + 1);
+                outportb(wss_port + 1, (val & 0x1f) | 0xa0);
             }
         }
-        if (g_c1cf > 0) {
+        if (mic_vol > 0) {
             for (i = 2; i < 4; i++) {
-                f_3d19(g_c191, 0x17, (i << 4) | 8);
-                val = inportb(g_c191 + 1);
-                outportb(g_c191 + 1, (val & 0x1f) | 0xa0);
+                idx01_write(wss_port, 0x17, (i << 4) | 8);
+                val = inportb(wss_port + 1);
+                outportb(wss_port + 1, (val & 0x1f) | 0xa0);
             }
         }
-        if (g_c1c3 > 0) {
+        if (fm_vol > 0) {
             for (i = 0x12; i < 0x14; i++) {
-                outportb(g_c191, i);
-                val = inportb(g_c191 + 1);
-                outportb(g_c191 + 1, (val & 0x1f) | 0xa0);
+                outportb(wss_port, i);
+                val = inportb(wss_port + 1);
+                outportb(wss_port + 1, (val & 0x1f) | 0xa0);
             }
         }
-        if (g_c1cc > 0)
-            f_3cfd(g_c187, 0x0c, 3);
-        if (g_c1c9 > 0)
-            f_3cfd(g_c187, 0x0c, 7);
+        if (cd_vol > 0)
+            idx45_write(sb_port, 0x0c, 3);
+        if (line_vol > 0)
+            idx45_write(sb_port, 0x0c, 7);
     }
     puts("");
 }
-#undef g_c191
-#undef g_c195
+#undef wss_port
+#undef crystal_ctl_port
 
 /* ======== chunk 8 ======== */
-#define g_c187 (*(unsigned *)&g_c187)
-#define g_c191 (*(unsigned *)&g_c191)
-#define g_c195 (*(unsigned *)&g_c195)
-#define g_c197 (*(unsigned *)&g_c197)
-#define g_c1ad (*(unsigned *)&g_c1ad)
-/* indexed config register write via g_c195 */
-void f_8474(unsigned char reg, unsigned char val)
+#define sb_port (*(unsigned *)&sb_port)
+#define wss_port (*(unsigned *)&wss_port)
+#define crystal_ctl_port (*(unsigned *)&crystal_ctl_port)
+#define opti_ctl_port (*(unsigned *)&opti_ctl_port)
+#define aux_ctl_port (*(unsigned *)&aux_ctl_port)
+/* indexed config register write via crystal_ctl_port */
+void cs_ctl_write(unsigned char reg, unsigned char val)
 {
-    outportb(g_c195 + 3, reg);
+    outportb(crystal_ctl_port + 3, reg);
     delay(2);
-    outportb(g_c195 + 4, val);
+    outportb(crystal_ctl_port + 4, val);
     delay(5);
 }
 
 /* indexed config register: set bits (read-modify-write) */
-void f_849f(unsigned char reg, unsigned char bits)
+void cs_ctl_setbits(unsigned char reg, unsigned char bits)
 {
     unsigned char v = 0;
-    outportb(g_c195 + 3, reg);
-    v = inportb(g_c195 + 4);
+    outportb(crystal_ctl_port + 3, reg);
+    v = inportb(crystal_ctl_port + 4);
     delay(2);
-    outportb(g_c195 + 4, v | bits);
+    outportb(crystal_ctl_port + 4, v | bits);
     delay(5);
 }
 
 /* select logical unit via reg 0x17 then write data port */
-void f_84e1(unsigned char unit, unsigned char val)
+void cs_xreg_write(unsigned char unit, unsigned char val)
 {
-    f_3d19(g_c191, 0x17, (unit << 4) | 8);
-    outportb(g_c191 + 1, val);
+    idx01_write(wss_port, 0x17, (unit << 4) | 8);
+    outportb(wss_port + 1, val);
     delay(5);
 }
 
 /* OPL (AdLib) timer detection at 0x388 */
-int f_850e(void)
+int opl_detect(void)
 {
     int s1 = 0;
     int s2 = 0;
     int found = 0;
-    f_85ba(4, 0x60);
-    f_85ba(4, 0x80);
+    opl_write(4, 0x60);
+    opl_write(4, 0x80);
     delay(10);
     s1 = inportb(0x388);
-    f_85ba(2, 0xff);
-    f_85ba(4, 0x21);
+    opl_write(2, 0xff);
+    opl_write(4, 0x21);
     delay(10);
     s2 = inportb(0x388);
-    f_85ba(4, 0x60);
-    f_85ba(4, 0x80);
+    opl_write(4, 0x60);
+    opl_write(4, 0x80);
     s1 = s1 & 0xe0;
     s2 = s2 & 0xe0;
     if (s1 == 0 && s2 == 0xc0)
@@ -4174,7 +4174,7 @@ int f_850e(void)
 }
 
 /* OPL register write */
-void f_85ba(unsigned char reg, unsigned char val)
+void opl_write(unsigned char reg, unsigned char val)
 {
     outportb(0x388, reg);
     delay(6);
@@ -4183,7 +4183,7 @@ void f_85ba(unsigned char reg, unsigned char val)
 }
 
 /* send alternate PnP key and isolate card at given read port */
-void f_85dd(int port)
+void xnet_workaround(int port)
 {
     unsigned char key[34] = {
         0x00, 0x00, 0xda, 0x6d, 0x36, 0x1b, 0x8d, 0x46, 0x23, 0x91, 0x48, 0xa4,
@@ -4191,65 +4191,65 @@ void f_85dd(int port)
         0x94, 0xca, 0x65, 0x32, 0x19, 0x0c, 0x86, 0x43, 0xa1, 0x50 };
     int i = 0;
     unsigned char buf[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    f_3c59(2, 2);
+    pnp_write(2, 2);
     delay(2);
     for (i = 0; i < 34; i++)
-        outportb(g_c1b9, key[i]);
+        outportb(pnp_addr_port, key[i]);
     delay(1);
-    f_3c59(3, 0);
+    pnp_write(3, 0);
     delay(2);
-    f_3c59(0, (port >> 1) >> 1);
+    pnp_write(0, (port >> 1) >> 1);
     delay(1);
-    f_3e51(port, buf);
-    f_3c59(6, 0x81);
+    pnp_isolate(port, buf);
+    pnp_write(6, 0x81);
     delay(2);
-    f_3c59(0x30, 0x81);
+    pnp_write(0x30, 0x81);
     delay(2);
-    f_3c59(2, 2);
+    pnp_write(2, 2);
     delay(2);
 }
 
 /* serial bit-bang: write a register (start, address, data, stop) */
-void f_86aa(unsigned char reg, unsigned char val)
+void tea6330_write(unsigned char reg, unsigned char val)
 {
-    f_8745(1);
-    f_8745(0);
-    f_8745(2);
-    f_86f1(0x80);
-    f_86f1(reg);
-    f_86f1(val);
-    f_8745(1);
-    f_8745(3);
+    i2c_lines(1);
+    i2c_lines(0);
+    i2c_lines(2);
+    i2c_write_byte(0x80);
+    i2c_write_byte(reg);
+    i2c_write_byte(val);
+    i2c_lines(1);
+    i2c_lines(3);
     delay(2);
 }
 
 /* serial bit-bang: shift out one byte MSB first */
-void f_86f1(unsigned char v)
+void i2c_write_byte(unsigned char v)
 {
     int i = 0;
     unsigned char b = 0;
     for (i = 7; i >= 0; i--) {
         b = ((v >> i) & 1) << 1;
-        f_8745(1 | b);
-        f_8745(b);
+        i2c_lines(1 | b);
+        i2c_lines(b);
     }
-    f_8745(3);
-    f_8745(2);
+    i2c_lines(3);
+    i2c_lines(2);
 }
 
 /* serial bit-bang: output a line state (3 times for timing) */
-void f_8745(unsigned char v)
+void i2c_lines(unsigned char v)
 {
     int i = 0;
     for (i = 0; i < 3; i++)
-        outportb(g_c1ad, v);
+        outportb(aux_ctl_port, v);
     /* no code: marks BX/CX busy so BC 3.1 keeps i in SI as the original
        compiler did (BC 3.1 otherwise uses BX for register vars in leaf functions) */
     _BX; _CX;
 }
 
 /* OPTi 82C928 read: unlock password then read port */
-unsigned char f_8760(unsigned port)
+unsigned char opti928_read(unsigned port)
 {
     delay(30);
     outportb(0xf8f, 0xe2);
@@ -4257,99 +4257,99 @@ unsigned char f_8760(unsigned port)
 }
 
 /* OPTi 82C928 write: unlock password then write port */
-void f_8777(unsigned port, unsigned char val)
+void opti928_write(unsigned port, unsigned char val)
 {
     outportb(0xf8f, 0xe2);
     outportb(port, val);
 }
 
 /* detect and configure OAK OTI601 / OPTi 82C928 */
-int f_8789(void)
+int init_opti928(void)
 {
     unsigned char r2 = 0;
     unsigned char r1 = 0;
     unsigned char cfg1 = 0x80;
     unsigned char cfg2 = 0;
     unsigned char st = 0;
-    r1 = f_8760(0xf8d);
-    r2 = f_8760(0xf8f);
+    r1 = opti928_read(0xf8d);
+    r2 = opti928_read(0xf8f);
     if (r1 < 0xff && r2 < 0xff) {
         puts("Card detected: OAK OTI601 / OPTi 82C928");
-        puts(f_4192() ? "Loading BLASTER values..." : "Loading default values...");
-        if (g_c187 == 0x240 || g_c191 == 0xf40) {
-            g_c191 = 0xf40;
+        puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
+        if (sb_port == 0x240 || wss_port == 0xf40) {
+            wss_port = 0xf40;
             cfg1 |= 0x20;
         } else {
-            g_c187 = 0x220;
-            g_c191 = 0x530;
+            sb_port = 0x220;
+            wss_port = 0x530;
             cfg1 &= 0xcf;
         }
-        if (g_c18f < 1)
+        if (joy_port < 1)
             cfg1 |= 1;
         else {
             cfg1 &= 0xfe;
-            g_c18f = 0x200;
+            joy_port = 0x200;
         }
-        switch (g_c19f) {
+        switch (sb_irq) {
         case 11: cfg2 |= 0x40; break;
         case 7: break;
-        default: g_c19f = 5; cfg2 |= 0x80;
+        default: sb_irq = 5; cfg2 |= 0x80;
         }
-        switch (g_c1a7) {
+        switch (sb_dma) {
         case 3: cfg2 |= 0x20; break;
         case 0: cfg2 |= 0x10; break;
-        default: g_c1a7 = 1;
+        default: sb_dma = 1;
         }
-        f_8777(0xf8d, 0x40);
+        opti928_write(0xf8d, 0x40);
         delay(120);
-        f_8777(0xf8d, 0x80);
+        opti928_write(0xf8d, 0x80);
         delay(140);
-        f_8777(0xf8e, 3);
+        opti928_write(0xf8e, 3);
         delay(50);
-        f_8777(0xf8d, cfg1);
+        opti928_write(0xf8d, cfg1);
         delay(50);
-        f_8777(0xf8f, cfg2);
-        f_8777(0xf90, 2);
+        opti928_write(0xf8f, cfg2);
+        opti928_write(0xf90, 2);
         delay(40);
-        outportb(g_c191 + 4, 0x40);
-        f_3d40(g_c191, 0x44, 0xf);
-        f_3d40(g_c191, 0x45, 0xf);
-        f_3d40(g_c191, 0x49, 0x40);
+        outportb(wss_port + 4, 0x40);
+        idx45_write_slow(wss_port, 0x44, 0xf);
+        idx45_write_slow(wss_port, 0x45, 0xf);
+        idx45_write_slow(wss_port, 0x49, 0x40);
         delay(70);
-        f_3d40(g_c191, 0x4a, 2);
-        f_3d40(g_c191, 0x4d, 0);
-        f_3d40(g_c191, 0x4c, 0x8a);
-        f_3d40(g_c191, 0x48, 3);
+        idx45_write_slow(wss_port, 0x4a, 2);
+        idx45_write_slow(wss_port, 0x4d, 0);
+        idx45_write_slow(wss_port, 0x4c, 0x8a);
+        idx45_write_slow(wss_port, 0x48, 3);
         delay(60);
-        f_3d40(g_c191, 0x4e, 0xff);
-        g_c1c2 = g_c1c3 > 0 ? (100 - g_c1c3) * 31 / 97 : 0x80;
-        g_c1c5 = g_c1c6 > 0 ? (100 - g_c1c6) * 63 / 97 : 0x80;
-        g_c1c8 = g_c1c9 > 0 ? (100 - g_c1c9) * 31 / 97 : 0x80;
-        f_8777(0xf91, 0x1a);
-        outportb(g_c191 + 4, 0x2c);
-        st = inportb(g_c191 + 5);
-        f_3d40(g_c191, 0x24, g_c1c2);
-        f_3d40(g_c191, 0x25, g_c1c2);
-        f_3d40(g_c191, 0x26, g_c1c5);
-        f_3d40(g_c191, 0x27, g_c1c5);
-        f_3d40(g_c191, 0x22, g_c1c8);
-        f_3d40(g_c191, 0x23, g_c1c8);
-        if (g_c1f2 == 0)
-            f_8777(0xf8d, f_8760(0xf8d) & 0x7f);
+        idx45_write_slow(wss_port, 0x4e, 0xff);
+        fm_reg = fm_vol > 0 ? (100 - fm_vol) * 31 / 97 : 0x80;
+        wave_reg = wave_vol > 0 ? (100 - wave_vol) * 63 / 97 : 0x80;
+        line_reg = line_vol > 0 ? (100 - line_vol) * 31 / 97 : 0x80;
+        opti928_write(0xf91, 0x1a);
+        outportb(wss_port + 4, 0x2c);
+        st = inportb(wss_port + 5);
+        idx45_write_slow(wss_port, 0x24, fm_reg);
+        idx45_write_slow(wss_port, 0x25, fm_reg);
+        idx45_write_slow(wss_port, 0x26, wave_reg);
+        idx45_write_slow(wss_port, 0x27, wave_reg);
+        idx45_write_slow(wss_port, 0x22, line_reg);
+        idx45_write_slow(wss_port, 0x23, line_reg);
+        if (opt_xwss == 0)
+            opti928_write(0xf8d, opti928_read(0xf8d) & 0x7f);
         delay(50);
-        f_8777(0xf91, (st & 0xfd) == 2 ? 0x2a : 0x20);
-        printf("Settings: ADD:%X IRQ:%d DMA:%d JOY:%X", g_c187, g_c19f, g_c1a7, g_c18f);
-        if (g_c1f2 > 0)
-            printf(" [WSS mode: %X]", g_c191);
+        opti928_write(0xf91, (st & 0xfd) == 2 ? 0x2a : 0x20);
+        printf("Settings: ADD:%X IRQ:%d DMA:%d JOY:%X", sb_port, sb_irq, sb_dma, joy_port);
+        if (opt_xwss > 0)
+            printf(" [WSS mode: %X]", wss_port);
         else {
             printf(" [SB Mode]");
             delay(20);
-            outportb(g_c187 + 6, 1);
+            outportb(sb_port + 6, 1);
             delay(4);
-            outportb(g_c187 + 6, 0);
+            outportb(sb_port + 6, 0);
             delay(20);
-            outportb(g_c187 + 12, 0x20);
-            printf("\nMixer [WAV:%d FM:%d LIN/CD:%d]\n", g_c1c6, g_c1c3, g_c1c9);
+            outportb(sb_port + 12, 0x20);
+            printf("\nMixer [WAV:%d FM:%d LIN/CD:%d]\n", wave_vol, fm_vol, line_vol);
         }
         return 1;
     }
@@ -4357,107 +4357,107 @@ int f_8789(void)
 }
 
 /* probe OPTi controller at 0xf8c and set subtype */
-void f_8b2d(void)
+void probe_opti_ctl(void)
 {
-    if (f_3d6c(0xf8c, 1) < 0xff && f_3d6c(0xf8c, 3) < 0xff) {
-        f_3daa(0xf8c, 7, 0x40);
-        g_c1fc = 2;
+    if (opti92x_read(0xf8c, 1) < 0xff && opti92x_read(0xf8c, 3) < 0xff) {
+        opti92x_write(0xf8c, 7, 0x40);
+        nopnp_mode = 2;
     }
 }
 
 /* detect and configure OPTi 83C930 */
-int f_8b68(void)
+int init_opti930(void)
 {
     unsigned char cfg1 = 0;
     unsigned char cfg2 = 0;
     unsigned char cfg3 = 0x83;
-    if (g_c1a3 < 0)
-        g_c1a3 = 9;
-    g_c197 = 0xe0c;
-    g_c1e4 = 0xf8f;
-    if (f_3e1c(0xe0e, 1) < 0xff && f_3e1c(0xe0e, 3) < 0xff && f_3e1c(0xe0e, 0x12) < 8) {
+    if (mpu_irq < 0)
+        mpu_irq = 9;
+    opti_ctl_port = 0xe0c;
+    opti93x_pwd_port = 0xf8f;
+    if (opti93x_read(0xe0e, 1) < 0xff && opti93x_read(0xe0e, 3) < 0xff && opti93x_read(0xe0e, 0x12) < 8) {
         puts("Card detected: OPTi 83C930");
-        puts(f_4192() ? "Loading BLASTER values..." : "Loading default values...");
-        if (g_c187 == 0x240)
+        puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
+        if (sb_port == 0x240)
             cfg1 |= 0x80;
         else {
-            g_c187 = 0x220;
+            sb_port = 0x220;
             cfg1 &= 0x7f;
         }
-        switch (g_c191) {
+        switch (wss_port) {
         case 0xe80: cfg1 |= 0x10; break;
         case 0x604: cfg1 |= 0x30; break;
-        default: g_c191 = 0x530; cfg1 &= 0xcf;
+        default: wss_port = 0x530; cfg1 &= 0xcf;
         }
-        if (g_c18f < 1) {
+        if (joy_port < 1) {
             cfg1 |= 1;
-            g_c18f = 0;
+            joy_port = 0;
         } else {
             cfg1 &= 0xfe;
-            g_c18f = 0x200;
+            joy_port = 0x200;
         }
-        switch (g_c19f) {
+        switch (sb_irq) {
         case 11: cfg2 |= 0x20; break;
         case 10: cfg2 |= 0x18; break;
         case 9: cfg2 |= 0x10; break;
         case 7: cfg2 |= 8; break;
-        default: g_c19f = 5; cfg2 |= 0x28;
+        default: sb_irq = 5; cfg2 |= 0x28;
         }
-        switch (g_c1a7) {
+        switch (sb_dma) {
         case 3: cfg2 |= 3; break;
         case 0: cfg2 |= 1; break;
-        default: g_c1a7 = 1; cfg2 |= 2;
+        default: sb_dma = 1; cfg2 |= 2;
         }
-        switch (g_c18d) {
+        switch (mpu_port) {
         case 0: cfg3 &= 0xef; break;
         case 0x300: cfg3 |= 0x60; break;
         case 0x310: cfg3 |= 0x40; break;
         case 0x320: cfg3 |= 0x20; break;
-        default: g_c18d = 0x330;
+        default: mpu_port = 0x330;
         }
-        switch (g_c1a3) {
+        switch (mpu_irq) {
         case 2: case 7: cfg3 |= 0x18; break;
         case 5: cfg3 |= 0x10; break;
         case 10: cfg3 |= 8; break;
-        default: g_c1a3 = 9;
+        default: mpu_irq = 9;
         }
         delay(40);
-        f_3def(g_c197 + 2, 2, 0);
-        f_3def(g_c197 + 2, 1, cfg1);
-        f_3def(g_c197 + 2, 3, cfg2);
-        f_3def(g_c197 + 2, 4, 0x52);
-        f_3def(g_c197 + 2, 5, 0x3d);
-        f_3def(g_c197 + 2, 6, cfg3);
-        f_3def(g_c197 + 2, 0xa, 0x10);
+        opti93x_write(opti_ctl_port + 2, 2, 0);
+        opti93x_write(opti_ctl_port + 2, 1, cfg1);
+        opti93x_write(opti_ctl_port + 2, 3, cfg2);
+        opti93x_write(opti_ctl_port + 2, 4, 0x52);
+        opti93x_write(opti_ctl_port + 2, 5, 0x3d);
+        opti93x_write(opti_ctl_port + 2, 6, cfg3);
+        opti93x_write(opti_ctl_port + 2, 0xa, 0x10);
         delay(20);
-        f_3d40(g_c191, 0x29, 0);
-        f_3d40(g_c191, 0x2a, 2);
-        f_3d40(g_c191, 0x2b, 0);
-        f_3d40(g_c191, 0x48, 3);
+        idx45_write_slow(wss_port, 0x29, 0);
+        idx45_write_slow(wss_port, 0x2a, 2);
+        idx45_write_slow(wss_port, 0x2b, 0);
+        idx45_write_slow(wss_port, 0x48, 3);
         delay(100);
-        f_3def(g_c197 + 2, 3, cfg2);
-        f_3d40(g_c191, 0x30, ((100 - g_c1c3) * 15 / 97) << 1);
-        f_3d40(g_c191, 0x31, ((100 - g_c1c3) * 15 / 97) << 1);
-        f_3d40(g_c191, 0x20, 0x89);
-        f_3d40(g_c191, 0x21, 0x89);
-        f_3d40(g_c191, 0x36, 7);
-        f_3d40(g_c191, 0x37, 7);
+        opti93x_write(opti_ctl_port + 2, 3, cfg2);
+        idx45_write_slow(wss_port, 0x30, ((100 - fm_vol) * 15 / 97) << 1);
+        idx45_write_slow(wss_port, 0x31, ((100 - fm_vol) * 15 / 97) << 1);
+        idx45_write_slow(wss_port, 0x20, 0x89);
+        idx45_write_slow(wss_port, 0x21, 0x89);
+        idx45_write_slow(wss_port, 0x36, 7);
+        idx45_write_slow(wss_port, 0x37, 7);
         delay(10);
-        f_3d40(g_c191, 0x26, 0x84);
-        f_3d40(g_c191, 0x27, 0x84);
+        idx45_write_slow(wss_port, 0x26, 0x84);
+        idx45_write_slow(wss_port, 0x27, 0x84);
         delay(80);
-        f_54e9();
-        printf("Settings: ADD:%X IRQ:%d DMA:%d WSS:%X", g_c187, g_c19f, g_c1a7, g_c191);
-        printf(" MPU:%X/I%d JOY:%X", g_c18d, g_c1a3, g_c18f);
+        sbpro_mixer_set();
+        printf("Settings: ADD:%X IRQ:%d DMA:%d WSS:%X", sb_port, sb_irq, sb_dma, wss_port);
+        printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
         puts("");
-        f_5419("OPTi", -1, -1);
+        print_mixer("OPTi", -1, -1);
         return 1;
     }
     return 0;
 }
 
 /* detect and configure ESS ES668 / ES1688 */
-int f_8f2f(void)
+int init_es688(void)
 {
     int port = 0x220;
     int irqv = 0x16;
@@ -4484,51 +4484,51 @@ int f_8f2f(void)
             printf("Card detected: ES");
             printf(ver < 0x88 ? "668" : "1688");
             printf(" at [%xh] \n", port);
-            puts(f_4192() ? "Loading BLASTER values..." : "Loading default values...");
-            g_c187 = port;
+            puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
+            sb_port = port;
             delay(50);
-            switch (g_c19f) {
+            switch (sb_irq) {
             case 2: case 9: irqv -= 4; break;
             case 7: irqv += 4; break;
             case 10: irqv += 8; break;
-            default: g_c19f = 5;
+            default: sb_irq = 5;
             }
-            f_3d40(g_c187 + 8, 0xb1, irqv);
-            switch (g_c1a7) {
+            idx45_write_slow(sb_port + 8, 0xb1, irqv);
+            switch (sb_dma) {
             case 0: dmav -= 4; break;
             case 3: dmav += 4; break;
-            default: g_c1a7 = 1;
+            default: sb_dma = 1;
             }
-            f_3d40(g_c187 + 8, 0xb2, dmav);
+            idx45_write_slow(sb_port + 8, 0xb2, dmav);
             if (ver >= 0x88) {
-                switch (g_c1a3) {
+                switch (mpu_irq) {
                 case 2: case 9: mpu |= 0x80; break;
                 case 5: mpu |= 0xa0; break;
                 case 7: mpu |= 0xc0; break;
                 case 10: mpu |= 0xe0; break;
-                default: g_c1a3 = g_c19f; mpu |= 0x40;
+                default: mpu_irq = sb_irq; mpu |= 0x40;
                 }
-                if (g_c18f > 0) {
+                if (joy_port > 0) {
                     mpu |= 2;
-                    g_c18f = 0x201;
+                    joy_port = 0x201;
                 } else
-                    g_c18f = 0;
-                mpu |= ((g_c18d & 0xf0) >> 1) | 1;
-                f_3d40(g_c187, 0x40, mpu);
+                    joy_port = 0;
+                mpu |= ((mpu_port & 0xf0) >> 1) | 1;
+                idx45_write_slow(sb_port, 0x40, mpu);
             }
-            printf("Settings: ADD:%X IRQ:%d DMA:%d", g_c187, g_c19f, g_c1a7);
+            printf("Settings: ADD:%X IRQ:%d DMA:%d", sb_port, sb_irq, sb_dma);
             if (ver >= 0x88)
-                printf(" MPU:%X/I%d JOY:%X", g_c18d, g_c1a3, g_c18f);
+                printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
             puts("");
-            f_54e9();
-            f_5419("ESS", -1, -1);
+            sbpro_mixer_set();
+            print_mixer("ESS", -1, -1);
             return 1;
         }
     }
     return 0;
 }
-#undef g_c187
-#undef g_c191
-#undef g_c195
-#undef g_c197
-#undef g_c1ad
+#undef sb_port
+#undef wss_port
+#undef crystal_ctl_port
+#undef opti_ctl_port
+#undef aux_ctl_port
