@@ -34,6 +34,10 @@ are in [docs/TESTING.md](docs/TESTING.md). A ✅ means the bug was reproduced in
 shown to work. Every fix was also part of a 175-run regression check against all of 86Box's
 sound cards, with no regressions; the changes in output it found are the intended ones.
 
+Apart from the fixes, the `main` build prints its own version, "v0.82a-unofficial-fix-1"
+([3245b96](https://github.com/dafugg/unisound_decomp/commit/3245b964ecfa7e1c0c371e1880ed84f8fb6e60cb)),
+so its output can't be mistaken for JazeFox's release.
+
 | Commit | Description | Reports | Tested on 86Box | Tested on real hardware |
 |---|---|---|---|---|
 | [57b36ad](https://github.com/dafugg/unisound_decomp/commit/57b36ade0588d6924a1459c90c50140c2ee28e76) | Ensoniq SoundscaPE VIVO (`ENS4…`): `/R` reads the IRQ and DMA registers as bytes, not as words that take in the next register | — | ❌ 86Box doesn't emulate the SoundscaPE VIVO (its only Ensoniq cards are the PCI AudioPCI models) | ❌ |
@@ -60,7 +64,6 @@ sound cards, with no regressions; the changes in output it found are the intende
 | [53c3685](https://github.com/dafugg/unisound_decomp/commit/53c368554d58b81cdc8add08ddd201405a56e2d7) | Aztech and Rockwell: SB Pro mixer 0Eh is left at 20h (mono), not 22h (stereo) | — | ✅ `azt2320`: mono playback L/R correlation 0.80 before, 1.00 after. 86Box has no Rockwell card | ❌ |
 | [52b639c](https://github.com/dafugg/unisound_decomp/commit/52b639ce92d22ad01aba0db9d9719b38e89c24a0) | Creative: a BLASTER `F` that isn't a multiple of 4 is rounded down, with a message; the FM/CQM decodes four ports | Vogons: [Mr.Hunt](https://www.vogons.org/viewtopic.php?p=1393624#p1393624) | ✅ `sbawe64_gold` with F389: PnP 64h = 0389 and no AdLib at 388 before, 0388 after | ❌ |
 | [65240e2](https://github.com/dafugg/unisound_decomp/commit/65240e2a3212407ff91b1a6b2922b47ec9c5f917) | Yamaha OPL3-SAx: BLASTER `K` sets the WSS DMA (the second DMA, PnP 75h) when it differs from D, and the WSS DMA is shown | Vogons: [TgamesFR](https://www.vogons.org/viewtopic.php?p=1371775#p1371775) ([2](https://www.vogons.org/viewtopic.php?p=1385213#p1385213)) | ✅ `ymf719` with D1 H1 K0: WSS on DMA 3 before, DMA 0 after (UNISOUND run twice; see TESTING.md) | ❌ |
-| [3245b96](https://github.com/dafugg/unisound_decomp/commit/3245b964ecfa7e1c0c371e1880ed84f8fb6e60cb) | The banner names the build "v0.82a-unofficial-fix-1", on its own line above "(c) JazeFox 2019-2025", so its output can't be mistaken for the official v0.82a | — | ✅ `sb16_pnp`: both lines fit in 80 columns, at init and on `/H` | ❌ |
 
 ## Reporting problems
 
