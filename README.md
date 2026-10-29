@@ -1,7 +1,8 @@
 # UNISOUND 0.82a decompilation
 
 C source for **UNISOUND.COM v0.82a**, the "Universal ISA PnP Sound Card Driver for DOS" by
-JazeFox, decompiled so that it rebuilds the released binary byte for byte:
+JazeFox, decompiled so that it rebuilds the released binary byte for byte. UNISOUND is released
+and discussed in [its thread on the VOGONS forum](https://www.vogons.org/viewtopic.php?t=72553).
 
     606f8faec686d56468bb53eecdf1e28e4d6cda7a8a2051c36b7bcec16c37b370  UNISOUND.COM
 
