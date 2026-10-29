@@ -499,7 +499,7 @@ int main(int argc, char *argv[])
     int j = 0;
 
     if (argc > 1) {
-        for (i = 1; i <= argc; i++) {
+        for (i = 1; i < argc; i++) {
             for (j = 1; j <= strlen(argv[i]); j++)
                 argv[i][j] = toupper(argv[i][j]);
             if (argv[i][0] == '/' || argv[i][0] == '-') {
