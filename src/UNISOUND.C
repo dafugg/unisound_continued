@@ -412,8 +412,10 @@ char opt_slam = 0;  /* /XSLAM: Crystal chip set up through SLAM; 2 while SLAM is
 char opt_essb = 0;  /* /XESSB: ES1868/ES1869 found through the ESS bypass key alone */
 int res_logged = -1;  /* /LOG: resource data bytes printed so far; -1 = not printing them */
 /* Stack size for the tiny-model startup, which refuses to run (silently, with output redirected)
-   when the end of the BSS plus _stklen passes 64K. The library's 4K no longer fits; the deepest
-   call chain (configure_pnp, pnp_map_devices, printf, a BIOS interrupt) uses about 1K. */
+   when the end of the BSS plus _stklen passes 64K. The library's 4K no longer fits. The stack
+   really gets whatever the heap leaves below 64K, about 1.9K; filling it with a pattern and
+   running every 86Box card with /LOG, /NOPNP, /R, /CL, /XSLAM, /XESSB and the AWE effects
+   showed at most 796 bytes used, interrupts included. */
 unsigned _stklen = 0x900;
 unsigned char opti_probe[5];  /* probe_opti_ctl's reads, for /LOG: F8Dh and F8Fh without the
                                  password, register 1, F8Dh again, register 3 */
@@ -668,7 +670,7 @@ void log_ldn(int ldn)
 {
     unsigned char r;
     pnp_write(7, ldn);
-    printf("LOG: LDN %d 30h/60h-65h/70h-75h:", ldn);
+    printf("LOG: LDN %d 30,60-65,70-75:", ldn);
     for (r = 0x30; r < 0x76; r++)
         if (r == 0x30 || (r >= 0x60 && r < 0x66) || r >= 0x70)
             printf(" %02X", pnp_read(r));
@@ -679,7 +681,7 @@ void log_ldn(int ldn)
 void log_codec(unsigned port)
 {
     int i;
-    printf("LOG: codec %X I0-I31:", port);
+    printf("LOG: codec %X I0-31:", port);
     for (i = 0; i < 32; i++) {
         outportb(port, i);
         printf(" %02X", inportb(port + 1));
@@ -717,7 +719,7 @@ void print_banner(void)
     printf("%s\n", line);
     if (opt_log != 0) {
         int i;
-        printf("LOG: DOS %d.%02d, options:", _osmajor, _osminor);
+        printf("LOG: DOS %d.%02d, args:", _osmajor, _osminor);
         for (i = 1; i < _argc; i++)
             printf(" %s", _argv[i]);
         puts("");
@@ -811,10 +813,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
 
     print_banner();
     if (nopnp_mode != 0)
-        dlog("OPTi probe: F8Dh/F8Fh %02X %02X without password; with E5h: reg 1 %02X, "
-             "then F8Dh %02X, reg 3 %02X: %s", opti_probe[0], opti_probe[1], opti_probe[2],
+        dlog("OPTi: F8D/F8F %02X %02X; E5: r1 %02X, "
+             "F8D %02X, r3 %02X: %s", opti_probe[0], opti_probe[1], opti_probe[2],
              opti_probe[3], opti_probe[4],
-             nopnp_mode == 2 ? "OPTi 82C924/925, using the PnP scan" : "no OPTi 82C924/925");
+             nopnp_mode == 2 ? "924/925, PnP scan" : "none");
     if (opt_cs == 1) {
         if (init_nonpnp_sb16() == 0)
             return 1;
@@ -908,7 +910,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         else
             port += 0x20;
     }
-    dlog("PnP read data port %X", pnp_rdata_port);
+    dlog("PnP RD port %X", pnp_rdata_port);
     while (found != 0) {
         csn++;
         pnp_write(6, csn);
@@ -1007,7 +1009,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                      memcmp(id, "STB01", 5) == 0)
                 type = CARD_GUSPNP;
         }
-        dlog("CSN %d: %s, id %02X %02X %02X %02X %02X %02X %02X %02X %02X, type %d", csn, id,
+        dlog("CSN %d %s %02X%02X%02X%02X%02X%02X%02X%02X %02X t%d", csn, id,
              (unsigned char)buf[0], (unsigned char)buf[1], (unsigned char)buf[2],
              (unsigned char)buf[3], (unsigned char)buf[4], (unsigned char)buf[5],
              (unsigned char)buf[6], (unsigned char)buf[7], (unsigned char)buf[8], type);
@@ -1053,7 +1055,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         struct ldinfo ld = {{-1, -1, -1, -1, -1, -1, -1, -1, -1}};
         if (pnp_map_devices(csn, name, ld.ld, type))
             lcsn = csn;
-        dlog("name \"%s\", ld[] %d %d %d %d %d %d %d %d %d",
+        dlog("\"%s\" ld %d %d %d %d %d %d %d %d %d",
              name, ld.ld[0], ld.ld[1], ld.ld[2], ld.ld[3], ld.ld[4], ld.ld[5], ld.ld[6], ld.ld[7],
              ld.ld[8]);
         if (lcsn > 0) {
@@ -2365,7 +2367,7 @@ int pnp_isolate(unsigned port, unsigned char *buf)
         buf[i / 8] = (buf[i / 8] >> 1) | (bit ? 0x80 : 0);
     }
     if (found && buf[8] != lfsr)
-        dlog("isolation at %X: checksum %02X, expected %02X", port, (unsigned char)buf[8], lfsr);
+        dlog("iso %X: cksum %02X, want %02X", port, (unsigned char)buf[8], lfsr);
     if (opt_xxf)
         found = found != 0;
     else
@@ -2733,7 +2735,7 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
         pnp_write(3, csn);
         delay(1);
         if (opt_log != 0) {
-            printf("LOG: CSN %d resource data:", csn);
+            printf("LOG: CSN %d res:", csn);
             res_logged = 0;
         }
         if (ok)
@@ -3138,7 +3140,7 @@ int init_nonpnp_sb16(void)
             if (maj <= 4)
                 break;
         }
-        dlog("SB16 probe %X: E1h gave %02X", port, maj);
+        dlog("SB16 %X: E1 %02X", port, maj);
         if (maj == 4) {
             min = inportb(port + 0xa);
             delay(1);
@@ -4483,7 +4485,7 @@ int ess_bypass_id(void)
     outportb(sb_port + 4, 0x40);
     for (i = 0; i < 4; i++)
         m[i] = inportb(sb_port + 5);
-    dlog("bypass key at %X: E7h %02X, mixer 40h %02X %02X %02X %02X", ess_ctl_port, e7, m[0], m[1],
+    dlog("bypass %X: E7 %02X, 40h %02X %02X %02X %02X", ess_ctl_port, e7, m[0], m[1],
          m[2], m[3]);
     if (e7 != 0x68 || m[0] != 0x18 || (m[1] != 0x68 && m[1] != 0x69) || m[2] != ess_ctl_port >> 8 ||
         m[3] != (ess_ctl_port & 0xff))
@@ -4838,7 +4840,7 @@ int init_opti928(void)
     id_f8d = opti928_read(0xf8d);
     gate = inportb(0xf8d);
     id_f8f = opti928_read(0xf8f);
-    dlog("82C928 probe: F8Dh %02X, then %02X without password, F8Fh %02X", id_f8d, gate, id_f8f);
+    dlog("82C928: F8D %02X, no pw %02X, F8F %02X", id_f8d, gate, id_f8f);
     if (id_f8d < 0xff && id_f8f < 0xff && gate != id_f8d) {
         puts("Card detected: OAK OTI601 / OPTi 82C928");
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
@@ -4957,7 +4959,7 @@ void probe_opti_ctl(void)
 int init_nonpnp_fallback(void)
 {
     if (nopnp_mode == 2) {
-        dlog("no OPTi 82C924/925 configured: trying the other /NOPNP cards");
+        dlog("no OPTi set up: other /NOPNP cards");
         if (init_es688() || init_opti930() || init_opti928())
             return 1;
     }
@@ -4978,7 +4980,7 @@ int init_opti930(void)
     opti_ctl_port = 0xe0c;
     opti93x_pwd_port = 0xf8f;
     if (opt_log != 0)
-        dlog("82C930 probe: reg 1 %02X, 3 %02X, 12h %02X", opti93x_read(0xe0e, 1),
+        dlog("82C930: r1 %02X r3 %02X r12 %02X", opti93x_read(0xe0e, 1),
              opti93x_read(0xe0e, 3), opti93x_read(0xe0e, 0x12));
     if (opti93x_read(0xe0e, 1) < 0xff && opti93x_read(0xe0e, 3) < 0xff && opti93x_read(0xe0e, 0x12) < 8) {
         puts("Card detected: OPTi 82C930");
@@ -5073,7 +5075,7 @@ void sb_dsp_flush(int port)
     for (i = 0; i < 16 && (inportb(port + 0xe) & 0x80); i++)
         inportb(port + 0xa);
     if (i > 0)
-        dlog("%X: flushed %d byte(s)", port, i);
+        dlog("%X: flushed %d", port, i);
 }
 
 /* The read sequence that enables an ES1688-family chip at port (2x9 three times, 2xB, 2x9, 2xB,
@@ -5099,7 +5101,7 @@ int sb_dsp_reset(int port)
     for (i = 0; i < 100 && !(inportb(port + 0xe) & 0x80); i++)
         delay(1);
     b = inportb(port + 0xa);
-    dlog("%X: reset, read %02X after %d ms", port, b, i);
+    dlog("%X: reset %02X, %d ms", port, b, i);
     return b == 0xaa;
 }
 
@@ -5157,7 +5159,7 @@ void ess_ext_set(int port, unsigned char reg, unsigned char sel)
     unsigned char val = (old & 0xf3) | 0x50 | sel;
     sb_dsp_write(port, reg);
     sb_dsp_write(port, val);
-    dlog("%02Xh was %02X, wrote %02X %02X to %X", reg, old, reg, val, port + 0xc);
+    dlog("%02X was %02X, wrote %02X %02X to %X", reg, old, reg, val, port + 0xc);
 }
 
 /* /LOG: print a diagnostic line, prefixed "LOG: ". Does nothing without /LOG. */
@@ -5242,7 +5244,7 @@ void ess_irq_test(int port)
     for (i = 0; i < 5; i++)
         setvect(irqs[i] < 8 ? 8 + irqs[i] : 0x68 + irqs[i], irq_old[irqs[i]]);
     enable();
-    dlog("F2h IRQ test, %d tries: IRQ3=%d IRQ5=%d IRQ7=%d IRQ9=%d IRQ10=%d", t, irq_hits[3],
+    dlog("F2 IRQ, %d tries: 3=%d 5=%d 7=%d 9=%d 10=%d", t, irq_hits[3],
          irq_hits[5], irq_hits[7], irq_hits[9], irq_hits[10]);
 }
 
@@ -5265,7 +5267,7 @@ int init_es688(void)
     for (port = 0x220; port <= 0x260; port += 0x10) {
         if (opt_log) {
             id = inportb(port + 0xe);
-            dlog("%X: 2xE=%02X 2xA=%02X, sending the enable reads", port, id, inportb(port + 0xa));
+            dlog("%X: 2xE %02X 2xA %02X, enable reads", port, id, inportb(port + 0xa));
         }
         es_enable_reads(port);
         if (!sb_dsp_reset(port))
@@ -5275,7 +5277,7 @@ int init_es688(void)
         id = sb_dsp_read(port);
         if (id == 0x68)
             ver = sb_dsp_read(port);
-        dlog("%X: E7h: %02X %02X", port, id, ver);
+        dlog("%X: E7 %02X %02X", port, id, ver);
         if (id == 0x68)
             break;
     }
@@ -5326,7 +5328,7 @@ int init_es688(void)
                and DMA -, 0, 1, 3). */
             b = ess_ext_read(sb_port, 0xb1);
             id = ess_ext_read(sb_port, 0xb2);
-            dlog("B1h now %02X, B2h now %02X", b, id);
+            dlog("B1 %02X B2 %02X", b, id);
             b = (b >> 2) & 3;
             if (b != 0 || (sb_irq != 2 && sb_irq != 9))
                 sb_irq = b == 0 ? 9 : b == 1 ? 5 : b == 2 ? 7 : 10;
@@ -5358,12 +5360,12 @@ int init_es688(void)
                 mpu |= ((mpu_port & 0xf0) >> 1) | 1;
                 if (opt_log) {
                     outportb(sb_port + 4, 0x40);
-                    dlog("mixer 40h was %02X, writing %02X", inportb(sb_port + 5), mpu);
+                    dlog("40h was %02X, writing %02X", inportb(sb_port + 5), mpu);
                 }
                 idx45_write_slow(sb_port, 0x40, mpu);
                 if (opt_log) {
                     outportb(sb_port + 4, 0x40);
-                    dlog("mixer 40h now %02X", inportb(sb_port + 5));
+                    dlog("40h now %02X", inportb(sb_port + 5));
                 }
             }
             if (opt_log)
