@@ -2206,7 +2206,7 @@ int parse_blaster(void)
     dup = strdup(env);
     tok = strtok(dup, " ");
     field = 0;
-    while (field < 12 || tok != 0) {
+    while (field < 12 && tok != 0) {
         if (isalpha(*tok) && strlen(tok) > 1) {
             letter = *tok;
             tok++;
