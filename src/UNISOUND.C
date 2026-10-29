@@ -975,6 +975,12 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             if (type == CARD_CREATIVE) {
                 reg_mpu = 0x62;
                 reg_opl = 0x64;
+                /* The FM (or CQM) decoder takes 4 ports at a 4-aligned base (the AWE64 Gold's
+                   resource data allows 388h-394h in steps of 4), so F389 can't work. */
+                if (opl_port & 3) {
+                    printf("FM address %X is not a multiple of 4, using %X.\n", opl_port, opl_port & ~3);
+                    opl_port &= ~3;
+                }
             }
             if (type == CARD_ALS) {
                 reg_mpu = 0x60;
