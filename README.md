@@ -101,6 +101,25 @@ record DMA is optional. `SET WSS`, which some OPTi 82C930/931 drivers are said t
 used: no format for it was found. On the 82C928 and 82C929 WSS mode turns the SB part's IRQ off;
 the 82C930 keeps its SB part enabled with its own IRQ and DMA, as SNDINIT leaves it.
 
+On GUS PnP (InterWave) cards, UNISOUND reads `ULTRASND=port,dma,dma2,irq,irq2` instead of
+BLASTER. The GF1 goes at the port (220, 230, 240, 250 or 260 hex), its second range at port +
+100h and the codec at port + 10Ch, with the two DMAs and the IRQ from the variable; without it,
+UNISOUND uses 240, DMA 3 and 3, IRQ 11. Limitations:
+
+- The fifth field, the MIDI IRQ, is read but not used: the second IRQ is left off, as are SB
+  emulation and the MPU-401.
+- The DMA and IRQ fields are only range-checked (DMA 0-7, IRQ 0-15), not checked against what
+  the card supports. An out-of-range field keeps the default.
+- With fewer than three fields UNISOUND says it is loading its defaults, but the fields given are
+  still used.
+- No `SET ULTRASND=` line is printed when the variable is missing, as there is for `ULTRA16`.
+- `ULTRADIR` and Gravis's other variables are neither read nor set.
+- On the GUS Extreme and ViperMax (`/NOPNP`), UNISOUND sets up only the ES1688, from BLASTER; the
+  GF1 part and its `ULTRASND` are left to Gravis's software. Non-PnP GUS cards aren't supported.
+
+This list comes from the source and hasn't been checked on a real card; see
+[Wanted](#wanted-testers-and-pnp-dumps).
+
 ## Wanted: testers and PnP dumps
 
 Some cards are recognised only from driver files, Linux's tables or 86Box tests with edited PnP
@@ -147,6 +166,10 @@ Also wanted: Dell, Compaq and other laptops whose ESS chip has a PnP BIOS ID fro
 `ESS0119` (ES688, ES888, ES1688, ES1698, ES1788, ES1887, ES1888 and ES1869B chips). ESS's device list
 gives these IDs to on-board chips that the BIOS describes, not to ISA PnP cards, so UNISOUND's PnP
 scan doesn't see them; `/NOPNP` may find the chip once the BIOS has enabled it.
+
+Also wanted: someone with a real GUS PnP (InterWave) card to test `ULTRASND` handling (see the
+limitations above): run `UNISOUND /LOG` with a full five-field `ULTRASND`, with fewer fields, and
+without it, and report the output and whether GUS games and Gravis's own tools work afterwards.
 
 ## Fixes & Changes after 0.82a
 
