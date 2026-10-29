@@ -267,6 +267,7 @@ binary, use `tools/build.sh --no-hash`; the hash check is for the `0.82a` branch
 | `docs/NOTES.md` | How the toolchain and layout were identified |
 | `docs/TESTING.md` | Results of testing in 86Box |
 | `docs/datasheets/` | Vendor data sheets used for the work, with their sources (see its README) |
+| `docs/ROMS.md` | How the patched 86Box ROMs and EEPROMs used in the tests were made, with their SHA-256 |
 
 Tools:
 - `build.sh [--no-hash]`: builds in the VM and verifies the hash, unless `--no-hash` is given.

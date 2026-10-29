@@ -153,7 +153,8 @@ Each case ran with the original and the fixed build on both platforms.
 | 23 Creative FM address | sbawe64_gold, F389, AdLib timer test | 64h = 0389, no AdLib at 388 | "FM address 389 is not a multiple of 4, using 388.", 64h = 0388, AdLib at 388 |
 | 24 Yamaha WSS DMA | ymf719, ymf718, `D1 H1 K0`, UNISOUND run twice, then WSSPLAY and DMAPLAY | WSS on DMA 3 | WSS on DMA 0, SB still on DMA 1, `WSS-DMA:0` |
 
-The patched ROMs lived in a separate copy of the ROM set used only for those runs.
+The patched ROMs lived in a separate copy of the ROM set used only for those runs. How to make
+them, and the ones used later in this file, is in [ROMS.md](ROMS.md).
 
 Test tools used from bug 11 on, besides PIO, all in `tools/dos/` (build each with `tcc NAME.C`
 in the VM; TRACEPNP with TASM and `TLINK /t`):
