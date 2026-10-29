@@ -15,7 +15,7 @@ on a Compaq LTE 5000 with its on-board ES1688; the README table marks them.
 | Original build | UNISOUND.COM v0.82a, sha256 `606f8fae…b370` |
 | Fixed build | branch `fixes` at `44bf539` (bugs 1-10) |
 | Thread fixes build | branch `thread-fixes` at `65240e2` (bugs 11-24); each fix was tested with the build of its own commit |
-| ESS init build | branch `ess-init`: `4c4cba6` (B1h/B2h through 2xCh), `fde5b60` (`/LOG`), `d63339e` (ESSINIT) |
+| ESS init build | branch `ess-init`: `4c4cba6` (B1h/B2h through 2xCh), `fde5b60` (`/LOG`), `d63339e` (ESSINIT), `33d7aa8` (OPTi 82C924/925 probe), `6e1d892` (82C928 probe), `245da48` (ESSINIT OPTi probe) |
 
 Platforms, both a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -208,6 +208,47 @@ writes 14h/18h, without bit 6, so bit 6 is not required for SB-compatible playba
 "No supported PnP card detected." without a newline before the SB16 fallback, the BLASTER line
 follows on the same line.
 
+## `/NOPNP` and the OPTi 82C924/925 probe
+
+Before any non-PnP probe, `/NOPNP` writes E5h to F8Fh and reads OPTi 82C924/925 control
+registers 1 and 3 (F8Dh, F8Fh). In v0.82a, if both read below FFh, it writes 40h to register 7,
+skips the ES688/ES1688, 82C930, 82C928 and SB16 probes and runs the PnP scan (where the OPTi
+moves `opti_ctl_port` by 80h). Any device answering at F8Dh/F8Fh passes, for example a card that
+decodes 10 address bits and answers at 38Dh/38Fh. The fix also reads F8Dh again right after
+register 1, without the password, and requires a different value (an OPTi closes its gate
+after one access, as Linux's opti9xx and OSS's mad16 check), and runs the `/NOPNP` probes if the
+PnP scan configures nothing after an OPTi match.
+
+86Box decodes all 16 address bits, so on `ess_es1688` F88h-F8Fh read FFh with and without the
+password (PIO) and the ES1688 can't produce the false match itself. 86Box has no 82C924/925
+either. As a stand-in, an NE2000 (`ne2k`) was set to base F80h, so F8Dh/F8Fh are its counter
+registers and read 00h with or without the password. `/NOPNP` from a cold boot, both platforms
+(the ES columns give the same output on each):
+
+| Build | ES1688 or ES688 + NE2000 at F80h | sbawe32_pnp + NE2000 at F80h | ES1688, ES688 alone |
+|---|---|---|---|
+| v0.82a, `ess-init` before the fix | "No PnP card detected." (the user's report) | OPTi match, PnP scan configures the AWE32 | found |
+| fix, OPTi probe only (`33d7aa8`) | no OPTi match (F8Dh 00 again), ES found | "Card detected: OAK OTI601 / OPTi 82C928": that probe had the same weakness | found, unchanged |
+| fix with the 82C928 gate check too (`6e1d892`) | the same | no 82C928; "No card detected" (nopnp, the AWE32 isn't active) or the SB16 fallback (pnp), as without the NE2000 | found, unchanged |
+| fix with the 82C924/925 gate check removed (test build) | OPTi match, "No PnP card detected.", then the ES found by the fallback | OPTi match, PnP scan configures the AWE32 | found, unchanged |
+
+The last row checks the `nopnp_mode` 2 path: the PnP scan still configures a PnP card, and the
+fallback finds the ESS chip. A real 82C924/925 or 82C928 wasn't available.
+
+ESSINIT prints the same probe. On `ess_es1688` and on the Presario 7100 (`pl4600c`):
+
+```
+OPTi probe (UNISOUND /NOPNP looks for an 82C924/925 at F8Ch first):
+  F88h-F8Fh, no password: FF FF FF FF FF FF FF FF
+  388h-38Fh:               00 00 FF FF FF FF FF FF
+  With E5h to F8Fh: reg 1 (F8Dh) = FF, F8Dh again = FF, reg 3 (F8Fh) = FF
+  Not an OPTi 82C924/925: UNISOUND /NOPNP goes on to the ESS detection
+```
+
+With the NE2000 at F80h it prints "UNISOUND /NOPNP would take this for an OPTi 82C924/925 and
+skip the ESS detection" and "(the fixed build wouldn't: F8Dh reads the same without the
+password)". Both then set up the chip (RESULT: OK), also with BLASTER unset (A220 I5 D1).
+
 ## Regression check
 
 The fixed build ran the full baseline matrix again. 171 of the 175 runs gave identical output.
@@ -225,3 +266,6 @@ and the `WSS-DMA` field on ymf718 and ymf719 (24). azt2320 on pnp doesn't boot (
 
 The `ess-init` build (`fde5b60`, with `/LOG`) ran the full matrix against the `main` build: all 175
 runs gave identical output (azt2320 on pnp doesn't boot with either).
+
+With the OPTi probe fixes (`6e1d892`), all 175 runs gave the same output as `93f2271`
+(azt2320 on pnp doesn't boot with either).
