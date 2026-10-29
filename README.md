@@ -9,22 +9,27 @@ The byte-identical source is the tag `v0.82a` and the branch `0.82a`. `main` add
 top of it, so its build no longer has that hash. All of this applies only to version 0.82a;
 other releases will differ.
 
-## Fixes on main
+## Fixes & Changes after 0.82a
 
-These were found by reading the decompiled source. "Tested" means the bug was reproduced in
-86Box and the fix confirmed there ([docs/TESTING.md](docs/TESTING.md)). None has been tested
-on real hardware.
+All of these except the ESS DSP flush were found by reading the decompiled source. The 86Box
+tests used 86Box on an ASUS PVI-486SP3C (`486sp3c`, PnP BIOS) and an Olystar
+LIL1429 (`ali1429`, no PnP BIOS) under MS-DOS 6.22; details are in
+[docs/TESTING.md](docs/TESTING.md). A ✅ means the bug was reproduced in 86Box and the fix shown
+to work. Every fix was also part of a 175-run regression check against all of 86Box's sound
+cards, with no regressions.
 
-- [Ensoniq `/R` reads the IRQ and DMA registers as bytes](https://github.com/dafugg/unisound_decomp/commit/57b36ade0588d6924a1459c90c50140c2ee28e76), not as words that take in the next register.
-- [`/R` reads the MPU port back from the register it was written to](https://github.com/dafugg/unisound_decomp/commit/66d1b101702368b970c4aa1d492ba08899a78bf7) (ES1868 Maxi Sound, RJA0, TBS20).
-- [`ULTRASND` parsing stops at the last field](https://github.com/dafugg/unisound_decomp/commit/71ac68182e51dc2a0eab69891489eb0946b15ac1): a value with fewer than five fields gave IRQ 0. Tested.
-- [`BLASTER` parsing stops at the last field](https://github.com/dafugg/unisound_decomp/commit/f0f3c4983d5d82fc0039911fb4811f09d57e40b9) instead of reading past the end of the string.
-- [Option parsing no longer processes `argv[argc]`](https://github.com/dafugg/unisound_decomp/commit/ce32fd2472a11da985a03e8a4ad79028cd3fec46), the NULL after the last argument.
-- [Card and device names are cut to the buffer size](https://github.com/dafugg/unisound_decomp/commit/ddb518b7edf0fe7c5d58d29f8161a60c0db523a5): a long ANSI name overflowed the buffer and `/CL` hung. Tested.
-- [The SAM9407 firmware upload no longer sends a word past the end of the file](https://github.com/dafugg/unisound_decomp/commit/d89926b8799d1c1a254279b73d9ddbcd7d9fc1ca).
-- [The AWE reverb send level (`/VR`) is no longer sign-extended](https://github.com/dafugg/unisound_decomp/commit/23c60457e6d81cbf492b87b21d842ccd58e9740f): `/VR99` set voice 31's PTRX to FFFFFFFF. Tested.
-- [InterWave ROM bank names are NUL-terminated](https://github.com/dafugg/unisound_decomp/commit/c96f1e896e52fc641c6cacace324eaf012744625): a 16-character name ran into the next field. Tested.
-- [The ES688/ES1688 probe flushes stale bytes from the DSP read buffer](https://github.com/dafugg/unisound_decomp/commit/44bf539d3d8c3c3ae78c3ae4d47f0d8035d5a694), so `/NOPNP` finds the card after earlier commands. Found and tested in 86Box only.
+| Commit | Description | Tested on 86Box | Tested on real hardware |
+|---|---|---|---|
+| [57b36ad](https://github.com/dafugg/unisound_decomp/commit/57b36ade0588d6924a1459c90c50140c2ee28e76) | Ensoniq `/R` reads the IRQ and DMA registers as bytes, not as words that take in the next register | ❌ The card isn't emulated | ❌ |
+| [66d1b10](https://github.com/dafugg/unisound_decomp/commit/66d1b101702368b970c4aa1d492ba08899a78bf7) | `/R` reads the MPU port back from the register it was written to (ES1868 Maxi Sound, RJA0, TBS20) | ❌ These cards aren't emulated | ❌ |
+| [71ac681](https://github.com/dafugg/unisound_decomp/commit/71ac68182e51dc2a0eab69891489eb0946b15ac1) | `ULTRASND` parsing stops at the last field; a value with fewer than five fields gave IRQ 0 | ✅ `guspnp`, `ULTRASND=240,1,1`: `IRQ:0` before, `IRQ:11` after | ❌ |
+| [f0f3c49](https://github.com/dafugg/unisound_decomp/commit/f0f3c4983d5d82fc0039911fb4811f09d57e40b9) | `BLASTER` parsing stops at the last field instead of reading past the end of the string | ❌ No visible effect: `BLASTER=A220 I5 D1 H5 P330 T6` gives the same output with both builds | ❌ |
+| [ce32fd2](https://github.com/dafugg/unisound_decomp/commit/ce32fd2472a11da985a03e8a4ad79028cd3fec46) | Option parsing no longer processes `argv[argc]`, the NULL after the last argument | ❌ No visible effect | ❌ |
+| [ddb518b](https://github.com/dafugg/unisound_decomp/commit/ddb518b7edf0fe7c5d58d29f8161a60c0db523a5) | Card and device names are cut to the buffer size; a long ANSI name overflowed it | ✅ `sb16_pnp` with its PnP ROM patched to a 150-character name: `/CL` hung before, works after | ❌ |
+| [d89926b](https://github.com/dafugg/unisound_decomp/commit/d89926b8799d1c1a254279b73d9ddbcd7d9fc1ca) | The SAM9407 firmware upload no longer sends a word past the end of the file | ❌ The card isn't emulated | ❌ |
+| [23c6045](https://github.com/dafugg/unisound_decomp/commit/23c60457e6d81cbf492b87b21d842ccd58e9740f) | The AWE reverb send level (`/VR`) is no longer sign-extended | ✅ `sbawe32_pnp`, `/VR99`, voice 31 PTRX: `FFFFFFFF` before, `0000FFFF` after | ❌ |
+| [c96f1e8](https://github.com/dafugg/unisound_decomp/commit/c96f1e896e52fc641c6cacace324eaf012744625) | InterWave ROM bank names are NUL-terminated; a 16-character name ran into the next field | ✅ `guspnp` with `IWROM.BIN`'s bank name set to 16 characters: `[AMDGM_1_1_FULL16INTR]` before, `[AMDGM_1_1_FULL16]` after | ❌ |
+| [44bf539](https://github.com/dafugg/unisound_decomp/commit/44bf539d3d8c3c3ae78c3ae4d47f0d8035d5a694) | The ES688/ES1688 probe flushes stale bytes from the DSP read buffer, so `/NOPNP` finds the card after earlier commands. Found in 86Box | ✅ `ess_es1688` and `ess_es688`, `/NOPNP` twice: the second run found nothing before, finds the card after | ❌ |
 
 ## Building
 
