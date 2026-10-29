@@ -476,7 +476,12 @@ void probe_opti_ctl(void);
 int init_opti930(void);
 int init_es688(void);
 
-/* main: parse command line options, then run the card configuration */
+/* Entry point. Uppercases every argument and parses the options into the global settings:
+   /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
+   scan), /R (read only), /D (disable), the /Xxxx extended options and /NOPNP. /H or /? prints the
+   help and exits. Then calls configure_pnp and returns its result as the exit code
+   (0 = success, 1 = no card configured).
+   Note: the loop runs to i <= argc, one past the last argument, so argv[argc] (NULL) is read too. */
 int main(int argc, char *argv[])
 {
     int full_scan = 0;
@@ -620,7 +625,8 @@ int main(int argc, char *argv[])
     return configure_pnp(card, list, full_scan, scan_port);
 }
 
-/* print the program banner followed by a horizontal rule */
+/* Print the program name and version line, then a 73-character rule of box-drawing characters
+   (0xC4). */
 void print_banner(void)
 {
     char line[74];
@@ -631,7 +637,7 @@ void print_banner(void)
     printf("%s\n", line);
 }
 
-/* print the usage/help screen */
+/* Print the banner and the usage screen for /H and /?. */
 void print_help(void)
 {
     print_banner();
@@ -657,8 +663,29 @@ void print_help(void)
     puts("the card. If not, default values will be used. This program is FREEWARE!");
 }
 
-/* isolate the PnP cards, pick the supported one, assign its resources and set up its mixer.
-   card: /Cn card number (10 with /CL), list: /CL, pass and port: where isolation starts (/F) */
+/* The main routine: find the PnP sound card, assign its resources and set up its mixer.
+
+   card   which card to configure (/Cn); with /CL it is 10 and every card found is listed instead
+   list   1 for /CL: also print each card's ANSI name
+   pass   0 for a normal scan, 1 with /F: where the isolation scan of read-data ports starts
+   port   first read-data port to try (0x20B)
+
+   Steps:
+   1. /CS goes straight to init_nonpnp_sb16. /NOPNP tries init_es688, init_opti930, init_opti928 and
+      init_nonpnp_sb16 in turn.
+   2. Send the initiation key and isolate cards, scanning read-data ports from `port` upward
+      until one answers. Each isolated card gets the next CSN.
+   3. Identify each card by its vendor id (CTL, ALS, ESS..., see the CARD_* list). Cards before
+      number `card` are listed and skipped. Stop at card `card` if it is supported, and abort if
+      it isn't. With /CL (card = 10) every card is listed.
+   4. Read the card's ANSI name and map its logical devices to functions (pnp_map_devices).
+   5. Load settings from BLASTER, or ULTRASND for GUS PnP. /D zeroes them to disable the
+      card. Then write, or with /R read back, each logical device's ports, IRQs and DMAs. The PnP
+      register numbers differ per family (the reg_* locals), and so do a lot of special cases.
+   6. Leave the PnP configuration state and set up the card's mixer, firmware and extras
+      (AWE, SAM9407, CS4232 firmware, InterWave, TEA6330T tone control).
+   If no supported PnP card is found, it falls back to init_nonpnp_sb16.
+   Returns 0 on success, 1 on failure. */
 int configure_pnp(int card, int list, int pass, unsigned port)
 {
     char *id = 0;               /* EISA id string of the current card */
@@ -1895,7 +1922,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     return ret;
 }
 
-/* PnP initiation key */
+/* Send the 32-byte ISA PnP initiation key (preceded by two zero writes to reset the LFSR) to the
+   address port, which moves all PnP cards from Wait for Key into the Sleep state. */
 void pnp_send_key(void)
 {
     unsigned char key[34] = {
@@ -1908,7 +1936,8 @@ void pnp_send_key(void)
     delay(1);
 }
 
-/* PnP register write (skipped for 0x30..0x80 when opt_read set) */
+/* Write val to PnP register reg (address port, then write-data port). With /R, writes to the
+   logical-device configuration registers 0x30-0x80 are skipped, so the card is only read. */
 void pnp_write(unsigned char reg, unsigned char val)
 {
     if (opt_read == 0 || reg < 0x30 || reg > 0x80) {
@@ -1917,14 +1946,15 @@ void pnp_write(unsigned char reg, unsigned char val)
     }
 }
 
-/* PnP register read */
+/* Read PnP register reg: select it on the address port and read the read-data port. */
 unsigned char pnp_read(unsigned char reg)
 {
     outportb(pnp_addr_port, reg);
     return inportb(pnp_rdata_port);
 }
 
-/* PnP 16-bit register write (high byte first) */
+/* Write a 16-bit value to the PnP register pair reg/reg+1, high byte first, as used for I/O base
+   addresses. Skipped under /R for the I/O range registers 0x60-0x80. */
 void pnp_write16(unsigned char reg, unsigned val)
 {
     if (opt_read == 0 || reg < 0x60 || reg > 0x80) {
@@ -1933,7 +1963,7 @@ void pnp_write16(unsigned char reg, unsigned val)
     }
 }
 
-/* PnP 16-bit register read (high byte first) */
+/* Read a 16-bit value from the PnP register pair reg/reg+1, high byte first. */
 unsigned pnp_read16(unsigned char reg)
 {
     unsigned v = 0;
@@ -1941,14 +1971,16 @@ unsigned pnp_read16(unsigned char reg)
     return v + pnp_read(reg + 1);
 }
 
-/* indexed write: index at port+4, data at port+5 */
+/* Indexed register write with the index at port+4 and the data at port+5. This is the SB mixer
+   layout (base+4/+5), also used for WSS codecs placed 4 bytes above their base. */
 void idx45_write(unsigned port, unsigned char idx, unsigned char val)
 {
     outportb(port + 4, idx);
     outportb(port + 5, val);
 }
 
-/* indexed write: index at port, data at port+1, with delays */
+/* Indexed register write with the index at port and the data at port+1, with a 1 ms delay after
+   each access. Used for the Yamaha OPL3-SAx control port and Crystal/WSS codec registers. */
 void idx01_write(unsigned port, unsigned char idx, unsigned char val)
 {
     outportb(port, idx);
@@ -1957,7 +1989,8 @@ void idx01_write(unsigned port, unsigned char idx, unsigned char val)
     delay(1);
 }
 
-/* indexed write: index at port+4, data at port+5, with delays */
+/* Like idx45_write (index at port+4, data at port+5) but with long delays (17 ms and 16 ms) for
+   codecs that need time between accesses, such as the OPTi and ESS ones. */
 void idx45_write_slow(unsigned port, unsigned char idx, unsigned char val)
 {
     outportb(port + 4, idx);
@@ -1966,7 +1999,9 @@ void idx45_write_slow(unsigned port, unsigned char idx, unsigned char val)
     delay(0x10);
 }
 
-/* banked register read (unlock 0xe5 at port+3; regs >7 via port+8/port+9) */
+/* Read register reg of an OPTi 82C924/925 control chip at port. Every access is unlocked by
+   writing the password 0xE5 to port+3. Registers 0-7 are at port+reg; higher ones are reached
+   indirectly through port+8 (index) and port+9 (data). */
 unsigned char opti92x_read(unsigned port, unsigned char reg)
 {
     unsigned char v;
@@ -1980,7 +2015,8 @@ unsigned char opti92x_read(unsigned port, unsigned char reg)
     return v;
 }
 
-/* banked register write (unlock 0xe5 at port+3; regs >7 via port+8/port+9) */
+/* Write val to register reg of an OPTi 82C924/925 control chip, with the same password unlock and
+   direct/indirect addressing as opti92x_read, then wait 2 ms. */
 void opti92x_write(unsigned port, unsigned char reg, unsigned char val)
 {
     outportb(port + 3, 0xe5);
@@ -1993,7 +2029,8 @@ void opti92x_write(unsigned port, unsigned char reg, unsigned char val)
     delay(2);
 }
 
-/* unlocked indexed write (0xe4 to opti93x_pwd_port before each access) */
+/* Write val to index idx of an OPTi 82C93x register pair at port/port+1. Both the index and the
+   data write are preceded by the password 0xE4 written to opti93x_pwd_port. */
 void opti93x_write(unsigned port, unsigned char idx, unsigned char val)
 {
     outportb(opti93x_pwd_port, 0xe4);
@@ -2003,7 +2040,8 @@ void opti93x_write(unsigned port, unsigned char idx, unsigned char val)
     delay(2);
 }
 
-/* unlocked indexed read (0xe4 to opti93x_pwd_port before each access) */
+/* Read index idx of an OPTi 82C93x register pair at port/port+1, using the same 0xE4 password
+   sequence as opti93x_write, then wait 5 ms. */
 unsigned char opti93x_read(unsigned port, unsigned char idx)
 {
     unsigned char v;
@@ -2015,7 +2053,12 @@ unsigned char opti93x_read(unsigned port, unsigned char idx)
     return v;
 }
 
-/* PnP isolation: read 72 bit pairs from read port into 9-byte serial id, check LFSR checksum */
+/* Run one ISA PnP isolation pass on read-data port `port` and store the winning card's 72-bit
+   serial identifier in buf[9] (vendor id, serial number, checksum). Each bit is read as a pair of
+   reads, 0x55 then 0xAA meaning 1. The LFSR checksum of the first 64 bits must match byte 8,
+   unless /XXF is given, in which case opt_xxf records whether it matched (1) or not (2). Gives up
+   early when nothing answered within the first isolate_limit bits.
+   Returns 1 if a card was isolated, 0 otherwise (also for ports below 0x200 or a NULL buf). */
 int pnp_isolate(unsigned port, unsigned char *buf)
 {
     int i = 0;
@@ -2052,10 +2095,12 @@ int pnp_isolate(unsigned port, unsigned char *buf)
     return found != 0;
 }
 
-/* format compressed EISA/PnP vendor id as string */
+/* buffer for pnp_vendor_str */
 char vendor_str[9] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };  /* vendor id string buffer */
 
+/* Decode the compressed EISA vendor id at *id (three 5-bit letters and a 16-bit product number,
+   byte-swapped) into a string like "CTL0044" in the static vendor_str buffer, and return it. */
 char *pnp_vendor_str(unsigned long *id)
 {
     register unsigned long *p = id;
@@ -2071,7 +2116,9 @@ char *pnp_vendor_str(unsigned long *id)
     return vendor_str;
 }
 
-/* parse ULTRASND environment variable */
+/* Read the ULTRASND environment variable ("port,dma,dma2,irq,irq2") into gus_port, gus_dma,
+   gus_dma2, gus_irq and gus_irq2. Out-of-range fields are ignored.
+   Returns 1 if the variable exists and has at least 3 fields, else 0. */
 int parse_ultrasnd(void)
 {
     char *env = 0;
@@ -2132,7 +2179,11 @@ int parse_ultrasnd(void)
     return 1;
 }
 
-/* parse BLASTER environment variable */
+/* Read the BLASTER environment variable (space-separated letter/value fields) into the port, IRQ
+   and DMA globals: A sb_port, I sb_irq, D sb_dma, H sb_hdma, P mpu_port, E awe_port, J joy_port,
+   W wss_port, C ide_port, R the control ports, M mpu2_port, F opl_port, U mpu_irq, Q irq2,
+   K wss_dma, Y ide_irq. Out-of-range values are ignored.
+   Returns 1 if the variable exists, else 0. */
 int parse_blaster(void)
 {
     char *env = 0;
@@ -2260,7 +2311,10 @@ int parse_blaster(void)
     return 1;
 }
 
-/* read the ANSI identifier string (tag 0x82) of card csn into buf */
+/* Wake card csn and read its resource data up to the first ANSI identifier string (tag 0x82),
+   which is copied NUL-terminated into buf. Used to list cards with /CL. Crystal cards need the
+   initiation key again first. The 9 serial-id bytes at the start of the resource data are skipped.
+   Returns 1 on success, 0 if the resource data could not be read. */
 int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type)
 {
     int done;
@@ -2303,7 +2357,12 @@ int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type)
     return ok;
 }
 
-/* walk the resource data of card csn: read its name and map logical devices to functions */
+/* Wake card csn and walk its whole resource data. The first ANSI string becomes the card's name.
+   For each logical device (tag 2) it fills in ld[], the logical device number for each function
+   (see struct ldinfo). The mapping depends on the card family `type`, its name and option flags,
+   and later ANSI strings starting "Aud", "Gam", "Wav" or "IDE" override it. Also stores byte 3 of
+   the first logical device id after ld[] (ldinfo.x[3]), which marks ES968 variants.
+   Returns 1 on success, 0 if the resource data could not be read. */
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
 {
     int ok = csn > 0 && name != 0;
@@ -2515,7 +2574,10 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
     return ok;
 }
 
-/* read n bytes of PnP resource data (waits on status bit) into buf (may be NULL) */
+/* Read n bytes of the selected card's resource data into buf (or discard them if buf is NULL).
+   For each byte, polls the status register (5) for up to 15 ms until bit 0 says data is ready,
+   then reads the resource data register (4).
+   Returns 1 on success, 0 on a timeout. */
 int pnp_read_res(unsigned char *buf, int n)
 {
     int i = 0;
@@ -2544,7 +2606,10 @@ int pnp_read_res(unsigned char *buf, int n)
     return 1;
 }
 
-/* read a PnP resource tag header: tag in *tag, length in *len */
+/* Read the next resource data tag. For a large item (bit 7 set) *tag is the whole byte and *len
+   the following 16-bit length; for a small item *tag is the item name (bits 6-3) and *len the
+   length (bits 2-0).
+   Returns 1 on success, 0 on a read error or an invalid tag/length. */
 int pnp_read_tag(unsigned char *tag, unsigned *len)
 {
     int ok = 0;
@@ -2566,7 +2631,10 @@ int pnp_read_tag(unsigned char *tag, unsigned *len)
     return ok;
 }
 
-/* detect and initialize the AWE EMU8000 at port */
+/* Check for an EMU8000 at port (the AWE base, SB base + 0x400) and initialize it. Prints a warning
+   and returns if the chip's status registers don't respond. The chip version is guessed from SB
+   mixer registers 0xFE/0xFD (both 0xFF means version 1). Then runs emu_init, which also sets
+   reverb and chorus, and prints the detected sample RAM. */
 void awe_init(unsigned port)
 {
     unsigned char ver = 2;
@@ -2610,7 +2678,8 @@ void awe_init(unsigned port)
     printf("\nInitialization done. ");
 }
 
-/* print the SB DSP version at port */
+/* Ask the SB DSP at port for its version (command 0xE1) and print it if it looks like an SB16
+   (major version 4); otherwise just print a newline. */
 void sb_print_dsp_ver(int port)
 {
     unsigned char maj = 0;
@@ -2637,7 +2706,14 @@ void sb_print_dsp_ver(int port)
         puts("");
 }
 
-/* detect and configure a non-PnP SB16/AWE card */
+/* Detect and configure a non-PnP (jumpered) SB16 or AWE32, used for /CS and as a fallback when
+   no PnP card is found. Probes 0x220-0x280 for a DSP of version 4.xx that answers the 0xE3
+   copyright command. Then:
+   - applies the IRQ and DMA (from BLASTER, or the defaults) through the SB16 mixer's interrupt/DMA setup registers,
+   - sets the MPU-401 address,
+   - reports the settings and any MPU-401 or EMU8000 found (and initializes the EMU8000),
+   - programs the mixer.
+   Returns 1 if a card was found, else 0. */
 int init_nonpnp_sb16(void)
 {
     int port = 0x220;
@@ -2746,7 +2822,8 @@ int init_nonpnp_sb16(void)
     return 0;
 }
 
-/* program SB16 mixer IRQ (0x80) and DMA (0x81) select registers */
+/* Program an SB16's IRQ select (mixer register 0x80) and DMA select (0x81) for the given IRQ
+   (2/5/7/10, default 5), 8-bit DMA (0/1/3, default 1) and 16-bit DMA (5/6/7; 4 = none). */
 void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned char hdma)
 {
     unsigned char irqv = 2;
@@ -2782,7 +2859,8 @@ void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned c
     outportb(port + 5, dmav);
 }
 
-/* read SB16 IRQ setting from mixer register 0x80 */
+/* Read an SB16's IRQ select register (mixer 0x80) and return the IRQ number (2/5/7/10, 0 if
+   unknown). */
 unsigned char sb16_get_irq(int port)
 {
     unsigned char v;
@@ -2798,7 +2876,7 @@ unsigned char sb16_get_irq(int port)
     }
 }
 
-/* read SB16 DMA setting from mixer register 0x81 (HDMA<<4 | DMA) */
+/* Read an SB16's DMA select register (mixer 0x81) and return high DMA << 4 | low DMA. */
 unsigned char sb16_get_dma(int port)
 {
     unsigned char lo;
@@ -2826,7 +2904,8 @@ unsigned char sb16_get_dma(int port)
     return res;
 }
 
-/* check for an EMU8000 at port+0x400 */
+/* Return 1 if an EMU8000 answers at port + 0x400 (the same status register test as awe_init),
+   else 0. */
 unsigned char awe_detect(int port)
 {
     unsigned char st;
@@ -2850,7 +2929,9 @@ unsigned char awe_detect(int port)
     return 1;
 }
 
-/* print mixer settings line */
+/* Print the "<name> Mixer [VOL:.. WAV:.. ...]" summary line with the requested volume levels.
+   SB and Yamaha cards also show tone controls, ESS shows AuxB, and gain and 3D are shown when
+   they are > -1. */
 void print_mixer(char *name, int x3d, int gain)
 {
     printf("%s Mixer [VOL:%d WAV:%d FM:%d LIN:%d CD:%d MIC:%d", name,
@@ -2868,7 +2949,8 @@ void print_mixer(char *name, int x3d, int gain)
     puts("]");
 }
 
-/* write the SB Pro-compatible mixer registers (master, voice, FM, line, CD, mic) */
+/* Write the SB Pro-compatible mixer registers at sb_port: master (0x22), voice (0x04),
+   FM (0x26), line (0x2E), CD (0x28) and mic (0x0A, 3 bits). Used by most non-Creative cards. */
 void sbpro_mixer_set(void)
 {
     unsigned char mic;
@@ -2881,7 +2963,9 @@ void sbpro_mixer_set(void)
     idx45_write(sb_port, 0xa, mic);
 }
 
-/* write SB16 mixer registers */
+/* Write the SB16 mixer registers at sb_port: left/right master, voice, FM, CD, line and mic
+   volumes, input gain from /XXGn (1, 2 or 4; default 2), PC speaker, treble and bass, the output
+   switches (sb16_mixer_switches) and register 0x90 (1 with /X3D, else 0). */
 void sb16_mixer_set(void)
 {
     int idx = sb_port + 4;
@@ -2927,7 +3011,8 @@ void sb16_mixer_set(void)
     outportb(idx, 0x90); outportb(dat, agc);
 }
 
-/* update SB16 mixer output switches (reg 0x3c) */
+/* Update the SB16 output mixer switches (register 0x3C): enable mic, CD and line outputs when
+   their volume is non-zero, disable them otherwise. */
 void sb16_mixer_switches(void)
 {
     unsigned char v = 0;
@@ -2948,7 +3033,12 @@ void sb16_mixer_switches(void)
     idx45_write(sb_port + 5, 0x3c, v);
 }
 
-/* initialize an OPTi 82C925 (mode 5) or 82C924 (mode 4) and its codec */
+/* Initialize an OPTi 82C925 (mode 5, CARD_OPTI925) or 82C924 (mode 4, CARD_OPTI924) through its
+   control chip at opti_ctl_port. Then:
+   - converts the volume settings to codec attenuation values,
+   - resets the chip and programs the SB base, MPU, IDE and WSS/SB mode configuration registers,
+   - initializes the WSS codec at wss_port and sets its mixer,
+   - resets the SB DSP and prints the mixer and card mode. */
 void opti92x_init(int mode)
 {
     unsigned char cfg3 = 0xf0;
@@ -3050,7 +3140,9 @@ void opti92x_init(int mode)
     puts(opt_xwss > 0 ? "[WSS]" : "[SBPro]");
 }
 
-/* initialize an OPTi 82C931/82C933 codec and mixer */
+/* Initialize an OPTi 82C931/82C933 (CARD_OPTI93X). Programs the control registers through the
+   password-protected port at opti_ctl_port + 2, then the WSS codec at wss_port - 4: output
+   levels, 3D bits from /X3D, mode and calibration. Finishes with the SB Pro mixer. */
 void opti93x_init(void)
 {
     register unsigned codec = wss_port + -4;
@@ -3087,7 +3179,7 @@ void opti93x_init(void)
     sbpro_mixer_set();
 }
 
-/* upload SAM9407.BIN firmware to the SAM9407 at port (needs -d: both "Bad" blocks get cross-jumped; matches only under TC 3.0) */
+/* SAM9407 boot loader and start sequence for sam9407_upload */
 unsigned sam9407_boot[256] = {
     0xd0ce, 0x0111, 0xd0ce, 0x01d4, 0x0001, 0x0003, 0x0004, 0x0006, 0x0001, 0x0003, 0x0002, 0x0002,
     0x0006, 0x0002, 0x0001, 0x0006, 0x0006, 0x7a0c, 0xe628, 0x0001, 0xd448, 0x1010, 0xc4cb, 0xd1cb,
@@ -3117,6 +3209,13 @@ unsigned char sam9407_start[37] = {
     0xca, 0x00, 0xcb, 0x00, 0xcc, 0x00, 0xcd, 0x00, 0xce, 0x00, 0xcf, 0x00,
     0xff };  /* SAM9407 init byte sequence */
 
+/* Load SAM9407.BIN into the Dream SAM9407 wavetable chip of a Maxi Sound card through its MPU
+   port at base. The file must be 4 KB to 128 KB and have the 0xD0CE signature at offset 0x400.
+   Sequence:
+   1. Put the chip into boot mode and send the 256-word boot loader (sam9407_boot) to port+2.
+   2. Send the start command and stream the file from offset 0x400 as 16-bit words.
+   3. Send the sam9407_start command bytes.
+   Prints a message and returns if the file is missing or bad. */
 void sam9407_upload(unsigned base)
 {
     register unsigned port = base;
@@ -3189,7 +3288,9 @@ void sam9407_upload(unsigned base)
     }
 }
 
-/* InterWave: read a byte of DRAM/ROM at 24-bit address addr */
+/* InterWave: read one byte of on-board DRAM/ROM at 24-bit address addr. Sets the local memory
+   address registers 0x43/0x44 through the register select at sb_port + 0x103 (sb_port holds
+   the GUS base for these cards), then reads the DRAM I/O port at + 0x107. */
 unsigned char iw_mem_read(unsigned long addr)
 {
     outportb(sb_port + 0x103, 0x43);
@@ -3199,7 +3300,7 @@ unsigned char iw_mem_read(unsigned long addr)
     return inportb(sb_port + 0x107);
 }
 
-/* InterWave: write a byte of DRAM at 24-bit address addr */
+/* InterWave: write one byte val to on-board DRAM at 24-bit address addr (see iw_mem_read). */
 void iw_mem_write(unsigned long addr, unsigned char val)
 {
     outportb(sb_port + 0x103, 0x43);
@@ -3209,7 +3310,9 @@ void iw_mem_write(unsigned long addr, unsigned char val)
     outportb(sb_port + 0x107, val);
 }
 
-/* scan the 4 ROM banks for "INTR" sample ROM headers and list them */
+/* InterWave: switch to ROM access and scan the four 4 MB ROM banks for a sample ROM header
+   ("INTR" signature with a zero checksum over 512 bytes). Prints each bank's name and size, or
+   "ROM: Not found". Restores the memory configuration afterwards. Always returns 0. */
 int iw_list_roms(void)
 {
     unsigned char old = 0;
@@ -3264,6 +3367,12 @@ int iw_list_roms(void)
 
 /* detect on-board RAM size per bank, program the memory config register; returns total KB */
 
+/* InterWave: size the on-board DRAM. Zeroes the first byte of every 64 KB block, then tests each of the four 4 MB banks with a
+   pattern and finds its size by stepping 64 KB at a time until the pattern shows up again
+   (address wrap). Then programs the memory
+   configuration register to the matching layout, forced to 512 KB with /XGL.
+   If dst is not NULL, each bank's size in bytes is stored there.
+   Returns the total in KB. */
 int iw_detect_dram(unsigned long *dst)
 {
     register unsigned long *out = dst;
@@ -3359,7 +3468,18 @@ int iw_detect_dram(unsigned long *dst)
     return total;
 }
 
-/* InterWave register write: reg = type<<16 | index<<8 | width */
+/* InterWave register write. reg encodes type << 16 | index << 8 | width; all ports are relative to
+   sb_port, which holds the GUS base for these cards:
+   - types 1-0x0E: write the low byte of val at base + width
+   - types 0x0F-0x18: control register `index` selected through base + 0x0F (with the register
+     control at + 0x103/0x105 unlocked around it); types 0x0F/0x10 also flip bit 6 at base + 0
+   - types 0x1A-0x21: write at base + 0x100 + width, or a word at + 0x104 when width is 4
+   - types 0x22-0x5B: GF1 register `index` through the select at + 0x103, data at + 0x104/+ 0x105
+   - type 0x5C: the DRAM I/O port at + 0x107
+   - types 0x5D-0x61: write at base + 0x10C + width
+   - types 0x62-0x81: codec register `index` through base + 0x10C/+ 0x10D
+   Types 0x19 and 0x1B are ignored. The constants passed by iw_init and the iw_set_* functions
+   follow this encoding. */
 void iw_write(unsigned long reg, unsigned val)
 {
     unsigned char sel;
@@ -3423,7 +3543,10 @@ void iw_write(unsigned long reg, unsigned val)
     return;
 }
 
-/* InterWave init for GUS mode: mixer, DRAM size detection, levels */
+/* InterWave (GUS PnP) initialization:
+   - programs the GF1 and codec control registers and initializes the 32 synth voices,
+   - lists ROM banks and sizes the DRAM (printing a warning when there is none),
+   - sets the master, DAC, synth, line, CD and mic levels, muting the inputs whose volume is 0. */
 void iw_init(void)
 {
     int i;
@@ -3478,49 +3601,56 @@ void iw_init(void)
     iw_set_mic(mic_vol <= 0, mic_reg);
 }
 
-/* set codec mixer pair 0x19/0x1b (bit 7 = mute) */
+/* InterWave codec: set the left/right master output attenuation (codec registers 0x19/0x1B) to v,
+   and mute them if flag is non-zero. */
 void iw_set_master(int flag, unsigned char v)
 {
     iw_write(0x7b1901L, v | (flag ? 0x80 : 0));
     iw_write(0x7d1b01L, v | (flag ? 0x80 : 0));
 }
 
-/* set codec mixer pair 0x06/0x07 (bit 7 = mute) */
+/* InterWave codec: set the left/right DAC (wave) attenuation (registers 0x06/0x07) to v, muted if
+   flag. */
 void iw_set_dac(int flag, unsigned char v)
 {
     iw_write(0x680601L, v | (flag ? 0x80 : 0));
     iw_write(0x690701L, v | (flag ? 0x80 : 0));
 }
 
-/* set codec mixer pair 0x02/0x03 (bit 7 = mute) */
+/* InterWave codec: set the left/right AUX1 (synth) attenuation (registers 0x02/0x03) to v, muted
+   if flag. */
 void iw_set_synth(int flag, unsigned char v)
 {
     iw_write(0x640201L, v | (flag ? 0x80 : 0));
     iw_write(0x650301L, v | (flag ? 0x80 : 0));
 }
 
-/* set codec mixer pair 0x12/0x13 (bit 7 = mute) */
+/* InterWave codec: set the left/right line-in attenuation (registers 0x12/0x13) to v, muted if
+   flag. */
 void iw_set_line(int flag, unsigned char v)
 {
     iw_write(0x741201L, v | (flag ? 0x80 : 0));
     iw_write(0x751301L, v | (flag ? 0x80 : 0));
 }
 
-/* set codec mixer pair 0x04/0x05 (bit 7 = mute) */
+/* InterWave codec: set the left/right AUX2 (CD) attenuation (registers 0x04/0x05) to v, muted if
+   flag. */
 void iw_set_cd(int flag, unsigned char v)
 {
     iw_write(0x660401L, v | (flag ? 0x80 : 0));
     iw_write(0x670501L, v | (flag ? 0x80 : 0));
 }
 
-/* set codec mixer pair 0x16/0x17 (bit 7 = mute) */
+/* InterWave codec: set the left/right mic attenuation (registers 0x16/0x17) to v, muted if
+   flag. */
 void iw_set_mic(int flag, unsigned char v)
 {
     iw_write(0x781601L, v | (flag ? 0x80 : 0));
     iw_write(0x791701L, v | (flag ? 0x80 : 0));
 }
 
-/* EMU8000: wait until DRAM read (SMALR) is not busy */
+/* EMU8000: wait (up to 2100 polls) until the DRAM read address register (SMALR, 0x34) no longer
+   reports busy (bit 31). */
 void emu_wait_read(void)
 {
     int i = 0;
@@ -3531,7 +3661,8 @@ void emu_wait_read(void)
     }
 }
 
-/* EMU8000: wait until DRAM write (SMALW) is not busy */
+/* EMU8000: wait (up to 2100 polls) until the DRAM write address register (SMALW, 0x36) no longer
+   reports busy (bit 31). */
 void emu_wait_write(void)
 {
     int i = 0;
@@ -3542,7 +3673,10 @@ void emu_wait_write(void)
     }
 }
 
-/* EMU8000: detect onboard DRAM size, returns KB */
+/* EMU8000: size the sample DRAM. Writes a marker at the DRAM start (0x200000), then walks upward
+   in 32 KB steps writing a test word, until the test word doesn't read back or the marker gets
+   overwritten (address wrap). Opens and closes the DMA channels around the test.
+   Returns the size in KB (0 when only the first step worked, at most 28 MB). */
 int emu_detect_dram(void)
 {
     int size = 0;
@@ -3582,7 +3716,9 @@ int emu_detect_dram(void)
     return size;
 }
 
-/* EMU8000: set up the 30 DRAM DMA channels (odd ones read if odd_read != 0) */
+/* EMU8000: prepare the 30 voices used as DRAM DMA channels: silence them and set their envelope
+   and address registers. Odd channels are set up for reading when odd_read is non-zero, all
+   others for writing. */
 void emu_dma_open(int odd_read)
 {
     unsigned i;
@@ -3598,7 +3734,7 @@ void emu_dma_open(int odd_read)
     }
 }
 
-/* EMU8000: release the DRAM DMA channels */
+/* EMU8000: return the 30 DRAM DMA channels to normal voices. */
 void emu_dma_close(void)
 {
     unsigned i;
@@ -3608,7 +3744,8 @@ void emu_dma_close(void)
     }
 }
 
-/* EMU8000: write dword register */
+/* EMU8000: write a 32-bit value to register reg (selected through the pointer register at
+   awe_port + 0x802) at data port `port` (low word) and port + 2 (high word). */
 void emu_write32(unsigned reg, unsigned port, unsigned long val)
 {
     outpw(awe_port + 0x802, reg);
@@ -3616,14 +3753,14 @@ void emu_write32(unsigned reg, unsigned port, unsigned long val)
     outpw(port + 2, (unsigned)(val >> 16));
 }
 
-/* EMU8000: write word register */
+/* EMU8000: write a 16-bit value to register reg at data port `port`. */
 void emu_write16(unsigned reg, unsigned port, unsigned val)
 {
     outpw(awe_port + 0x802, reg);
     outpw(port, val);
 }
 
-/* EMU8000: read word register */
+/* EMU8000: read a 16-bit value from register reg at data port `port`. */
 unsigned emu_read16(unsigned reg, unsigned port)
 {
     unsigned v;
@@ -3632,7 +3769,8 @@ unsigned emu_read16(unsigned reg, unsigned port)
     return v;
 }
 
-/* EMU8000: read dword register */
+/* EMU8000: read a 32-bit value from register reg at data port `port` (low word) and port + 2
+   (high word). */
 unsigned long emu_read32(unsigned reg, unsigned port)
 {
     unsigned long lo;
@@ -3644,7 +3782,13 @@ unsigned long emu_read32(unsigned reg, unsigned port)
     return lo;
 }
 
-/* EMU8000 (AWE32) initialization for chip version ver, returns DRAM size in KB */
+/* EMU8000 initialization:
+   1. Initialize all 32 voices and the effects engine.
+   2. Write the four init tables (emu_init1-4) twice: the second time with some entries
+      changed to enable the effects.
+   3. Set reverb and chorus from the /VR and /VU amounts.
+   4. Size the DRAM and enable the audio output.
+   ver is the chip version from awe_init. Returns the DRAM size in KB. */
 int emu_init(int ver)
 {
     int i = 0;
@@ -3871,7 +4015,10 @@ int emu_init(int ver)
     return mem;
 }
 
-/* ESS: send the alternate key and use ess_ctl_port as the PnP address/write ports from now on */
+/* ESS ES1869, or ES1868 with /XEA (the "alternate init" in the manual): put the cards back into
+   Wait for Key and send send_alt_pnp_key, which apparently tells the chip to use ess_ctl_port as
+   its PnP address port. Then use ess_ctl_port and ess_ctl_port + 1 as the PnP address and
+   write-data ports from now on. */
 void use_alt_pnp_ports(void)
 {
     pnp_write(2, 2);
@@ -3881,7 +4028,8 @@ void use_alt_pnp_ports(void)
     pnp_wdata_port = ess_ctl_port + 1;
 }
 
-/* send the 32-byte key (XORed with 0..3) followed by ess_ctl_port, four times */
+/* Send the alternate 32-byte key, XORed with 0..3 in four rounds, each round followed by
+   the low and high bytes of ess_ctl_port, to the current PnP address port. */
 void send_alt_pnp_key(void)
 {
     unsigned char key[32] = {
@@ -3899,7 +4047,9 @@ void send_alt_pnp_key(void)
     }
 }
 
-/* upload CS4232 firmware */
+/* Upload the built-in CS4232 firmware patch (cs4232_fw_hdr and cs4232_fw) through the Crystal
+   control port (crystal_ctl_port + 5, each part terminated by a write to + 6). Codec register
+   0x0C is set to 0xC0 during the upload and back to 0 afterwards. */
 void cs4232_upload_fw(void)
 {
     int i = 0;
@@ -3920,7 +4070,13 @@ void cs4232_upload_fw(void)
     puts(" done.");
 }
 
-/* apply Orpheus/special card settings (FM, S/PDIF, volumes) */
+/* Extra setup for Crystal CS4236/4237-based cards. card is the variant from configure_pnp
+   (2 = Orpheus, 3 = Turtle Beach, 7 = other cards with the same options). It:
+   - selects the FM source: internal CrystalFM with /XOFi (the default for variant 7), otherwise an
+     external Yamaha OPL3,
+   - switches S/PDIF output on with /XOS1 (or off), including the 3D level from /X3D,
+   - sets the wave and master volumes through the codec's extended registers,
+   - with S/PDIF on, enables the line, CD, mic and FM inputs that have a volume set. */
 void crystal_ext_init(int card)
 {
     unsigned char ctl = 0;
@@ -4069,7 +4225,8 @@ void crystal_ext_init(int card)
     puts("");
 }
 
-/* indexed config register write via crystal_ctl_port */
+/* Crystal control port: write val to control register reg (index at crystal_ctl_port + 3, data
+   at + 4). */
 void cs_ctl_write(unsigned char reg, unsigned char val)
 {
     outportb(crystal_ctl_port + 3, reg);
@@ -4078,7 +4235,7 @@ void cs_ctl_write(unsigned char reg, unsigned char val)
     delay(5);
 }
 
-/* indexed config register: set bits (read-modify-write) */
+/* Crystal control port: set `bits` in control register reg (read-modify-write). */
 void cs_ctl_setbits(unsigned char reg, unsigned char bits)
 {
     unsigned char v = 0;
@@ -4089,7 +4246,8 @@ void cs_ctl_setbits(unsigned char reg, unsigned char bits)
     delay(5);
 }
 
-/* select logical unit via reg 0x17 then write data port */
+/* CS4236 extended register write: select extended register `unit` through codec index register
+   23 (unit << 4 | 8) and write val to the codec data port. */
 void cs_xreg_write(unsigned char unit, unsigned char val)
 {
     idx01_write(wss_port, 0x17, (unit << 4) | 8);
@@ -4097,7 +4255,9 @@ void cs_xreg_write(unsigned char unit, unsigned char val)
     delay(5);
 }
 
-/* OPL (AdLib) timer detection at 0x388 */
+/* Detect an OPL2/OPL3 at 0x388 with the usual AdLib timer test: reset both timers, start timer 1
+   with a 0xFF count and check that the status register shows its overflow.
+   Returns 1 if found, else 0. */
 int opl_detect(void)
 {
     int stat1 = 0;
@@ -4122,7 +4282,7 @@ int opl_detect(void)
     return found;
 }
 
-/* OPL register write */
+/* Write val to OPL register reg at 0x388/0x389, with the delays the OPL2 needs after each write. */
 void opl_write(unsigned char reg, unsigned char val)
 {
     outportb(0x388, reg);
@@ -4131,7 +4291,10 @@ void opl_write(unsigned char reg, unsigned char val)
     delay(8);
 }
 
-/* /XNET: wake the Realtek PnP network card with its own key, isolate it at port, give it CSN 0x81 and activate it */
+/* /XNET workaround for Realtek (and compatible) ISA PnP network cards. According to the manual
+   they deactivate their logical devices when the PnP scan for the sound card runs. This sends
+   their own initiation key, isolates the card on read-data port `port`, gives it CSN 0x81, writes
+   0x81 to its activate register, and returns all cards to Wait for Key. */
 void xnet_workaround(int port)
 {
     unsigned char key[34] = {
@@ -4158,7 +4321,9 @@ void xnet_workaround(int port)
     delay(2);
 }
 
-/* TEA6330T tone control: I2C register write on aux_ctl_port (start, address, data, stop) */
+/* Write val to register reg of the Philips TEA6330T tone/volume chip on some GUS PnP cards (I2C
+   address 0x80), bit-banged through aux_ctl_port: start condition, address, register, data,
+   stop condition. */
 void tea6330_write(unsigned char reg, unsigned char val)
 {
     i2c_lines(1);
@@ -4172,7 +4337,7 @@ void tea6330_write(unsigned char reg, unsigned char val)
     delay(2);
 }
 
-/* I2C: shift out one byte MSB first */
+/* I2C: clock out the byte v, MSB first, then give one extra clock for the acknowledge bit. */
 void i2c_write_byte(unsigned char v)
 {
     int i = 0;
@@ -4186,7 +4351,8 @@ void i2c_write_byte(unsigned char v)
     i2c_lines(2);
 }
 
-/* I2C: set SCL (bit 0) and SDA (bit 1), written 3 times for timing */
+/* I2C: drive SCL (bit 0) and SDA (bit 1) to the levels in v. The port is written 3 times so the
+   lines settle. */
 void i2c_lines(unsigned char v)
 {
     int i = 0;
@@ -4194,7 +4360,8 @@ void i2c_lines(unsigned char v)
         outportb(aux_ctl_port, v);
 }
 
-/* OPTi 82C928 read: unlock password then read port */
+/* OPTi 82C928 (and OAK OTI601): unlock with the password 0xE2 at 0xF8F and read the
+   configuration register at `port`. Waits 30 ms first. */
 unsigned char opti928_read(unsigned port)
 {
     delay(30);
@@ -4202,14 +4369,18 @@ unsigned char opti928_read(unsigned port)
     return inportb(port);
 }
 
-/* OPTi 82C928 write: unlock password then write port */
+/* OPTi 82C928: unlock with the password 0xE2 at 0xF8F and write val to the configuration
+   register at `port`. */
 void opti928_write(unsigned port, unsigned char val)
 {
     outportb(0xf8f, 0xe2);
     outportb(port, val);
 }
 
-/* detect and configure OAK OTI601 / OPTi 82C928 */
+/* /NOPNP: detect and configure a non-PnP OAK OTI601 / OPTi 82C928 (configuration registers
+   0xF8D-0xF91). Applies the SB/WSS base, gameport, IRQ (5/7/11) and DMA (0/1/3) from BLASTER or
+   the defaults, initializes the WSS codec and its volumes, and selects SB or WSS mode (/XWSS).
+   Returns 1 if the chip was found, else 0. */
 int init_opti928(void)
 {
     unsigned char id_f8f = 0;
@@ -4302,7 +4473,8 @@ int init_opti928(void)
     return 0;
 }
 
-/* /NOPNP: if an OPTi 82C92x control chip answers at 0xf8c, enable it and note it in nopnp_mode */
+/* /NOPNP: if an OPTi 82C92x control chip answers at 0xF8C, enable its configuration through
+   register 7 and set nopnp_mode to 2. configure_pnp then moves opti_ctl_port by 0x80. */
 void probe_opti_ctl(void)
 {
     if (opti92x_read(0xf8c, 1) < 0xff && opti92x_read(0xf8c, 3) < 0xff) {
@@ -4311,7 +4483,10 @@ void probe_opti_ctl(void)
     }
 }
 
-/* detect and configure OPTi 83C930 */
+/* /NOPNP: detect and configure a non-PnP OPTi 82C930 (control registers at 0xE0E). Applies the
+   SB base, WSS base, gameport, IRQ, DMA, MPU port and MPU IRQ from BLASTER or the defaults, then
+   initializes the WSS codec, mixer and volumes.
+   Returns 1 if the chip was found, else 0. */
 int init_opti930(void)
 {
     unsigned char cfg1 = 0;
@@ -4402,7 +4577,11 @@ int init_opti930(void)
     return 0;
 }
 
-/* detect and configure ESS ES668 / ES1688 */
+/* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. Probes 0x220-0x260 for the ESS
+   identify command (0xE7 answering 0x68 and a version byte), then sets the IRQ and DMA through
+   extended registers 0xB1/0xB2. On the ES1688 it also sets the MPU-401 and gameport (register
+   0x40), then sets up the SB Pro mixer.
+   Returns 1 if a card was found, else 0. */
 int init_es688(void)
 {
     int port = 0x220;
