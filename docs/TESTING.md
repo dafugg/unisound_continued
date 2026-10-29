@@ -25,6 +25,17 @@ For the ES1887/ES1888 (bug 20) the same DOS disk, with an MS-DOS MBR, was booted
 Presario 224x (`presario2240`), whose on-board ES1888 the BIOS enables and puts on IRQ 5. 86Box
 has the ES1887/ES1888 only as on-board devices.
 
+For the Compaq on-board ES1688 (bugs 10 and 19 on a non-PnP laptop-style chip) the same disk was
+booted on the two Compaq Presario 7100 machines, `pl4600c` (486DX2-66, PhoenixBIOS 4.04
+PL4600C-II R0.09) and `pl5600d` (Pentium 75, PhoenixBIOS 4.04 PL5600D-I R1.40), both with 16 MB,
+on-board video and IDE. They are the only 86Box machines with `ess_es1688_compaq`. Their Setup
+has Integrated Peripherals > ESS1688, enabled at 220h, IRQ 5, DMA 1 by default; with it enabled
+the BIOS sends the ES1688 enable reads and resets the DSP, so the chip answers at 220h before DOS
+starts. With it disabled the chip stays waiting for the enable reads and every port reads FFh.
+A fresh CMOS has no hard disk set and the BIOS doesn't detect one at POST ("Operating system not
+found"): in Setup, Fixed Disk Setup > IDE Adapter 0 Master > Autotype, then Main Menu > "Save
+Values to CMOS" (F10 didn't keep the drive type).
+
 Some cases need more than one card or extra devices (a network card, the standalone PnP game
 port, a second sound card), set through extra `86box.cfg` keys; a few need a patched card
 EEPROM, such as the `cs4236b` image with the CS4237B ID (`CSCA737`, `CRD4237B-3`) used for bug
@@ -122,6 +133,9 @@ Each case ran with the original and the fixed build on both platforms.
 | 18 control | the same, extended registers read back in MODE 3 after `/XOFE /V40` and `/XOFI` | X4 = 84h/94h, XE/XF = 26h/09h | the same |
 | 19 ES1688 enable reads | ess_es1788 (86Box keeps it disabled until the enable reads), `/NOPNP` | "No card detected" | found, DMAPLAY plays on IRQ 7, DMA 3 |
 | 19 control | ess_es688, ess_es1688, sb16, sbprov2, `/NOPNP` | | same output as before |
+| 10, 19 Compaq ES1688 | Presario 7100 (`pl4600c`, `pl5600d`), BIOS ESS1688 enabled, `BLASTER=A220 I5 D1 T4` and `A220 I7 D3 T4`, `/NOPNP` first after a cold boot | ES1688 at 220h; B1h/B2h = 14h/18h or 18h/1Ch; DMAPLAY plays on IRQ 5 / DMA 1 or IRQ 7 / DMA 3 | the same |
+| 10 Compaq ES1688 | the same, plain `UNISOUND`, then `/NOPNP` twice | "No PnP card detected.", first `/NOPNP` works, second: "No card detected" | both `/NOPNP` work, DMAPLAY plays |
+| 19 Compaq ES1688 | `pl4600c` with ESS1688 disabled in Setup, `/NOPNP` | "No card detected" | ES1688 found, DMAPLAY plays on IRQ 7 / DMA 3 |
 | 20 ES1888 IRQ pin | Presario 224x, mixer 7Fh = 05h (BIOS), `BLASTER=A220 I7 D3 P330` | `IRQ:7` printed, the chip interrupts on 5 | "IRQ 7 ignored: the BIOS has set this chip to IRQ 5.", `IRQ:5` |
 | 20 control | the same with 7Fh cleared first | | `IRQ:7`, interrupts on 7 |
 | 21 AZT2320 DMA | azt2320, PnP 74h/75h | D3 H3: 01/03; D1 H5: 01/05; D0 H2: 00/02 | 03/01; 01/03; 00/03 |
