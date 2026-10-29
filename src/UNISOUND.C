@@ -486,6 +486,7 @@ int init_opti928(void);
 void probe_opti_ctl(void);
 int init_opti930(void);
 int init_es688(void);
+void sb_dsp_flush(int port);
 
 /* Entry point. Uppercases every argument and parses the options into the global settings:
    /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
@@ -4598,6 +4599,16 @@ int init_opti930(void)
     return 0;
 }
 
+/* Discard bytes waiting in the DSP read buffer at port (data-available is bit 7 of port + 0x0E),
+   such as the 0xAA a DSP reset leaves or the reply to an earlier command, so the next command
+   reads its own reply. Reads at most 16 bytes, so a port with no card answering 0xFF is harmless. */
+void sb_dsp_flush(int port)
+{
+    int i;
+    for (i = 0; i < 16 && (inportb(port + 0xe) & 0x80); i++)
+        inportb(port + 0xa);
+}
+
 /* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. Probes 0x220-0x260 for the ESS
    identify command (0xE7 answering 0x68 and a version byte), then sets the IRQ and DMA through
    extended registers 0xB1/0xB2. On the ES1688 it also sets the MPU-401 and gameport (register
@@ -4611,6 +4622,7 @@ int init_es688(void)
     int mpu = 0;
     unsigned char ver = 0;
     for (port = 0x220; port <= 0x260; port += 0x10) {
+        sb_dsp_flush(port);
         outportb(port + 0xc, 0xe7);
         delay(10);
         if (inportb(port + 0xa) == 0x68) {
@@ -4624,6 +4636,7 @@ int init_es688(void)
         delay(20);
         outportb(port + 6, 0);
         delay(80);
+        sb_dsp_flush(port);
         outportb(port + 0xc, 0xc6);
         outportb(port + 4, 0x40);
         if (inportb(port + 5) != 0x18 || inportb(port + 5) < 0x68) {
