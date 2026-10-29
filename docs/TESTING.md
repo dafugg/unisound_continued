@@ -167,9 +167,9 @@ in the VM; TRACEPNP with TASM and `TLINK /t`):
 - **ESSINIT** sets up an ES688/ES1688-family chip as ESSCFG does and checks the IRQ with an F2h
   interrupt; `/OLD` writes B1h/B2h the v0.82a way (see below). Build it with
   `tcc -mt -lt -f- ESSINIT.C`.
-- Two prototypes for the suggested features, not used by any fix: **ESSBYP** finds and sets up
-  an ES1868/ES1869 through the ESS bypass key alone, and **CSLAM** configures a CS423x whose PnP
-  key is disabled through the Crystal key and SLAM writes.
+- The prototypes of `/XESSB` and `/XSLAM`: **ESSBYP** finds and sets up an ES1868/ES1869
+  through the ESS bypass key alone, and **CSLAM** configures a CS423x whose PnP key is disabled
+  through the Crystal key and SLAM writes.
 
 Not reproducible in 86Box:
 
@@ -249,6 +249,40 @@ With the NE2000 at F80h it prints "UNISOUND /NOPNP would take this for an OPTi 8
 skip the ESS detection" and "(the fixed build wouldn't: F8Dh reads the same without the
 password)". Both then set up the chip (RESULT: OK), also with BLASTER unset (A220 I5 D1).
 
+## `/XSLAM`, `/XESSB`, the BLASTER suggestion and `/LOG`
+
+**`/XSLAM`** was tested on `cs4236b` with the patched EEPROM that sets PnP Key Disable (RAM 4002h
+bit 5), on the nopnp platform, with `BLASTER=A220 I5 D1 T4`. Plain `UNISOUND` prints "No PnP
+card detected." `UNISOUND /XSLAM` prints `PnP card found: [SLAM] CS423x` and
+`ADD:220 WSS:534 OPL:388 IRQ:5 DMA:1/1 MPU:330/I9 CTR:120 JOY:200`; WSSPLAY then plays through the
+codec at 534h (I12 8Ah) and DMAPLAY through the DSP at 220h, both on IRQ 5 DMA 1, and the control
+port answers at 120h. `/XSLAM /D` deactivates every device (220h reads FFh again) and `/XSLAM /R`
+is refused. On `sb16` with no Crystal chip it prints "No Crystal codec answered after the SLAM
+setup." with ERRORLEVEL 1. On the Gateway E-1000 (`tomahawk`, on-board CS4236B with only the
+serial identifier as resource data) plain `UNISOUND` now configures the chip with the fixed layout
+and DMAPLAY plays at 220h, but 86Box decodes logical device 0's codec base with 10 bits when there
+are no I/O descriptors (`/R` reads `WSS:134`), so the codec at 534h doesn't answer there.
+
+**`/XESSB`** was tested on `ess_es1868` and `ess_es1869` on both platforms: with no BLASTER
+(control port 800h), with `A240 I7 D3 R660`, and again with `A220 I5 D1 R800`. Each time the chip
+answered E7h with 68h and mixer 40h with `18 68`/`18 69` and the control port, was configured, and
+DMAPLAY played on the BLASTER IRQ and DMA; the control port still answered afterwards. `/R` reads
+`MPU:330/I15`, which is 86Box's answer for card register 28h through the control port. On `sb16`
+it prints "No ES1868/ES1869 answered the ESS bypass key at 800." with ERRORLEVEL 1. A first
+version also wrote and activated logical device 0 (the control port); in 86Box that moved the
+port away, so the `/LOG` readback read FFh, and `73ee3f4` leaves it as the key set it.
+
+**The BLASTER suggestion** was checked on `sb16pnp+3c509b`, `sb16`, `ess_es1688` and
+`awe32pnp+sb16-240+3c509b` on both platforms, with no BLASTER, a matching one, `A220 I7 D3 P300
+E620` (the PnP SB16 left at I5 D1 by `/NOPNP`: warning, P and E kept), `A240` and `A260` (no DSP
+there: warning; with the second SB16 at 240h: nothing), and H5 on the ES1688 (warning, H dropped).
+
+**`/LOG`**: samples for `sb16_pnp`, `sbawe32_pnp`, `cs4236b`, `ymf719`, `guspnp`, `ess_es1688`,
+`ess_es1869` and `adlib` on both platforms, each with `/LOG`, `/NOPNP /LOG` and `/R /LOG`, and for
+`/XSLAM` and `/XESSB`. The first build with the longer `/LOG` printed nothing at all: the tiny-model
+startup adds `_stklen` (the library's 4K) to the end of the BSS and stops when that passes 64K.
+`_stklen` is now 900h, which leaves 280h of room; the stack in use is about 1K.
+
 ## Regression check
 
 The fixed build ran the full baseline matrix again. 171 of the 175 runs gave identical output.
@@ -269,3 +303,8 @@ runs gave identical output (azt2320 on pnp doesn't boot with either).
 
 With the OPTi probe fixes (`6e1d892`), all 175 runs gave the same output as `93f2271`
 (azt2320 on pnp doesn't boot with either).
+
+The build with `/XSLAM`, `/XESSB`, the no-card lines and the longer `/LOG` (`ac324d4`) ran the
+matrix against `4369834`: the only differences were the two new lines after "No PnP card
+detected." or "No card detected" (495 outputs on the runs where no card is found); everything
+else was byte-identical (azt2320 on pnp doesn't boot with either).
