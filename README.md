@@ -25,7 +25,9 @@ the main routine's locals have names. Globals that hold settings say in their co
 BLASTER letter or command-line option sets them. Some names are best guesses from the code and
 the UNISOUND manual (for example `CARD_RJA0`, `CARD_ADS7141`). Locals are named too, apart from
 loop counters and other conventional short names. On the `0.82a` branch, any change must keep
-`tools/build.sh` reporting IDENTICAL; a build takes about 6 seconds.
+`tools/build.sh` reporting IDENTICAL; a build takes about 6 seconds. Beyond the byte-identical
+build, parts of the decompilation have been checked by hand against the original binary in
+Ghidra 12.1.4.
 
 ## Fixes & Changes after 0.82a
 
