@@ -22,6 +22,49 @@ has that hash. All of this applies only to version 0.82a; other releases will di
 > JazeFox can no longer be reached and the fixes are useful. If JazeFox asks, the
 > reconstruction and the builds will be taken down.
 
+## Supported sound cards
+
+One small .COM file sets up an ISA sound card in DOS: no Creative CTCM, Intel ICU or vendor
+drivers needed.
+
+### PnP cards
+
+- **Creative:** every Sound Blaster 16 and ViBRA16, AWE32, AWE64, SB32 PnP and the AWE upgrade
+  card (CT1920). The EMU8000 is set up so FM and wavetable work without AWEUTIL, but no
+  SoundFonts are loaded.
+- **ESS AudioDrive:** ES1868 and ES1869, including on-board chips that the PnP scan misses
+  (`/XESSB`), and ES968 with an ES688 or ES1688. On the Maxi Sound 64 (ES1868 + SAM9407 versions
+  only), the SAM9407 firmware is uploaded, but the firmware itself isn't included.
+- **Yamaha:** YMF715, YMF718 and YMF719 (OPL3-SAx, OPL3-SA3, AudioTrix XG-3D). ISA PnP models
+  only: Yamaha chips built into laptops are usually configured through the BIOS and aren't
+  supported.
+- **Crystal:** CS4232, CS4235, CS4236/B, CS4237/B and CX4236/B, CX4237/B, including the Orpheus
+  and Turtle Beach Malibu, and chips that the BIOS hides from PnP (`/XSLAM`).
+- **Avance Logic:** ALS007, ALS100, ALS100+, ALS120 and ALS200, and DT-0197H/DT-0196H.
+- **Aztech:** AZT2320.
+- **Rockwell:** RWA01x (WaveArtist), including Zoltrix cards with the RWA011.
+- **OPTi:** 82C924 and 82C925 in PnP mode, 82C931 and 82C933.
+- **C-Media:** CMI8330 and CMI8329A.
+- **Analog Devices:** AD1816/A, AD1815, AD18max10 and AD1812. Their WSS mode doesn't work with
+  DOS software (a limitation of the chips). A few Terratec AD1816 cards need `/FS` to be detected.
+- **Gravis Ultrasound PnP (AMD Interwave):** classic GUS compatibility only, with no SB emulation
+  or MPU-401. Also the Compaq Interwave and STB Ultrasound Pro 32.
+- **Roland Super MPU II:** MIDI only.
+- **Ensoniq Soundscape VIVO:** limited. Only WSS audio, line-in, CD-in and the joystick port
+  work; everything else needs Ensoniq's drivers.
+- **Turtle Beach Multisound Pinnacle:** limited. Only the joystick port and MPU-401 (the
+  Kurzweil wavetable) work. Some board revisions need `/FS`, and some may not work at all.
+
+### Non-PnP cards (`/NOPNP`, experimental; install only one card)
+
+- **Creative:** SB16 and AWE32 (software-configurable models), with the same EMU8000 setup as
+  the PnP cards.
+- **ESS:** ES688, ES1688, ES1788 and ES1887/ES1888.
+- **OPTi:** 82C924 and 82C925 in non-PnP mode, and 82C930. On the 82C930 the CD interface isn't
+  supported.
+- **OAK OTI601 "Mozart" and OPTi 82C928 (MAD16):** poor compatibility with games. The card may
+  need setting up again after some programs, and SB-mode audio is mono only.
+
 ## Decompilation status
 
 The source compiles without warnings. On the `0.82a` branch the output is byte-identical; on
