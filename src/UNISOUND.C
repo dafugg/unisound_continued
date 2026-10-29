@@ -1599,6 +1599,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         } else {
             type = 0;
             printf("No supported PnP card detected.");
+            if (opt_log != 0)
+                puts("");    /* end the line before the fallback's LOG lines */
             if (nlisted < 1)
                 ret = !init_nonpnp_sb16();
         }
@@ -1609,6 +1611,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             ret = 1;
         } else if (list != 1) {
             printf(nunknown > 0 ? "No supported PnP card detected." : "No PnP card detected.");
+            if (opt_log != 0)
+                puts("");
             ret = !init_nonpnp_sb16();
         }
     }
