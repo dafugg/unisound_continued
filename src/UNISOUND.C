@@ -487,13 +487,14 @@ void probe_opti_ctl(void);
 int init_opti930(void);
 int init_es688(void);
 void sb_dsp_flush(int port);
+int opt_2digits(char *s);
 
 /* Entry point. Uppercases every argument and parses the options into the global settings:
    /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
    scan), /R (read only), /D (disable), the /Xxxx extended options and /NOPNP. /H or /? prints the
-   help and exits. Then calls configure_pnp and returns its result as the exit code
-   (0 = success, 1 = no card configured).
-   Note: the loop runs to i <= argc, one past the last argument, so argv[argc] (NULL) is read too. */
+   help and exits. Options start with / or - and must match a whole option name; anything else
+   prints "Unknown option" and exits with 2. Then calls configure_pnp and returns its result as
+   the exit code (0 = success, 1 = no card configured). */
 int main(int argc, char *argv[])
 {
     int full_scan = 0;
@@ -505,136 +506,135 @@ int main(int argc, char *argv[])
 
     if (argc > 1) {
         for (i = 1; i < argc; i++) {
+            char *opt = argv[i] + 1;    /* option name, without the / or - */
+            int n = 0;
             for (j = 1; j <= strlen(argv[i]); j++)
                 argv[i][j] = toupper(argv[i][j]);
-            if (argv[i][0] == '/' || argv[i][0] == '-') {
-                if (argv[i][1] == 'C') {
-                    if (argv[i][2] == 'L') {
-                        card = 10;
-                        list = 1;
-                    } else if (list < 1) {
-                        if (argv[i][2] == 'S')
-                            opt_cs = 1;
-                        if (isdigit(argv[i][2]))
-                            card = argv[i][2] - '0';
-                    }
+            if (argv[i][0] != '/' && argv[i][0] != '-')
+                opt = "";
+            if (opt[0] == 'C' && opt[1] >= '1' && opt[1] <= '9' && opt[2] == 0) {
+                if (list < 1)
+                    card = opt[1] - '0';
+            } else if (strcmp(opt, "CL") == 0) {
+                card = 10;
+                list = 1;
+            } else if (strcmp(opt, "CS") == 0) {
+                if (list < 1)
+                    opt_cs = 1;
+            } else if (opt[0] == 'V' && (n = opt_2digits(opt + 1)) >= 0) {
+                master_vol = n;
+                master_reg = master_vol * 15 / 95 * 17;
+            } else if (opt[0] == 'V' && opt[1] != 0 && strchr("FWLCMPTBUR", opt[1]) &&
+                       (n = opt_2digits(opt + 2)) >= 0) {
+                switch (opt[1]) {
+                case 'F':
+                    fm_vol = n;
+                    fm_reg = fm_vol * 15 / 95 * 17;
+                    break;
+                case 'W':
+                    wave_vol = n;
+                    wave_reg = wave_vol * 15 / 95 * 17;
+                    break;
+                case 'L':
+                    line_vol = n;
+                    line_reg = line_vol * 15 / 95 * 17;
+                    break;
+                case 'C':
+                    cd_vol = n;
+                    cd_reg = cd_vol * 15 / 95 * 17;
+                    break;
+                case 'M':
+                    mic_vol = n;
+                    mic_reg = mic_vol * 15 / 95 * 17;
+                    break;
+                case 'P':
+                    pcspk_vol = n;
+                    pcspk_reg = pcspk_vol * 7 / 95 << 5;
+                    break;
+                case 'T':
+                    treble_lvl = n;
+                    treble_reg = treble_lvl * 15 / 93 << 4;
+                    break;
+                case 'B':
+                    bass_lvl = n;
+                    bass_reg = bass_lvl * 15 / 93 << 4;
+                    break;
+                case 'U':
+                    awe_chorus = n;
+                    break;
+                case 'R':
+                    awe_reverb = n;
+                    break;
                 }
-                if (argv[i][1] == 'V') {
-                    if (isdigit(argv[i][2]) && isdigit(argv[i][3])) {
-                        master_vol = argv[i][3] + (argv[i][2] - '0') * 10 - '0';
-                        master_reg = master_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'F' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        fm_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        fm_reg = fm_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'W' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        wave_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        wave_reg = wave_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'L' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        line_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        line_reg = line_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'C' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        cd_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        cd_reg = cd_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'M' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        mic_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        mic_reg = mic_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'P' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        pcspk_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        pcspk_reg = pcspk_vol * 7 / 95 << 5;
-                    }
-                    if (argv[i][2] == 'T' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        treble_lvl = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        treble_reg = treble_lvl * 15 / 93 << 4;
-                    }
-                    if (argv[i][2] == 'B' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        bass_lvl = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        bass_reg = bass_lvl * 15 / 93 << 4;
-                    }
-                    if (argv[i][2] == 'U' && isdigit(argv[i][3]) && isdigit(argv[i][4]))
-                        awe_chorus = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                    if (argv[i][2] == 'R' && isdigit(argv[i][3]) && isdigit(argv[i][4]))
-                        awe_reverb = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+            } else if (strcmp(opt, "F") == 0)
+                full_scan = 1;
+            else if (strcmp(opt, "FS") == 0) {
+                full_scan = 1;
+                scan_port = 0x20b;
+                isolate_limit = 0x50;
+            } else if (strcmp(opt, "R") == 0)
+                opt_read = 1;
+            else if (strcmp(opt, "D") == 0)
+                opt_disable = 1;
+            else if (strcmp(opt, "XOFI") == 0)
+                opt_xof = 1;
+            else if (strcmp(opt, "XOFE") == 0)
+                opt_xof = 0;
+            else if (strcmp(opt, "XOS1") == 0)
+                opt_xos = 1;
+            else if (strcmp(opt, "XOS0") == 0)
+                opt_xos = 0;
+            else if (strcmp(opt, "XOM1") == 0)
+                opt_xom = 1;
+            else if (strcmp(opt, "XOM0") == 0)
+                opt_xom = 0;
+            else if (strncmp(opt, "XGC", 3) == 0 && opt[3] >= '2' && opt[3] <= '5' && opt[4] == 0) {
+                switch (opt[3]) {
+                case '2': opt_xgc = 0x170; break;
+                case '3': opt_xgc = 0x1e8; break;
+                case '4': opt_xgc = 0x168; break;
+                case '5': opt_xgc = 0; break;
                 }
-                if (argv[i][1] == 'F') {
-                    full_scan = 1;
-                    if (argv[i][2] == 'S') {
-                        scan_port = 0x20b;
-                        isolate_limit = 0x50;
-                    }
-                }
-                if (argv[i][1] == 'R')
-                    opt_read = 1;
-                if (argv[i][1] == 'D')
-                    opt_disable = 1;
-                if (argv[i][1] == 'X') {
-                    if (argv[i][2] == 'O') {
-                        if (argv[i][3] == 'F') {
-                            if (argv[i][4] == 'I')
-                                opt_xof = 1;
-                            else if (argv[i][4] == 'E')
-                                opt_xof = 0;
-                        }
-                        if (argv[i][3] == 'S' && argv[i][4] == '1')
-                            opt_xos = 1;
-                        if (argv[i][3] == 'M') {
-                            if (argv[i][4] == '1')
-                                opt_xom = 1;
-                            else if (argv[i][4] == '0')
-                                opt_xom = 0;
-                        }
-                    }
-                    if (argv[i][2] == 'G') {
-                        if (argv[i][3] == 'C') {
-                            int gc_sel = argv[i][4] - '0';
-                            if (gc_sel > 1 && gc_sel < 6) {
-                                switch (gc_sel) {
-                                case 2: opt_xgc = 0x170; break;
-                                case 3: opt_xgc = 0x1e8; break;
-                                case 4: opt_xgc = 0x168; break;
-                                case 5: opt_xgc = 0; break;
-                                }
-                            }
-                        }
-                        if (argv[i][3] == 'L')
-                            opt_xgl = 1;
-                        if (argv[i][3] == 'J')
-                            opt_xgj = 1;
-                    }
-                    if (argv[i][2] == 'W' && argv[i][3] == 'S')
-                        opt_xwss = 1;
-                    if (argv[i][2] == 'E' && argv[i][3] == 'A')
-                        opt_xea = 1;
-                    if (argv[i][2] == 'X') {
-                        if (argv[i][3] == 'F')
-                            opt_xxf = 1;
-                        if (argv[i][3] == 'G' && isdigit(argv[i][4]))
-                            opt_xxg = argv[i][4] - '0';
-                    }
-                    if (argv[i][2] == 'N' && argv[i][3] == 'E')
-                        opt_xnet = 1;
-                    if (argv[i][2] == '3' && isdigit(argv[i][4]))
-                        opt_x3d = argv[i][4] - '0';
-                    if (argv[i][2] == 'R' && argv[i][3] == 'U')
-                        opt_xof = 8;
-                }
-                if (argv[i][1] == 'N' && argv[i][2] == 'O') {
-                    nopnp_mode = 1;
-                    probe_opti_ctl();
-                }
-                if (argv[i][1] == 'H' || argv[i][1] == '?') {
-                    print_help();
-                    return 0;
-                }
+            } else if (strcmp(opt, "XGL") == 0)
+                opt_xgl = 1;
+            else if (strcmp(opt, "XGJ") == 0)
+                opt_xgj = 1;
+            else if (strcmp(opt, "XWSS") == 0)
+                opt_xwss = 1;
+            else if (strcmp(opt, "XEA") == 0)
+                opt_xea = 1;
+            else if (strcmp(opt, "XXF") == 0)
+                opt_xxf = 1;
+            else if (strncmp(opt, "XXG", 3) == 0 && isdigit(opt[3]) && opt[4] == 0)
+                opt_xxg = opt[3] - '0';
+            else if (strcmp(opt, "XNET") == 0)
+                opt_xnet = 1;
+            else if (strncmp(opt, "X3D", 3) == 0 && isdigit(opt[3]) && opt[4] == 0)
+                opt_x3d = opt[3] - '0';
+            else if (strcmp(opt, "XRU") == 0)
+                opt_xof = 8;
+            else if (strcmp(opt, "NOPNP") == 0) {
+                nopnp_mode = 1;
+                probe_opti_ctl();
+            } else if (strcmp(opt, "H") == 0 || strcmp(opt, "?") == 0) {
+                print_help();
+                return 0;
+            } else {
+                print_banner();
+                printf("Unknown option: %s\nUse /H for the list of options.\n", argv[i]);
+                return 2;
             }
         }
     }
     return configure_pnp(card, list, full_scan, scan_port);
+}
+
+/* Return the value of a two-digit option value s ("00" to "99"), or -1 if s is anything else. */
+int opt_2digits(char *s)
+{
+    if (isdigit(s[0]) && isdigit(s[1]) && s[2] == 0)
+        return (s[0] - '0') * 10 + s[1] - '0';
+    return -1;
 }
 
 /* Print the program name and version line, then a 73-character rule of box-drawing characters
