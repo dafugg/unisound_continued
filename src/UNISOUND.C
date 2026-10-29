@@ -401,6 +401,7 @@ int pnp_isolate(unsigned port, unsigned char *buf);
 char *pnp_vendor_str(unsigned long *id);
 const struct card_id *card_id_lookup(const char *id);
 int parse_ultrasnd(void);
+int parse_ultra16(int *port, int *dma, int *irq, int *rdma);
 int parse_blaster(void);
 void print_blaster_hint(int port, int irq, int dma, int hdma);
 int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
@@ -2672,6 +2673,43 @@ int parse_ultrasnd(void)
         return 0;
     }
     return 1;
+}
+
+/* Read the ULTRA16 environment variable ("port,dma,irq,record dma"), which DOS programs such as
+   Mpxplay read to find a WSS codec, into port (530, E80, F40, 604), dma and rdma (0, 1, 3) and
+   irq (7, 9, 10, 11), the values a WSS configuration register can take. Missing or out-of-range
+   fields leave the caller's values. Returns 1 if the variable exists and its port, DMA and IRQ
+   are all valid, else 0. */
+int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
+{
+    char *env = getenv("ULTRA16");
+    char *dup;
+    char *tok;
+    int field = 0;
+    int ok = 0;
+    int v;
+    if (env == 0) {
+        return 0;
+    }
+    dup = strdup(env);
+    for (tok = strtok(dup, ","); tok != 0 && field < 4; tok = strtok(0, ","), field++) {
+        v = (int)strtol(tok, 0, field == 0 ? 16 : 10);
+        if (field == 0 && (v == 0x530 || v == 0xe80 || v == 0xf40 || v == 0x604)) {
+            *port = v;
+            ok++;
+        }
+        if ((field == 1 || field == 3) && (v == 0 || v == 1 || v == 3)) {
+            *(field == 1 ? dma : rdma) = v;
+            ok += field == 1;
+        }
+        if (field == 2 && (v == 7 || v == 9 || v == 10 || v == 11)) {
+            *irq = v;
+            ok++;
+        }
+    }
+    free(dup);
+    dlog("ULTRA16=%s: %X,%d,%d,%d", env, *port, *dma, *irq, *rdma);
+    return ok == 3;
 }
 
 /* Read the BLASTER environment variable (space-separated letter/value fields) into the port, IRQ
@@ -5413,6 +5451,10 @@ int init_opti928(void)
     unsigned char gate;
     unsigned char mc2 = 3;
     unsigned char mc5 = 0; /* 82C929: MC5 bits 7, 2 and 0, which must be 1 */
+    int wss_irq = 7;       /* the WSS codec's IRQ, DMA and record DMA (ULTRA16; -1 = none) */
+    int wss_pdma = 0;
+    int wss_rdma = -1;
+    int u16;
     int c929 = -1;
     int found = 0;
     while (!found && c929 < 1) {
@@ -5427,6 +5469,10 @@ int init_opti928(void)
     if (found) {
         puts(c929 ? "Card detected: OPTi 82C929" : "Card detected: OAK OTI601 / OPTi 82C928");
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
+        /* The WSS base, IRQ and DMA come from ULTRA16, not from BLASTER (W, K), which describes
+           the SB part. Without it, OPTi's SOUND16.CFG defaults: 530, IRQ 7, DMA 0. */
+        wss_port = 0x530;
+        u16 = parse_ultra16(&wss_port, &wss_pdma, &wss_irq, &wss_rdma);
         if (c929) {
             /* MC1 bits 3:1 are the CD-ROM interface, set by jumpers, and MC2 bit 5 tells an OPL4
                from an OPL3: keep both. The SB base is MC3 bit 2, apart from the WSS base. */
@@ -5438,6 +5484,8 @@ int init_opti928(void)
             } else {
                 sb_port = 0x220;
             }
+        }
+        if (c929 || opt_xwss > 0) {
             switch (wss_port) {
                 case 0xe80:
                     cfg1 |= 0x10;
@@ -5480,6 +5528,10 @@ int init_opti928(void)
                 break;
             default:
                 sb_dma = 1;
+        }
+        if (opt_xwss > 0) {
+            /* WSS mode: no SB IRQ (MC3 bits 7:6 = 11), as OPTi's SNDINIT sets it */
+            cfg2 |= 0xc0;
         }
         opti928_write(0xf8d, (cfg1 & 0x0e) | 0x40);
         delay(120);
@@ -5561,12 +5613,39 @@ int init_opti928(void)
            (codec_st & 0xfd) == 2, which is never true, so it always wrote 20h. Untested on real
            hardware. */
         opti928_write(0xf91, ((codec_st & 0x80) ? 0x2a : 0x20) | mc5);
-        printf("Settings: ADD:%X IRQ:%d DMA:%d JOY:%X", sb_port, sb_irq, sb_dma, joy_port);
+        if (opt_xwss > 0) {
+            /* WSS configuration register (write only, at the WSS base; 82C929 data sheet, and
+               OSS mad16 for the 82C928): IRQ in bits 5:3 (1-4 = 7, 9, 10, 11), DMA in bits 2:0:
+               1-3 playback on 0, 1, 3; with a record DMA, 5 = 0 and 1, 6 = 1 and 0, 7 = 3 and 0
+               (playback and record). 0.82a never wrote it, so the codec had no IRQ in WSS mode. */
+            unsigned char dbits = wss_pdma == 3 ? 3 : wss_pdma + 1;
+            if (wss_pdma == 0 && wss_rdma == 1) {
+                dbits = 5;
+            } else if (wss_pdma != 0 && wss_rdma == 0) {
+                dbits = wss_pdma == 1 ? 6 : 7;
+            } else {
+                wss_rdma = -1;
+            }
+            outportb(wss_port, (wss_irq == 7 ? 1 : wss_irq - 7) << 3 | dbits);
+            printf("Settings: WSS:%X IRQ:%d DMA:%d", wss_port, wss_irq, wss_pdma);
+            if (wss_rdma >= 0) {
+                printf("/%d", wss_rdma);
+            }
+            printf(" JOY:%X", joy_port);
+        } else {
+            printf("Settings: ADD:%X IRQ:%d DMA:%d JOY:%X", sb_port, sb_irq, sb_dma, joy_port);
+        }
         if (c929 && mpu_port != 0) {
             printf(" MPU:%X/I%d", mpu_port, mpu_irq);
         }
         if (opt_xwss > 0) {
-            printf(" [WSS mode: %X]", wss_port);
+            printf(" [WSS mode]\n");
+            if (!u16) {
+                /* programs find a WSS codec through ULTRA16, which UNISOUND can't set for them */
+                printf("ULTRA16 is missing or not valid, so programs can't find the WSS codec.\n"
+                       "Add to AUTOEXEC.BAT: SET ULTRA16=%X,%d,%d,%d\n",
+                       wss_port, wss_pdma, wss_irq, wss_rdma >= 0 ? wss_rdma : wss_pdma);
+            }
         } else {
             printf(" [SB Mode]");
             delay(20);
