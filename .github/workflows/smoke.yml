@@ -18,7 +18,7 @@ jobs:
     name: MS-DOS build
     uses: ./.github/workflows/build.yml
     with:
-      format: false
+      skip_format: true
 
   smoke:
     name: 86Box smoke test

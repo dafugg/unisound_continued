@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
-      format:
-        description: Also run the clang-format check
+      skip_format:
+        description: Skip the clang-format check
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
@@ -17,8 +17,9 @@ permissions:
 jobs:
   format:
     name: clang-format
-    # inputs.format is unset (null) on push and pull_request, so only a caller can turn it off.
-    if: inputs.format != false
+    # Inputs are unset (null) on push and pull_request, and expressions treat null like false,
+    # so the input has to be "skip", which only a caller sets.
+    if: ${{ !inputs.skip_format }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
