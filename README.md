@@ -106,6 +106,7 @@ Tools:
 - `funcmap.py` and `libsyms.py`: regenerate `data/*.json`.
 - `libmatch.py`, `disasm.py`, `cmpcom.py`, `omf.py`: helpers.
 - `cardtest.py`, `cardreport.py` and `dos/PIO.C`: the 86Box sound card tests described in `docs/TESTING.md`.
+- `dos/`: the DOS test programs used for the fixes (PNPDUMP, ESSREG, DMAPLAY, WSSPLAY, OPLDET, SBST, TRACEPNP) and two feature prototypes (ESSBYP, CSLAM); `pnpdecode.py` decodes TRACEPNP logs. See `docs/TESTING.md`.
 
 The analysis tools need Python with capstone. They also need the original v0.82a UNISOUND.COM,
 which this repo does not include: put it in `orig/` or set `UNISOUND_COM`.

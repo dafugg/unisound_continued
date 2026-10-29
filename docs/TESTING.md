@@ -145,18 +145,25 @@ Each case ran with the original and the fixed build on both platforms.
 
 The patched ROMs lived in a separate copy of the ROM set used only for those runs.
 
-Test tools used from bug 11 on, besides PIO and PNPDUMP:
+Test tools used from bug 11 on, besides PIO, all in `tools/dos/` (build each with `tcc NAME.C`
+in the VM; TRACEPNP with TASM and `TLINK /t`):
 
+- **PNPDUMP** sends the initiation key and dumps the activate, I/O, IRQ and DMA registers of the
+  given logical devices of one card. **ESSREG** reads the ESS extended registers B1h/B2h (DSP
+  command C0h) and the SB Pro/ESS mixer registers without resetting the DSP.
 - **TRACEPNP** runs UNISOUND.COM with the trap flag set and logs every `OUT DX,AL` to the PnP
   ports (279h, A79h) and to the ESS configuration ports (660h/661h, 800h/801h). Because DOS can
   return from INT 21h with `RETF 2` and lose the trap flag, it puts an `INT 3` after each `INT`
-  instruction to resume tracing. A short script turns the log into the PnP register writes.
+  instruction to resume tracing. `tools/pnpdecode.py` turns the log into the PnP register writes.
   86Box's ESS cards have no handler for register 28h, so this is how bug 15 was checked.
 - **DMAPLAY** and **WSSPLAY** play one DMA block through the SB DSP or the WSS codec, with
   handlers on several IRQs and several DMA channels programmed, and report which ones the card
   used. **OPLDET** runs the AdLib timer test at a list of bases. **SBST** plays SB Pro stereo or
   mono and the captured audio is split into L and R.
-- Tyrian 2.1 (freeware) for the Crystal WSS case.
+- Tyrian 2.1 (freeware) for the Crystal WSS case. It isn't in the repo.
+- Two prototypes for the suggested features, not used by any fix: **ESSBYP** finds and sets up
+  an ES1868/ES1869 through the ESS bypass key alone, and **CSLAM** configures a CS423x whose PnP
+  key is disabled through the Crystal key and SLAM writes.
 
 Not reproducible in 86Box:
 
