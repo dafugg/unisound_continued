@@ -18,6 +18,7 @@ on a Compaq LTE 5000 with its on-board ES1688; the README table marks them.
 | ESS init build | branch `ess-init`: `aee160e` (B1h/B2h through 2xCh), `05aa0de` (`/LOG`), `8afa28d` (ESSINIT), `d2f397b` (OPTi 82C924/925 probe), `4197954` (82C928 probe), `f91b9bc` (ESSINIT OPTi probe) |
 | Card ID build | branch `id-table`: `481f5c0` (CS4235), `b4c0948` (card ID table), `2046077` (AZT1021), `92b2a8c` (AZT1022), `d5f8c0a` (RTL3000), `01b22e6` (DXP3201, CDC1111); branch `ess1878-1879`: `5318fc2` (ESS1878, ESS1879) |
 | 82C929 build | branch `opti929`: `ab0d87b` (OPTi 82C929 under `/NOPNP`), `b33b131` (82C928/82C929 WSS mode, `ULTRA16`) |
+| 82C930 build | branch `opti930`: `8b5e5f0` (82C930 WSS mode, `ULTRA16`, F40h, CD-ROM type) |
 
 Platforms, all a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -424,6 +425,39 @@ CS4232 at DMA 1, IRQ 7 is `530,1,7,0`), and uses SNDINIT's WSS defaults without 
 
 WSSPLAY only plays, so the record DMA was not tested.
 
+## The OPTi 82C930: WSS mode and `ULTRA16`
+
+The 82C930 data sheet (912-3000-022, pages 12-14) has separate SB and WSS enable bits in MC6, and
+MC3 holds one IRQ and DMA for SB/WSS. OPTi's 82C930 Reference Guide (915-6000-000) describes SB
+Pro and WSS as modes, SB in DOS, WSS under Windows, chosen in SNDINIT. OPTi's SNDINIT 2.50 from
+the 930 package (`930D_W`) ran as `SNDINIT /b` on 86Box's `opti_82c930` (nopnp) with SOUND16.CFG's
+settings, `MODE=0` and then `MODE=1`. 86Box returns every MC register by index, so MC6 too:
+
+| | MC1 | MC2 | MC3 | MC4 | MC5 | MC6 | DMAPLAY 220 | WSSPLAY 530 |
+|---|---|---|---|---|---|---|---|---|
+| power-on | 00 | 00 | 2A | 10 | 00 | 81 | | |
+| SNDINIT, SB mode | 06 | 00 | 2A | 52 | 3D | 83 | IRQ 5, DMA 1 | no IRQ |
+| SNDINIT, WSS mode | 06 | 00 | 2A | 52 | 3D | 83 | IRQ 5, DMA 1 | IRQ 7, DMA 0 |
+
+Both modes leave the same MC values, SB and WSS enabled; WSS mode also writes the WSS
+configuration register at the WSS base with its IRQ2 and DRQ2 (7, 0). MC1 06h is the CD-ROM type
+from CDROM.CFG. UNISOUND's 82C930 code writes these MC values too, except that it cleared MC1's
+CD-ROM bits.
+
+86Box answers FFh at register 12h, which UNISOUND's 82C930 detection reads, so `/NOPNP` doesn't
+find `opti_82c930` (see the emulation notes). For these runs only, `main` and the fix were built
+with that check removed. On pnp2 and nopnp (the same on both):
+
+| Command, environment | `main` | fix |
+|---|---|---|
+| `/NOPNP` | `ADD:220 IRQ:5 DMA:1 WSS:530`; MC1-MC6 00 00 2A 52 3D 83; DMAPLAY IRQ 5, DMA 1 | the same |
+| `/NOPNP /XWSS` | the same; WSSPLAY: no IRQ | `WSS:530/I7/D0` and "Add to AUTOEXEC.BAT: SET ULTRA16=530,0,7,0"; WSSPLAY IRQ 7, DMA 0; DMAPLAY still IRQ 5, DMA 1 |
+| `/NOPNP /XWSS`, `ULTRA16=F40,1,5,1` | WSS stays at 530h; WSSPLAY at F40h finds nothing | `WSS:F40/I5/D1`, MC1 20h; WSSPLAY at F40h: IRQ 5, DMA 1 |
+| `SNDINIT /b`, then `/NOPNP` | MC1 06h becomes 00h | MC1 stays 06h |
+
+The 82C929's WSS has no IRQ 5: `acermagic_s20` with `ULTRA16=530,1,5,1` gives `WSS:530 IRQ:7
+DMA:1` and the AUTOEXEC.BAT line, and WSSPLAY plays on IRQ 7, DMA 1.
+
 ## Regression check
 
 The fixed build ran the full baseline matrix again. 171 of the 175 runs gave identical output.
@@ -460,3 +494,5 @@ the only differences were `/NOPNP` on `acermagic_s20` and `mirosound_pcm10`, now
 "No card detected".
 
 The WSS build (`b33b131`) ran them again: every run gave the same output as `ab0d87b`.
+
+The 82C930 build (`8b5e5f0`) ran them again: every run gave the same output as `b33b131`.

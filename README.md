@@ -89,11 +89,17 @@ A few card IDs and the options `/XSLAM` and `/XESSB` are experimental: see
   SB Pro mode, with the MPU-401 (BLASTER P and U); experimental, see
   [Wanted](#wanted-testers-and-pnp-dumps).
 
-On the OPTi 82C928 and 82C929, `/NOPNP /XWSS` sets up Windows Sound System mode instead of SB Pro
-mode; the chip runs one mode at a time. The WSS base, DMA and IRQ come from
-`ULTRA16=port,dma,irq,record dma`, which programs such as Mpxplay read to find the WSS codec, and
-not from BLASTER. Without it, UNISOUND uses OPTi's defaults, 530h, DMA 0, IRQ 7, and prints the
-`SET ULTRA16=530,0,7,0` line to add to AUTOEXEC.BAT.
+On the OPTi 82C928, 82C929 and 82C930, `/NOPNP /XWSS` sets up Windows Sound System mode instead of
+SB Pro mode, as OPTi's own SNDINIT does; OPTi's documentation treats them as one mode at a time.
+The WSS base, DMA and IRQ come from `ULTRA16=port,dma,irq,record dma`, which programs such as
+Mpxplay read to find the WSS codec, and not from BLASTER. The port is 530, E80, F40 or 604 (hex),
+the DMAs 0, 1 or 3 and the IRQ 7, 9, 10 or 11, or also 5 on the 82C930 (the 82C928 and 82C929
+use IRQ 7 instead). A missing or invalid field falls back to OPTi's default, 530h, DMA 0 or
+IRQ 7, and if the port, DMA or IRQ field was missing or invalid UNISOUND prints the
+`SET ULTRA16=` line to add to AUTOEXEC.BAT (`SET ULTRA16=530,0,7,0` without the variable). The
+record DMA is optional. `SET WSS`, which some OPTi 82C930/931 drivers are said to read, is not
+used: no format for it was found. On the 82C928 and 82C929 WSS mode turns the SB part's IRQ off;
+the 82C930 keeps its SB part enabled with its own IRQ and DMA, as SNDINIT leaves it.
 
 ## Wanted: testers and PnP dumps
 
@@ -202,6 +208,7 @@ that prints diagnostic lines (see [Reporting problems](#reporting-problems)).
 | [92b2a8c](https://github.com/dafugg/unisound_continued/commit/92b2a8c3756a2412c2c174172f5306f686d9a057) | AZT1022: an AZT2320 card is set up as an AZT2320 again. Two Aztech cards use this ID, an AZT2320 card and the AD1816A SC-16 3D, and since v0.80a both were set up as AD1816: WSS at 530 instead of 534, DMA 1/1 instead of 1/3, the AD1816 mixer and no SB Pro mode. It is now an AD1816 only when its first logical device is AZT1018. Experimental: see [Wanted](#wanted-testers-and-pnp-dumps) | — | ✅ `azt2320` and `ad1816` with their PnP ROMs given the ID AZT1022: the AZT2320 now set up exactly like the AZT1008, the AD1816 as before | ❌ |
 | [ab0d87b](https://github.com/dafugg/unisound_continued/commit/ab0d87b334e2e3e259e2aeea60c426b780bd2c2c) | `/NOPNP` sets up the OPTi 82C929 (MAD16 Pro), as on the Boca Research Sound Expression 4294 and SE1440. Its probe tried only the 82C928's password (E2h), so an 82C929 (E3h) was never found. On the 82C929 the SB base, IRQ 10, the MPU-401 (MC6) and the MC4/MC5 bits its data sheet requires are set, and the jumper-set CD-ROM interface is kept. Experimental: see [Wanted](#wanted-testers-and-pnp-dumps) | — | ✅ `acermagic_s20` and `mirosound_pcm10`: "No card detected" before; after, MC1-MC5 read 00 03 82 A2 AF (A5 with the AD1848) as OPTi's SNDINIT leaves them, DMAPLAY plays on IRQ 5 DMA 1, the MPU-401 answers at 330h; `A240 I10 D3 P300 U7` also works | ❌ |
 | [b33b131](https://github.com/dafugg/unisound_continued/commit/b33b131d107354301567ce0d3c7ba62c56fa85e3) | OPTi 82C928/82C929 in WSS mode (`/NOPNP /XWSS`): the WSS configuration register (the codec's IRQ and DMA) is written, from `ULTRA16` (`port,dma,irq,record dma`) or OPTi's defaults 530h, DMA 0, IRQ 7, with a `SET ULTRA16=` line when it is missing. 0.82a never wrote it, so the codec had no IRQ. As OPTi's SNDINIT does, the SB part's IRQ is turned off in WSS mode. Experimental: see [Wanted](#wanted-testers-and-pnp-dumps) | — | ✅ `acermagic_s20`, `mirosound_pcm10`: WSS playback raised no IRQ before; after, it plays on IRQ 7 DMA 0, on IRQ 10 DMA 1 with `ULTRA16=530,1,10,1` and on IRQ 9 DMA 3 at F40h with `ULTRA16=F40,3,9,0`. 86Box has no 82C928 | ❌ |
+| [8b5e5f0](https://github.com/dafugg/unisound_continued/commit/8b5e5f0627580b01a639a3d4def36c144014b07f) | OPTi 82C930 (`/NOPNP`): `/XWSS` writes the WSS configuration register (the codec's IRQ and DMA) from `ULTRA16`, as OPTi's SNDINIT does in WSS mode; the WSS base comes from `ULTRA16` instead of BLASTER's W, and F40h works (it became 530h); the CD-ROM interface type in MC1 is kept instead of cleared | — | ✅ `opti_82c930` with the register 12h check removed (86Box returns FFh there): `/XWSS` gave the codec no IRQ, now IRQ 7 DMA 0, or F40h, IRQ 5, DMA 1 with `ULTRA16=F40,1,5,1`; SB mode unchanged; the CD-ROM bits SNDINIT set stay | ❌ |
 | Not fixed | OPTi 82C931: F (388h by default) is written to the FM base register (LD1 62h), which the card's resource data gives as 16-byte aligned. In 86Box that moves AdLib to 390h; real cards evidently still answer at 388h, so this is probably harmless. Writing 380h, as the BIOS and the Windows driver do, would match the resource data | — | ❌ 86Box moves AdLib to 390h, which real cards apparently don't | ❌ |
 
 ## Reporting problems
