@@ -45,6 +45,7 @@ unsigned outpw(unsigned portid, unsigned value);
 #define CARD_OPTI93X  0x0c /* OPTi 82C931/82C933 (OPT..31, OPT..33) */
 #define CARD_ES968B   0x0d /* ES968 whose first logical device id byte is 0x68 */
 #define CARD_ES1869   0x0e /* ESS ES1869 (ESS1869, ESS0003, ESS0006) */
+#define CARD_ESS01    0x0f /* ESS ES688/ES1688 PnP (ESS0100, ESS0102): ES968B, MPU-401 on LD1 */
 #define CARD_OPTI924  0x10 /* OPTi 82C924 (OPT..24) */
 #define CARD_ADS7141  0x13 /* ADS7141 */
 #define CARD_RJA0     0x2c /* RJA0 */
@@ -922,6 +923,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     type = CARD_ES1869;
                 } else if (memcmp(id + 3, "1869", 4) == 0) {
                     type = CARD_ES1869;
+                } else if (memcmp(id + 3, "0100", 4) == 0 || memcmp(id + 3, "0102", 4) == 0) {
+                    type = CARD_ESS01;
                 }
             } else if (memcmp(id, "SEM3006", 7) == 0) {
                 type = CARD_ES1868;
@@ -1140,6 +1143,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 reg_mpu = 0x64;
                 reg_opl = 0x62;
             }
+            if (type == CARD_ESS01) {
+                reg_opl = 0x62;
+            }
             if (type == CARD_OPTI925) {
                 reg_mpu = 0x60;
                 reg_opl = 0x64;
@@ -1282,7 +1288,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 if (type == CARD_CREATIVE || type == CARD_ES1868 || type == CARD_YAMAHA ||
                     type == CARD_ROCKWELL || type == CARD_OPTI925 || type == CARD_OPTI924 ||
                     type == CARD_AD1816 || type == CARD_AZTECH || type == CARD_OPTI93X ||
-                    type == CARD_CRYSTAL || type == CARD_ES968B || type == CARD_ES1869) {
+                    type == CARD_CRYSTAL || type == CARD_ES968B || type == CARD_ES1869 ||
+                    type == CARD_ESS01) {
                     pnp_write16(reg_opl, opl_port);
                     if (opt_read != 0) {
                         opl_port = pnp_read16(reg_opl);
@@ -1364,13 +1371,14 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 }
                 if (type != CARD_ES968 && type != CARD_OPTI925 && type != CARD_OPTI924 &&
                     type != CARD_AD1816 && type != CARD_ADS7141 && type != CARD_OPTI93X &&
-                    type != CARD_CRYSTAL && type != CARD_ES968B && type != CARD_CMI) {
+                    type != CARD_CRYSTAL && type != CARD_ES968B && type != CARD_CMI &&
+                    type != CARD_ESS01) {
                     pnp_write(reg_irq2, irq2);
                 }
                 if (type != CARD_YAMAHA && type != CARD_ES968 && type != CARD_OPTI925 &&
                     type != CARD_OPTI924 && type != CARD_CMI && type != CARD_GUSPNP &&
                     type != CARD_AD1816 && type != CARD_OPTI93X && type != CARD_ES968B &&
-                    type != CARD_ADS7141) {
+                    type != CARD_ADS7141 && type != CARD_ESS01) {
                     pnp_write(reg_irq2 + 1, 2);
                 }
                 if (opt_read != 0) {
@@ -1430,8 +1438,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     sb_dma = pnp_read(reg_dma) & 7;
                 }
                 printf(" DMA:%d", sb_dma);
-                if (type != CARD_ES968 && type != CARD_ES968B && als_variant != 1 &&
-                    als_variant != 2 &&
+                if (type != CARD_ES968 && type != CARD_ES968B && type != CARD_ESS01 &&
+                    als_variant != 1 && als_variant != 2 &&
                     (sb_hdma != 4 || (opt_disable != 0 && sb_hdma == 4) ||
                      (type == CARD_CMI && sb_hdma == 4) ||
                      ((type == CARD_ES1868 || type == CARD_ES1869) && sb_hdma == 4))) {
@@ -1523,7 +1531,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     type == CARD_OPTI925 || type == CARD_OPTI924 || type == CARD_CMI ||
                     (type == CARD_ES1868 && ess_maxi == 1) || type == CARD_AD1816 ||
                     type == CARD_ADS7141 || type == CARD_AZTECH || type == CARD_OPTI93X ||
-                    type == CARD_CRYSTAL || type == CARD_RJA0 || type == CARD_TBS20) {
+                    type == CARD_CRYSTAL || type == CARD_RJA0 || type == CARD_TBS20 ||
+                    type == CARD_ESS01) {
                     if (type == CARD_CRYSTAL && opt_xom == 0) {
                         mpu_port = 0;
                     }
@@ -1538,7 +1547,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                         if (type == CARD_OPTI925 || type == CARD_CMI || type == CARD_AD1816 ||
                             type == CARD_ADS7141 || type == CARD_AZTECH || type == CARD_OPTI93X ||
                             type == CARD_OPTI924 || type == CARD_CRYSTAL || type == CARD_RJA0 ||
-                            type == CARD_TBS20) {
+                            type == CARD_TBS20 || type == CARD_ESS01) {
                             irq = 9;
                             enable = 1;
                         }
@@ -1669,7 +1678,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     if (type == CARD_YAMAHA || type == CARD_ROCKWELL || type == CARD_OPTI925 ||
                         type == CARD_OPTI924 || type == CARD_ES968 || type == CARD_ES968B ||
                         type == CARD_ES1869 || type == CARD_AD1816 || type == CARD_ADS7141 ||
-                        type == CARD_ES1868) {
+                        type == CARD_ES1868 || type == CARD_ESS01) {
                         joy_port = 0x201;
                     } else {
                         joy_port = 0x200;
@@ -2023,7 +2032,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     if (type == CARD_ES1868 && ess_maxi == 1) {
         sam9407_upload(mpu_port);
     }
-    if (type == CARD_ES1868 || type == CARD_ES968 || type == CARD_ES968B || type == CARD_ES1869) {
+    if (type == CARD_ES1868 || type == CARD_ES968 || type == CARD_ES968B || type == CARD_ES1869 ||
+        type == CARD_ESS01) {
         int shown_3d = -1;
         sbpro_mixer_set();
         idx45_write(sb_port, 0x3a, fm_reg);
@@ -3205,6 +3215,20 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                     }
                     if (ldn == 2) {
                         ld[3] = 1;
+                    }
+                }
+                if (type == CARD_ESS01) {
+                    if (ldn == 1) {
+                        ld[0] = 0;
+                    }
+                    if (ldn == 2) {
+                        ld[2] = 1;
+                    }
+                    if (ldn == 3) {
+                        ld[3] = 2;
+                    }
+                    if (ldn == 4) {
+                        ld[5] = 3;
                     }
                 }
                 if (type == CARD_ES1869) {
