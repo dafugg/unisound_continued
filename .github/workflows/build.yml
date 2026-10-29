@@ -1,0 +1,48 @@
+name: MS-DOS build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: clang-format
+        run: |
+          command -v clang-format-18 || { sudo apt-get update -qq && sudo apt-get install -y -qq clang-format-18; }
+          git ls-files 'src/*.C' 'tools/dos/*.C' | xargs clang-format-18 --dry-run -Werror
+
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # Turbo C++ 3.00 from joncloud/dos-build-action; its files are byte-identical to the TC 3.0
+      # the original UNISOUND.COM was matched with.
+      - uses: actions/checkout@v4
+        with:
+          repository: joncloud/dos-build-action
+          ref: 76b53e600a47530c209e5de8344cef9a94c43515
+          path: dos-build-action
+          sparse-checkout: programs/turbo-c++/3.00
+      - name: Install DOSBox-X
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq dosbox-x
+      # The 0.82a branch (and PRs into it) must rebuild the original byte for byte.
+      - name: Build
+        run: |
+          if [ "${{ github.base_ref || github.ref_name }}" = 0.82a ]; then
+            sh tools/dosbox-build.sh "dos-build-action/programs/turbo-c++/3.00"
+          else
+            sh tools/dosbox-build.sh "dos-build-action/programs/turbo-c++/3.00" --no-hash
+          fi
+          sha256sum build/c/WORK/UNISOUND.COM
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UNISOUND.COM
+          path: build/c/WORK/UNISOUND.COM
