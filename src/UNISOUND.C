@@ -410,6 +410,11 @@ int nopnp_mode = 0;  /* /NOPNP = 1; 2 = OPTi control chip found */
 char opt_log = 0;  /* /LOG: print diagnostic lines */
 char opt_slam = 0;  /* /XSLAM: Crystal chip set up through SLAM; 2 while SLAM is open */
 char opt_essb = 0;  /* /XESSB: ES1868/ES1869 found through the ESS bypass key alone */
+int res_logged = -1;  /* /LOG: resource data bytes printed so far; -1 = not printing them */
+/* Stack size for the tiny-model startup, which refuses to run (silently, with output redirected)
+   when the end of the BSS plus _stklen passes 64K. The library's 4K no longer fits; the deepest
+   call chain (configure_pnp, pnp_map_devices, printf, a BIOS interrupt) uses about 1K. */
+unsigned _stklen = 0x900;
 unsigned char opti_probe[5];  /* probe_opti_ctl's reads, for /LOG: F8Dh and F8Fh without the
                                  password, register 1, F8Dh again, register 3 */
 
@@ -422,6 +427,8 @@ void pnp_write(unsigned char reg, unsigned char val);
 void slam_write(unsigned char reg, unsigned char val);
 int ess_bypass_id(void);
 void no_card_hint(void);
+void log_ldn(int ldn);
+void log_codec(unsigned port);
 unsigned char pnp_read(unsigned char reg);
 void pnp_write16(unsigned char reg, unsigned val);
 unsigned pnp_read16(unsigned char reg);
@@ -656,6 +663,30 @@ int main(int argc, char *argv[])
     return configure_pnp(card, list, full_scan, scan_port);
 }
 
+/* /LOG: select logical device ldn and print its registers 30h, 60h-65h and 70h-75h. */
+void log_ldn(int ldn)
+{
+    unsigned char r;
+    pnp_write(7, ldn);
+    printf("LOG: LDN %d 30h/60h-65h/70h-75h:", ldn);
+    for (r = 0x30; r < 0x76; r++)
+        if (r == 0x30 || (r >= 0x60 && r < 0x66) || r >= 0x70)
+            printf(" %02X", pnp_read(r));
+    puts("");
+}
+
+/* /LOG: print the WSS codec's indexed registers I0-I31, index at port, data at port + 1. */
+void log_codec(unsigned port)
+{
+    int i;
+    printf("LOG: codec %X I0-I31:", port);
+    for (i = 0; i < 32; i++) {
+        outportb(port, i);
+        printf(" %02X", inportb(port + 1));
+    }
+    puts("");
+}
+
 /* After "No card detected" or "No PnP card detected.", point to the options for chips that
    isolation doesn't find, and to /LOG. Ends without a newline. */
 void no_card_hint(void)
@@ -684,6 +715,13 @@ void print_banner(void)
     memset(line, 0xc4, 73);
     line[73] = 0;
     printf("%s\n", line);
+    if (opt_log != 0) {
+        int i;
+        printf("LOG: DOS %d.%02d, options:", _osmajor, _osminor);
+        for (i = 1; i < _argc; i++)
+            printf(" %s", _argv[i]);
+        puts("");
+    }
 }
 
 /* Print the banner and the usage screen for /H and /?. */
@@ -969,8 +1007,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                      memcmp(id, "STB01", 5) == 0)
                 type = CARD_GUSPNP;
         }
-        dlog("CSN %d: %s serial %02X%02X%02X%02X, type %d", csn, id, (unsigned char)buf[7],
-             (unsigned char)buf[6], (unsigned char)buf[5], (unsigned char)buf[4], type);
+        dlog("CSN %d: %s, id %02X %02X %02X %02X %02X %02X %02X %02X %02X, type %d", csn, id,
+             (unsigned char)buf[0], (unsigned char)buf[1], (unsigned char)buf[2],
+             (unsigned char)buf[3], (unsigned char)buf[4], (unsigned char)buf[5],
+             (unsigned char)buf[6], (unsigned char)buf[7], (unsigned char)buf[8], type);
         cardno++;
         if (card > 1) {
             printf("Card #%d [%s] ", cardno, id);
@@ -1013,6 +1053,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         struct ldinfo ld = {{-1, -1, -1, -1, -1, -1, -1, -1, -1}};
         if (pnp_map_devices(csn, name, ld.ld, type))
             lcsn = csn;
+        dlog("name \"%s\", ld[] %d %d %d %d %d %d %d %d %d",
+             name, ld.ld[0], ld.ld[1], ld.ld[2], ld.ld[3], ld.ld[4], ld.ld[5], ld.ld[6], ld.ld[7],
+             ld.ld[8]);
         if (lcsn > 0) {
             printf("PnP card found: [%s] %s", id, name);
             if (opt_xxf == 2)
@@ -1661,6 +1704,12 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     delay(0x50);
                 }
             }
+            if (opt_log != 0 && opt_slam == 0) {
+                int k;
+                for (k = 0; k < 9; k++)
+                    if (ld.ld[k] >= 0)
+                        log_ldn(ld.ld[k]);
+            }
             pnp_write(3, 0);
             delay(1);
             if (opt_read != 0) {
@@ -2108,6 +2157,14 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
     }
     printf("\n");
+    if (opt_log != 0 && wss_port != 0) {
+        if (type == CARD_CRYSTAL)
+            log_codec(wss_port);
+        if (type == CARD_YAMAHA || type == CARD_OPTI925 || type == CARD_OPTI924 || type == CARD_OPTI93X)
+            log_codec(wss_port + 4);
+    }
+    if (opt_log != 0 && type == CARD_GUSPNP)
+        log_codec(sb_port + 0x10c);
     if (hint != 0)
         print_blaster_hint(sb_port, sb_irq, sb_dma, h16);
     if (opt_xnet > 0)
@@ -2307,6 +2364,8 @@ int pnp_isolate(unsigned port, unsigned char *buf)
             lfsr = (lfsr >> 1) | (((lfsr ^ (lfsr >> 1) ^ bit) << 7) & 0xff);
         buf[i / 8] = (buf[i / 8] >> 1) | (bit ? 0x80 : 0);
     }
+    if (found && buf[8] != lfsr)
+        dlog("isolation at %X: checksum %02X, expected %02X", port, (unsigned char)buf[8], lfsr);
     if (opt_xxf)
         found = found != 0;
     else
@@ -2399,6 +2458,7 @@ int parse_ultrasnd(void)
         field++;
     }
     free(dup);
+    dlog("ULTRASND=%s: %X,%d,%d,%d,%d", env, gus_port, gus_dma, gus_dma2, gus_irq, gus_irq2);
     if (field < 3)
         return 0;
     return 1;
@@ -2532,7 +2592,9 @@ int parse_blaster(void)
         field++;
     }
     free(dup);
-    dlog("BLASTER=%s: A%X I%d D%d H%d P%X", env, sb_port, sb_irq, sb_dma, sb_hdma, mpu_port);
+    dlog("BLASTER=%s: A%X I%d D%d H%d P%X W%X F%X E%X J%X R%X M%X C%X U%d Q%d K%d Y%d", env, sb_port,
+         sb_irq, sb_dma, sb_hdma, mpu_port, wss_port, opl_port, awe_port, joy_port, ess_ctl_port,
+         mpu2_port, ide_port, mpu_irq, irq2, wss_dma, ide_irq);
     if (field < 1)
         return 0;
     return 1;
@@ -2670,6 +2732,10 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
         }
         pnp_write(3, csn);
         delay(1);
+        if (opt_log != 0) {
+            printf("LOG: CSN %d resource data:", csn);
+            res_logged = 0;
+        }
         if (ok)
             ok = pnp_read_res(0, 9);
     }
@@ -2857,6 +2923,10 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                 ok = pnp_read_res(0, len);
         }
     }
+    if (res_logged >= 0) {
+        puts("");
+        res_logged = -1;
+    }
     /* No logical devices: /XSLAM, or a Crystal chip whose resource data holds only the serial
        identifier (the Gateway E-1000's on-board CS4236B). The CS423x layout is fixed: 0 WSS,
        SB and OPL, 1 gameport, 2 control, 3 MPU-401. */
@@ -2905,6 +2975,11 @@ int pnp_read_res(unsigned char *buf, int n)
         outportb(pnp_addr_port, 4);
         if (ready != 0) {
             data = inportb(pnp_rdata_port);
+            if (res_logged >= 0 && res_logged < 1024) {
+                if (res_logged++ % 24 == 0)
+                    printf("\nLOG: ");
+                printf(" %02X", data);
+            }
             if (buf)
                 buf[i] = data;
             i++;
@@ -3063,6 +3138,7 @@ int init_nonpnp_sb16(void)
             if (maj <= 4)
                 break;
         }
+        dlog("SB16 probe %X: E1h gave %02X", port, maj);
         if (maj == 4) {
             min = inportb(port + 0xa);
             delay(1);
@@ -4845,6 +4921,8 @@ int init_opti928(void)
             delay(20);
             outportb(sb_port + 12, 0x20);
             printf("\nMixer [WAV:%d FM:%d LIN/CD:%d]\n", wave_vol, fm_vol, line_vol);
+            if (opt_log != 0)
+                log_codec(wss_port + 4);
             print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
         }
         return 1;
@@ -4899,6 +4977,9 @@ int init_opti930(void)
         mpu_irq = 9;
     opti_ctl_port = 0xe0c;
     opti93x_pwd_port = 0xf8f;
+    if (opt_log != 0)
+        dlog("82C930 probe: reg 1 %02X, 3 %02X, 12h %02X", opti93x_read(0xe0e, 1),
+             opti93x_read(0xe0e, 3), opti93x_read(0xe0e, 0x12));
     if (opti93x_read(0xe0e, 1) < 0xff && opti93x_read(0xe0e, 3) < 0xff && opti93x_read(0xe0e, 0x12) < 8) {
         puts("Card detected: OPTi 82C930");
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
@@ -4975,6 +5056,8 @@ int init_opti930(void)
         printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
         puts("");
         print_mixer("OPTi", -1, -1);
+        if (opt_log != 0)
+            log_codec(wss_port + 4);
         print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
         return 1;
     }
