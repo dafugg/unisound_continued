@@ -1,0 +1,22 @@
+name: 0.82a byte-identical
+
+# Builds this commit in 86Box under FreeDOS 1.4, with the CI tools from main (build.yml there),
+# and fails unless UNISOUND.COM matches the original v0.82a's hash (UNISOUND.SHA256).
+on:
+  push:
+    branches: ['0.82a']
+  pull_request:
+    branches: ['0.82a']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: 0.82a build
+    uses: dafugg/unisound_continued/.github/workflows/build.yml@main
+    with:
+      ref: ${{ github.sha }}
+      check_hash: true
+      skip_format: true
