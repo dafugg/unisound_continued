@@ -4515,6 +4515,8 @@ void opti928_write(unsigned port, unsigned char val)
 /* /NOPNP: detect and configure a non-PnP OAK OTI601 / OPTi 82C928 (configuration registers
    0xF8D-0xF91). Applies the SB/WSS base, gameport, IRQ (5/7/11) and DMA (0/1/3) from BLASTER or
    the defaults, initializes the WSS codec and its volumes, and selects SB or WSS mode (/XWSS).
+   The chip must close its gate after one access, as in probe_opti_ctl: F8Dh read again without
+   the password must not give the same value, or any device at F8Dh/F8Fh would pass.
    Returns 1 if the chip was found, else 0. */
 int init_opti928(void)
 {
@@ -4523,9 +4525,12 @@ int init_opti928(void)
     unsigned char cfg1 = 0x80;
     unsigned char cfg2 = 0;
     unsigned char codec_st = 0;
+    unsigned char gate;
     id_f8d = opti928_read(0xf8d);
+    gate = inportb(0xf8d);
     id_f8f = opti928_read(0xf8f);
-    if (id_f8d < 0xff && id_f8f < 0xff) {
+    dlog("82C928 probe: F8Dh %02X, then %02X without password, F8Fh %02X", id_f8d, gate, id_f8f);
+    if (id_f8d < 0xff && id_f8f < 0xff && gate != id_f8d) {
         puts("Card detected: OAK OTI601 / OPTi 82C928");
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         if (sb_port == 0x240 || wss_port == 0xf40) {
