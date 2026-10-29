@@ -2581,6 +2581,9 @@ const struct card_id card_ids[] = {
     {"GRV????", CARD_GUSPNP, 0},
     {"ADV55??", CARD_GUSPNP, 0},
     {"STB01??", CARD_GUSPNP, 0},
+    /* InterWave cards from Linux interwave.c; experimental, not yet tried on a real card */
+    {"DXP3201", CARD_GUSPNP, 0}, /* MED3210 */
+    {"CDC1111", CARD_GUSPNP, 0}, /* Dynasonic Pro */
     {"", 0, 0}};
 
 /* Return the card_ids entry that matches the 7-character PnP id, or 0 if the card isn't supported. */
