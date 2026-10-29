@@ -688,15 +688,17 @@ void print_help(void)
    2. Send the initiation key and isolate cards, scanning read-data ports from `port` upward
       until one answers. Each isolated card gets the next CSN.
    3. Identify each card by its vendor id (CTL, ALS, ESS..., see the CARD_* list). Cards before
-      number `card` are listed and skipped. Stop at card `card` if it is supported, and abort if
-      it isn't. With /CL (card = 10) every card is listed.
+      number `card` are listed and skipped. With /Cn (n > 1), stop at card n if it is supported,
+      and abort if it isn't. Otherwise skip unknown cards and stop at the first supported one.
+      With /CL (card = 10) every card is listed.
    4. Read the card's ANSI name and map its logical devices to functions (pnp_map_devices).
    5. Load settings from BLASTER, or ULTRASND for GUS PnP. /D zeroes them to disable the
       card. Then write, or with /R read back, each logical device's ports, IRQs and DMAs. The PnP
       register numbers differ per family (the reg_* locals), and so do a lot of special cases.
    6. Leave the PnP configuration state and set up the card's mixer, firmware and extras
       (AWE, SAM9407, CS4232 firmware, InterWave, TEA6330T tone control).
-   If no supported PnP card is found, it falls back to init_nonpnp_sb16.
+   If no supported PnP card is found, it falls back to init_nonpnp_sb16, except with /Cn (n > 1)
+   when there is no card n.
    Returns 0 on success, 1 on failure. */
 int configure_pnp(int card, int list, int pass, unsigned port)
 {
@@ -713,6 +715,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     unsigned char cmi_variant = 0;      /* CMI: 1 = AD- name; RSS: 8 = RSS58 */
     int ctl_state = 0;                /* Creative: CQM/AWE state */
     unsigned char nlisted = 0;      /* cards listed */
+    unsigned char nunknown = 0;     /* unknown cards skipped */
+    int asked = card;               /* card number given with /Cn (1 without it, 10 with /CL) */
     unsigned char reg_sb = 0x60;   /* PnP config registers used for each resource; vary by card */
     unsigned char reg_mpu = 0x62;
     unsigned char reg_opl = 0x64;
@@ -893,12 +897,15 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
         if (card > 1)
             card--;
-        else {
+        else if (asked > 1) {
             printf("Unknown PnP card [%s] found. \nAborting...\n", id);
             pnp_write(3, 0);
             delay(1);
             pnp_write(2, 2);
             return 1;
+        } else {
+            printf("Card #%d [%s] Unknown, skipped.\n", cardno, id);
+            nunknown++;
         }
         pnp_write(3, 0);
         delay(1);
@@ -1541,10 +1548,13 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
     } else {
         type = 0;
-        if (list != 1)
-            printf("No PnP card detected.");
-        if (nlisted < 1 && list != 1)
+        if (list != 1 && asked > 1) {
+            printf("Card #%d not found.", asked);
+            ret = 1;
+        } else if (list != 1) {
+            printf(nunknown > 0 ? "No supported PnP card detected." : "No PnP card detected.");
             ret = !init_nonpnp_sb16();
+        }
     }
     pnp_write(2, 2);
     delay(1);
