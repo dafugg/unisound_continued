@@ -508,7 +508,7 @@ int init_opti930(void);
 int init_es688(void);
 int init_nonpnp_fallback(void);
 void sb_dsp_flush(int port);
-int opt_2digits(char *s);
+int opt_value(char *s);
 void es_enable_reads(int port);
 int sb_dsp_reset(int port);
 void sb_dsp_write(int port, unsigned char val);
@@ -523,7 +523,8 @@ void dlog(char *fmt, ...);
    /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
    scan), /R (read only), /D (disable), the /Xxxx extended options, /NOPNP and /LOG (diagnostic
    lines). /H or /? prints the help and exits. Options start with / or - and must match a whole
-   option name; anything else prints "Unknown option" and exits with 2. Then calls configure_pnp
+   option name; anything else prints "Unknown option" and exits with 2, as does a /V option
+   whose value isn't 0 to 99 ("Invalid value"). Then calls configure_pnp
    and returns its result as the exit code (0 = success, 1 = no card configured). */
 int main(int argc, char *argv[])
 {
@@ -551,12 +552,20 @@ int main(int argc, char *argv[])
             } else if (strcmp(opt, "CS") == 0) {
                 if (list < 1)
                     opt_cs = 1;
-            } else if (opt[0] == 'V' && (n = opt_2digits(opt + 1)) >= 0) {
-                master_vol = n;
-                master_reg = master_vol * 15 / 95 * 17;
-            } else if (opt[0] == 'V' && opt[1] != 0 && strchr("FWLCMPTBUR", opt[1]) &&
-                       (n = opt_2digits(opt + 2)) >= 0) {
-                switch (opt[1]) {
+            } else if (opt[0] == 'V' && (opt[1] == 0 || isdigit(opt[1]) ||
+                                         strchr("FWLCMPTBUR", opt[1]))) {
+                char c = isdigit(opt[1]) || opt[1] == 0 ? 'V' : opt[1];
+                n = opt_value(c == 'V' ? opt + 1 : opt + 2);
+                if (n < 0) {
+                    print_banner();
+                    printf("Invalid value: %s (0-99)\n", argv[i]);
+                    return 2;
+                }
+                switch (c) {
+                case 'V':
+                    master_vol = n;
+                    master_reg = master_vol * 15 / 95 * 17;
+                    break;
                 case 'F':
                     fm_vol = n;
                     fm_reg = fm_vol * 15 / 95 * 17;
@@ -697,9 +706,13 @@ void no_card_hint(void)
            "To report a problem: UNISOUND /LOG > LOG.TXT");
 }
 
-/* Return the value of a two-digit option value s ("00" to "99"), or -1 if s is anything else. */
-int opt_2digits(char *s)
+/* Return the value of a /V option value s of one or two digits ("0" to "99"), or -1 if s is
+   anything else. 99 sets every mixer to its maximum; the treble, bass and AWE formulas overflow
+   above it. */
+int opt_value(char *s)
 {
+    if (isdigit(s[0]) && s[1] == 0)
+        return s[0] - '0';
     if (isdigit(s[0]) && isdigit(s[1]) && s[2] == 0)
         return (s[0] - '0') * 10 + s[1] - '0';
     return -1;
@@ -735,15 +748,15 @@ void print_help(void)
     puts("   /CL    List all PnP cards present in the system");
     puts("   /R     Read PnP card current settings only");
     puts("   /D     Disable PnP sound card");
-    puts("   /Vnn   Set Master Volume (00-99)");
-    puts("   /VWnn  Set Wave Volume (00-99)");
-    puts("   /VFnn  Set FM/Synth/Wavetable Volume (00-99)");
-    puts("   /VLnn  Set Line-in Volume (00-99)");
-    puts("   /VCnn  Set CD Volume (00-99)");
-    puts("   /VMnn  Set Mic Volume (00-99)");
-    puts("   /VPnn  Set PC Speaker-in Volume (00-99) (Creative)");
-    puts("   /VTnn  and /VBnn Set Treble/Bass/AuxB level (00-99) On supported cards");
-    puts("   /VRnn  and /VUnn Set FM Reverb/Chorus amount (00-99) (SB AWE only)");
+    puts("   /Vnn   Set Master Volume (0-99)");
+    puts("   /VWnn  Set Wave Volume (0-99)");
+    puts("   /VFnn  Set FM/Synth/Wavetable Volume (0-99)");
+    puts("   /VLnn  Set Line-in Volume (0-99)");
+    puts("   /VCnn  Set CD Volume (0-99)");
+    puts("   /VMnn  Set Mic Volume (0-99)");
+    puts("   /VPnn  Set PC Speaker-in Volume (0-99) (Creative)");
+    puts("   /VTnn  and /VBnn Set Treble/Bass/AuxB level (0-99) On supported cards");
+    puts("   /VRnn  and /VUnn Set FM Reverb/Chorus amount (0-99) (SB AWE only)");
     puts("   /Xxxx  eXtended settings (See TXT section 5)");
     puts("   /NOPNP Detect & init some Non-PnP cards (See TXT end of section 3)");
     puts("   /XSLAM Crystal chip set up by the BIOS (no PnP): configure it through SLAM");
