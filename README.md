@@ -70,6 +70,9 @@ drivers needed.
 - **Turtle Beach Multisound Pinnacle:** limited. Only the joystick port and MPU-401 (the
   Kurzweil wavetable) work. Some board revisions need `/FS`, and some may not work at all.
 
+A few card IDs and the options `/XSLAM` and `/XESSB` are experimental: see
+[Wanted](#wanted-testers-and-pnp-dumps).
+
 ### Non-PnP cards (`/NOPNP`, experimental; install only one card)
 
 - **Creative:** SB16 and AWE32 (software-configurable models), with the same EMU8000 setup as
@@ -79,6 +82,48 @@ drivers needed.
   supported.
 - **OAK OTI601 "Mozart" and OPTi 82C928 (MAD16):** poor compatibility with games. The card may
   need setting up again after some programs, and SB-mode audio is mono only.
+
+## Wanted: testers and PnP dumps
+
+Some cards are recognised only from driver files, Linux's tables or 86Box tests with edited PnP
+ROMs, because no one has tried them with these builds on a real card. They are experimental until
+someone does. Other cards are left out until we know how their logical devices are laid out.
+
+If you have one of these cards, please open a GitHub issue with:
+
+- the card's name and revision, and the board it's in;
+- the output of `UNISOUND /R` and of a plain `UNISOUND` run (if it's recognised);
+- a dump of its PnP data: `pnpdump` under Linux, or `PNPDUMP` built from `tools/dos/PNPDUMP.C`.
+
+### Experimental: recognised, not yet tried on a real card
+
+| Card ID | Card | Set up as | Evidence |
+|---|---|---|---|
+| AZT1021 | Aztech AZT2320 cards | Aztech | Aztech's AUD1021.INF and PNPID.DAT; 86Box AZT2320 ROM with the id changed |
+| AZT1022 | Aztech AZT2320 cards, and the AD1816A Aztech/Newcom SC-16 3D | Aztech, or AD1816 when the first logical device is AZT1018 | JazeFox's own card (VOGONS p836545), Linux ad1816a.c; 86Box ROMs with the ids changed |
+| CSC??25, CDC??25 (e.g. CSC0225, CSC4625, CSCE825) | Crystal CS4235 | Crystal | Linux cs4236.c; 86Box's CS4235 (CSCA725) |
+| RTL3000 | Realtek-branded ALS120 | ALS | Avance's A4SOUND.INF lists the same logical devices in the same order as ALS0120; not testable in 86Box |
+| DXP3201 | MED3210 (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
+| CDC1111 | Dynasonic Pro (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
+
+### Held back: need a PnP dump first
+
+| Card ID | Card | Would be set up as | What we need to know |
+|---|---|---|---|
+| MIR0924 | miro PCM12 / PCM20 (OPTi 82C924) in PnP mode | OPTi 924 | Whether the logical devices sit where OPTi's OPT0924 has them (Linux lists MIR0000/0002/0005 like OPT0000/0002/0005) |
+| ESS1878, ESS1879 | ESS ES1878 / ES1879 | ES1869 | The logical device layout (Linux: ESS1878 + ESS0004, ESS1879 + ESS0009), and whether they appear as ISA PnP cards at all; most are on laptops and motherboards |
+| BVJ0440 | Turtle Beach Multisound Pinnacle (rev F?) | Pinnacle | Where the joystick and IDE devices are; UNISOUND's Pinnacle code expects the joystick on logical device 2, Linux's non-PnP setup has IDE there |
+| ESS0100, ESS0102 | ESS cards | A new ESS type (written, not merged) | A dump from a real card; 86Box's ROMs for them are reconstructions |
+
+### Options not yet tried on real hardware
+
+These find chips that PnP isolation misses. They work in 86Box, but no one has reported back from
+a real machine yet. Please include `UNISOUND /LOG` output with the option.
+
+| Option | For | Machines that need it |
+|---|---|---|
+| `/XSLAM` | Crystal CS423x chips whose PnP key is disabled, so they take no part in isolation | Laptops and boards whose BIOS or CWDINIT sets up the chip, where UNISOUND says "No PnP card detected." |
+| `/XESSB` | ES1868/ES1869 chips that isolation doesn't find | On-board ES1868/ES1869, or chipsets that don't pass A79h on to the chip; 86Box always passes it on, so only a real machine can test this |
 
 ## Fixes & Changes after 0.82a
 
