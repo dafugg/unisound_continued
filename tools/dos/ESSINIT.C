@@ -1,6 +1,15 @@
 /* ESSINIT [/OLD]: set up a non-PnP ESS ES688/ES1688-family chip (ES688, ES1688, ES1788,
    ES1887/ES1888) for the IRQ and DMA in BLASTER (A, I, D) and check that it took them,
-   printing each step. It does what ESS's ESSCFG does:
+   printing each step. BLASTER unset means UNISOUND's defaults, A220 I5 D1.
+   0. First, the OPTi probe that UNISOUND 0.82a's /NOPNP runs before looking for an ESS chip:
+      it writes the password E5h to F8Fh and reads OPTi 82C924/925 control registers 1 (F8Dh)
+      and 3 (F8Fh); if both are below FFh it takes the machine for an OPTi and skips the ESS
+      detection. ESSINIT first reads F88h-F8Fh and 388h-38Fh without the password (a card that
+      decodes 10 address bits sees F8xh as 38xh, next to the FM ports), then does the two
+      password reads, with a plain F8Dh read between them (an OPTi closes its gate after one
+      access, so that read differs; an alias doesn't). It doesn't write register 7 as 0.82a
+      does. The E5h write lands on 38Fh of such a card, so the plain reads are printed first.
+   It then does what ESS's ESSCFG does:
    1. If the DSP at A doesn't answer a reset, send the ES1688 enable reads (229h three times,
       22Bh, 229h, 22Bh, 229h twice, 22Bh, 229h, then A itself, which picks the base) with
       interrupts off, and reset again.
@@ -148,6 +157,41 @@ int parse_blaster(void)
     return 1;
 }
 
+/* Read OPTi 82C924/925 control register reg at F8Ch + reg after the password, as UNISOUND's
+   opti92x_read does for registers 0-7. */
+unsigned char opti_read(int reg)
+{
+    outportb(0xf8f, 0xe5);
+    return inportb(0xf8c + reg);
+}
+
+/* Step 0: the OPTi probe of UNISOUND 0.82a's /NOPNP (see the top of the file). */
+void opti_check(void)
+{
+    int i;
+    unsigned char p1, c1, p3;
+    puts("OPTi probe (UNISOUND /NOPNP looks for an 82C924/925 at F8Ch first):");
+    printf("  F88h-F8Fh, no password:");
+    for (i = 0; i < 8; i++)
+        printf(" %02X", inportb(0xf88 + i));
+    printf("\n  388h-38Fh:              ");
+    for (i = 0; i < 8; i++)
+        printf(" %02X", inportb(0x388 + i));
+    puts("");
+    fflush(stdout);
+    p1 = opti_read(1);
+    c1 = inportb(0xf8d);
+    p3 = opti_read(3);
+    printf("  With E5h to F8Fh: reg 1 (F8Dh) = %02X, F8Dh again = %02X, reg 3 (F8Fh) = %02X\n",
+           p1, c1, p3);
+    if (p1 < 0xff && p3 < 0xff) {
+        puts("  UNISOUND /NOPNP would take this for an OPTi 82C924/925 and skip the ESS detection");
+        puts(c1 != p1 ? "  (and so would the fixed build: F8Dh changed after the password read)"
+                      : "  (the fixed build wouldn't: F8Dh reads the same without the password)");
+    } else
+        puts("  Not an OPTi 82C924/925: UNISOUND /NOPNP goes on to the ESS detection");
+}
+
 /* Fire F2h up to three times with handlers on IRQ 3, 5, 7, 9 and 10; returns the IRQ that
    fired, 0 if none did. */
 int irq_test(void)
@@ -203,7 +247,8 @@ int main(int argc, char *argv[])
         }
     }
     if (!parse_blaster())
-        puts("BLASTER not set");
+        puts("BLASTER not set: using UNISOUND's defaults, A220 I5 D1");
+    opti_check();
     switch (irq) {
     case 2: case 9: isel = 0; irq = 9; break;
     case 5: isel = 4; break;
