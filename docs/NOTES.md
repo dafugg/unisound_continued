@@ -7,7 +7,7 @@
   - Borland C++ 3.0 BCC orders the arguments to `N_SCOPY@` (initialized local-array copies)
     differently.
   - `-d` is required. It merges duplicate strings, which enables cross-jumping of identical code
-    tails (seen in f_0c8a and f_4e94), and it pools the literals at the end of the module's data.
+    tails (seen in configure_pnp and init_nonpnp_sb16), and it pools the literals at the end of the module's data.
 - **Startup and runtime: TC++ 3.0 / BC++ 3.0 C0T.OBJ and CS.LIB**, not 3.1's.
   - 3.1's C0T differs (617 vs 666 bytes).
   - 3.1's IOERROR maps 0x30 DOS errors (3.0: 0x23).
@@ -29,7 +29,7 @@
 ## Quirks needed for an exact match
 - The banner literal ends in an explicit `"\0"`. With `-d`, every `""` in the program merges
   into its tail.
-- `f_85ba` has no prototype. Callers widen unsigned char arguments with `mov ah,0`, which they
+- `opl_write` has no prototype. Callers widen unsigned char arguments with `mov ah,0`, which they
   don't do for prototyped functions.
 - `inp`, `outp` and `outpw` are called as library functions: they are `#undef`'d after the
   includes. `inpw` stays the intrinsic macro.
@@ -42,5 +42,6 @@ The program was split into 8 address ranges. Each range was decompiled separatel
 The 8 sources were then merged into one module. The data section was generated from the binary,
 and the link was iterated until the whole file was identical.
 
-Where the parts disagreed on a global's type, the merged source keeps one canonical type and uses
-`#define` type-view macros in the functions that used another.
+At first, where the parts disagreed on a global's type, the merged source used `#define` type-view
+macros. It turned out none of them were needed under TCC 3.0. The same was true of a few register
+allocation workarounds the parts had picked up while being compiled with BC++ 3.1.

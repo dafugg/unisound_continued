@@ -7,9 +7,10 @@ set -e
 B=$ROOT/build
 rm -rf "$B"; mkdir -p "$B"
 cp "$ROOT/src/UNISOUND.C" "$ROOT/BUILD.BAT" "$B/"
-printf 'SET PATH=C:\\TC\\BIN;%%PATH%%\r\nCALL BUILD.BAT > LOG.TXT\r\n' > "$B/JOB.BAT"
+printf 'SET PATH=C:\\TC\\BIN;%%PATH%%\r\n%%COMSPEC%% /C BUILD.BAT > LOG.TXT\r\n' > "$B/JOB.BAT"
 "$BOXPY" -I "$ROOT/tools/dosbuild.py" "$B" 300 > "$B/screen.txt" 2>&1 || { cat "$B/screen.txt"; exit 1; }
-grep -v -i -e warning -e '^Turbo' -e 'Available memory' -e '^ *$' -e '^unisound.c:' -e '^C:.*>' -e '^REM' "$B/out/LOG.TXT" || true
+tr -d '\r' < "$B/out/LOG.TXT" | grep -i -e error -e fatal -e undefined || true
+ls "$B/out" | grep -qi '^unisound\.obj$' || { echo "compile failed; see $B/out/LOG.TXT"; exit 1; }
 com=$(ls "$B/out" | grep -i '^unisound\.com$' || true)
 [ -n "$com" ] || { echo "no UNISOUND.COM produced; see $B/out/LOG.TXT"; exit 1; }
 [ "$com" = UNISOUND.COM ] || mv "$B/out/$com" "$B/out/UNISOUND.COM"

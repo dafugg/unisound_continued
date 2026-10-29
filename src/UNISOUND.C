@@ -15,11 +15,6 @@ struct ldinfo {
     int ld[9];
     char x[7];
 };
-#ifdef __BORLANDC__
-typedef unsigned port_t;
-#else
-typedef int port_t;
-#endif
 int inp(unsigned portid);
 int outp(unsigned portid, int value);
 unsigned outpw(unsigned portid, unsigned value);
@@ -402,7 +397,7 @@ int parse_blaster(void);
 int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type);
 int pnp_read_res(unsigned char *buf, int n);
-int pnp_read_tag(unsigned char *tag, int *len);
+int pnp_read_tag(unsigned char *tag, unsigned *len);
 void awe_init(unsigned port);
 void sb_print_dsp_ver(int port);
 int init_nonpnp_sb16(void);
@@ -438,7 +433,7 @@ void emu_write32(unsigned reg, unsigned port, unsigned long val);
 void emu_write16(unsigned reg, unsigned port, unsigned val);
 unsigned emu_read16(unsigned reg, unsigned port);
 unsigned long emu_read32(unsigned reg, unsigned port);
-int emu_init(int a);
+int emu_init(int ver);
 void use_alt_pnp_ports(void);
 void send_alt_pnp_key(void);
 void cs4232_upload_fw(void);
@@ -459,9 +454,6 @@ void probe_opti_ctl(void);
 int init_opti930(void);
 int init_es688(void);
 
-/* ======== chunk 1 ======== */
-#define opt_cs (*(unsigned char *)&opt_cs)
-#define opt_xxf (*(unsigned char *)&opt_xxf)
 /* main: parse command line options, then run the card configuration */
 int main(int argc, char *argv[])
 {
@@ -642,11 +634,9 @@ void print_help(void)
     puts("If BLASTER/ULTRASND env var is found, values will be used to configure");
     puts("the card. If not, default values will be used. This program is FREEWARE!");
 }
-#undef opt_cs
-#undef opt_xxf
 
-/* ======== chunk 2 ======== */
-/* main card detection / configuration routine */
+/* isolate the PnP cards, pick the supported one, assign its resources and set up its mixer.
+   card: /Cn card number (10 with /CL), list: /CL, pass and port: where isolation starts (/F) */
 int configure_pnp(int card, int list, int pass, unsigned port)
 {
     char *id = 0;               /* EISA id string of the current card */
@@ -726,7 +716,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         csn++;
         pnp_write(6, csn);
         delay(1);
-        id = pnp_vendor_str(buf);
+        id = pnp_vendor_str((unsigned long *)buf);
         if (id && strlen(id) > 5 && nsup < 6) {
             if (memcmp(id, "CTL", 3) == 0) {
                 type = 1;
@@ -857,7 +847,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         char name[0x48] = {0};
         unsigned char lcsn = 0; /* CSN of the supported card */
         struct ldinfo ld = {{-1, -1, -1, -1, -1, -1, -1, -1, -1}};
-        if (pnp_map_devices(csn, name, &ld, type))
+        if (pnp_map_devices(csn, name, ld.ld, type))
             lcsn = csn;
         if (lcsn > 0) {
             printf("PnP card found: [%s] %s", id, name);
@@ -1882,21 +1872,6 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     return ret;
 }
 
-/* ======== chunk 3 ======== */
-#define opt_xxf (*(unsigned char *)&opt_xxf)
-#define sb_port (*(unsigned *)&sb_port)
-#define opl_port (*(unsigned *)&opl_port)
-#define awe_port (*(unsigned *)&awe_port)
-#define mpu_port (*(unsigned *)&mpu_port)
-#define joy_port (*(unsigned *)&joy_port)
-#define wss_port (*(unsigned *)&wss_port)
-#define yamaha_ctl_port (*(unsigned *)&yamaha_ctl_port)
-#define ess_ctl_port (*(unsigned *)&ess_ctl_port)
-#define mpu2_port (*(unsigned *)&mpu2_port)
-#define ide_port (*(unsigned *)&ide_port)
-#define aux_ctl_port (*(unsigned *)&aux_ctl_port)
-#define gus_port (*(unsigned *)&gus_port)
-#define pnp_rdata_port (*(unsigned *)&pnp_rdata_port)
 /* PnP initiation key */
 void pnp_send_key(void)
 {
@@ -1946,7 +1921,6 @@ unsigned pnp_read16(unsigned char reg)
 /* indexed write: index at port+4, data at port+5 */
 void idx45_write(unsigned port, unsigned char idx, unsigned char val)
 {
-    register unsigned char a, b;    /* unused, but they reserve BX/CX */
     outportb(port + 4, idx);
     outportb(port + 5, val);
 }
@@ -2517,26 +2491,7 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
     delay(1);
     return ok;
 }
-#undef opt_xxf
-#undef sb_port
-#undef opl_port
-#undef awe_port
-#undef mpu_port
-#undef joy_port
-#undef wss_port
-#undef yamaha_ctl_port
-#undef ess_ctl_port
-#undef mpu2_port
-#undef ide_port
-#undef aux_ctl_port
-#undef gus_port
-#undef pnp_rdata_port
 
-/* ======== chunk 4 ======== */
-#define sb_irq (*(unsigned char *)&sb_irq)
-#define sb_dma (*(unsigned char *)&sb_dma)
-#define sb_hdma (*(unsigned char *)&sb_hdma)
-#define pnp_rdata_port (*(unsigned *)&pnp_rdata_port)
 /* read n bytes of PnP resource data (waits on status bit) into buf (may be NULL) */
 int pnp_read_res(unsigned char *buf, int n)
 {
@@ -2567,7 +2522,7 @@ int pnp_read_res(unsigned char *buf, int n)
 }
 
 /* read a PnP resource tag header: tag in *tag, length in *len */
-int pnp_read_tag(unsigned char *tag, int *len)
+int pnp_read_tag(unsigned char *tag, unsigned *len)
 {
     int r = 0;
     unsigned char b = 0;
@@ -2583,7 +2538,7 @@ int pnp_read_tag(unsigned char *tag, int *len)
             *tag = (b >> 1 >> 1 >> 1) & 0xf;
             *len = b & 7;
         }
-        r = (r && *tag != 0xff && *len != -1) ? 1 : 0;
+        r = (r && *tag != 0xff && *len != 0xffff) ? 1 : 0;
     }
     return r;
 }
@@ -2890,7 +2845,7 @@ void print_mixer(char *name, int d3, int gain)
     puts("]");
 }
 
-/* write OPTi SB-compatible mixer registers */
+/* write the SB Pro-compatible mixer registers (master, voice, FM, line, CD, mic) */
 void sbpro_mixer_set(void)
 {
     unsigned char mic;
@@ -2970,7 +2925,7 @@ void sb16_mixer_switches(void)
     idx45_write(sb_port + 5, 0x3c, v);
 }
 
-/* initialize OPTi 82C93x card in given mode */
+/* initialize an OPTi 82C925 (mode 5) or 82C924 (mode 4) and its codec */
 void opti92x_init(int mode)
 {
     unsigned char c = 0xf0;
@@ -3071,15 +3026,8 @@ void opti92x_init(int mode)
     printf("Card mode: ");
     puts(opt_xwss > 0 ? "[WSS]" : "[SBPro]");
 }
-#undef sb_irq
-#undef sb_dma
-#undef sb_hdma
-#undef pnp_rdata_port
 
-/* ======== chunk 5 ======== */
-#define wss_port (*(unsigned *)&wss_port)
-#define opti_ctl_port (*(unsigned *)&opti_ctl_port)
-/* initialise the codec/mixer registers to defaults */
+/* initialize an OPTi 82C931/82C933 codec and mixer */
 void opti93x_init(void)
 {
     register unsigned codec = wss_port + -4;
@@ -3218,7 +3166,7 @@ void sam9407_upload(unsigned base)
     }
 }
 
-/* read a byte from the card's ROM/RAM at 24-bit address addr */
+/* InterWave: read a byte of DRAM/ROM at 24-bit address addr */
 unsigned char iw_mem_read(unsigned long addr)
 {
     outportb(sb_port + 0x103, 0x43);
@@ -3228,7 +3176,7 @@ unsigned char iw_mem_read(unsigned long addr)
     return inportb(sb_port + 0x107);
 }
 
-/* write a byte to the card's RAM at 24-bit address addr */
+/* InterWave: write a byte of DRAM at 24-bit address addr */
 void iw_mem_write(unsigned long addr, unsigned char val)
 {
     outportb(sb_port + 0x103, 0x43);
@@ -3292,12 +3240,6 @@ int iw_list_roms(void)
 }
 
 /* detect on-board RAM size per bank, program the memory config register; returns total KB */
-/* TC 3.0 scales the long index with two single-bit shifts; BC 3.1 emits mov cl,2, so imitate it there */
-#ifdef __BORLANDC__
-#define SZ(i) (*(unsigned long *)((char *)sizes + ((i) << 1 << 1)))
-#else
-#define SZ(i) sizes[i]
-#endif
 
 int iw_detect_dram(unsigned long *dst)
 {
@@ -3331,7 +3273,7 @@ int iw_detect_dram(unsigned long *dst)
             found = 1;
         if (found) {
             while (off < 0x400000L) {
-                SZ(bank) += 0x10000L;
+                sizes[bank] += 0x10000L;
                 off += 0x10000L;
                 a = base + off;
                 if (iw_mem_read(a) == 0xaa)
@@ -3339,8 +3281,8 @@ int iw_detect_dram(unsigned long *dst)
             }
         }
         if (out)
-            *out++ = SZ(bank);
-        SZ(bank) >>= 10;
+            *out++ = sizes[bank];
+        sizes[bank] >>= 10;
         base += 0x400000L;
         off = 0;
         found = 0;
@@ -3393,11 +3335,7 @@ int iw_detect_dram(unsigned long *dst)
     total = sizes[0] + sizes[1] + sizes[2] + sizes[3];
     return total;
 }
-#undef wss_port
-#undef opti_ctl_port
 
-/* ======== chunk 6 ======== */
-#define awe_port (*(unsigned *)&awe_port)
 /* InterWave register write: reg = type<<16 | index<<8 | width */
 void iw_write(unsigned long reg, unsigned val)
 {
@@ -3683,8 +3621,8 @@ unsigned long emu_read32(unsigned reg, unsigned port)
     return lo;
 }
 
-/* EMU8000 (AWE32) initialisation, returns DRAM size in KB */
-int emu_init(int a)
+/* EMU8000 (AWE32) initialization for chip version ver, returns DRAM size in KB */
+int emu_init(int ver)
 {
     int i = 0;
     int j = 1;
@@ -3894,7 +3832,7 @@ int emu_init(int a)
     emu_write32(0x3f, awe_port, (long)(0xff | cho));
     emu_write32(0x1f, awe_port, 0x8000L);
     emu_write32(0x1f, awe_port + 0x400, 0xfffff3L);
-    emu_write32(0x3e, awe_port, (unsigned long)(a == 1 ? 0x4828u : 0x4800u) << 16);
+    emu_write32(0x3e, awe_port, (unsigned long)(ver == 1 ? 0x4828u : 0x4800u) << 16);
     outpw(awe_port + 0x802, 0x3c);
     outpw(awe_port + 0x400, 0);
     emu_write32(0x7e, awe_port, 0xffffffffL);
@@ -3909,12 +3847,8 @@ int emu_init(int a)
     outpw(awe_port + 0x802, 0xfe);
     return mem;
 }
-#undef awe_port
 
-/* ======== chunk 7 ======== */
-#define wss_port (*(unsigned *)&wss_port)
-#define crystal_ctl_port (*(unsigned *)&crystal_ctl_port)
-/* switch PnP to alternate address port (Crystal key, then use ess_ctl_port) */
+/* ESS: send the alternate key and use ess_ctl_port as the PnP address/write ports from now on */
 void use_alt_pnp_ports(void)
 {
     pnp_write(2, 2);
@@ -3924,7 +3858,7 @@ void use_alt_pnp_ports(void)
     pnp_wdata_port = ess_ctl_port + 1;
 }
 
-/* send Crystal key sequence + alternate address 4 times */
+/* send the 32-byte key (XORed with 0..3) followed by ess_ctl_port, four times */
 void send_alt_pnp_key(void)
 {
     unsigned char key[32] = {
@@ -4111,15 +4045,7 @@ void crystal_ext_init(int card)
     }
     puts("");
 }
-#undef wss_port
-#undef crystal_ctl_port
 
-/* ======== chunk 8 ======== */
-#define sb_port (*(unsigned *)&sb_port)
-#define wss_port (*(unsigned *)&wss_port)
-#define crystal_ctl_port (*(unsigned *)&crystal_ctl_port)
-#define opti_ctl_port (*(unsigned *)&opti_ctl_port)
-#define aux_ctl_port (*(unsigned *)&aux_ctl_port)
 /* indexed config register write via crystal_ctl_port */
 void cs_ctl_write(unsigned char reg, unsigned char val)
 {
@@ -4182,7 +4108,7 @@ void opl_write(unsigned char reg, unsigned char val)
     delay(8);
 }
 
-/* send alternate PnP key and isolate card at given read port */
+/* /XNET: wake the Realtek PnP network card with its own key, isolate it at port, give it CSN 0x81 and activate it */
 void xnet_workaround(int port)
 {
     unsigned char key[34] = {
@@ -4209,7 +4135,7 @@ void xnet_workaround(int port)
     delay(2);
 }
 
-/* serial bit-bang: write a register (start, address, data, stop) */
+/* TEA6330T tone control: I2C register write on aux_ctl_port (start, address, data, stop) */
 void tea6330_write(unsigned char reg, unsigned char val)
 {
     i2c_lines(1);
@@ -4223,7 +4149,7 @@ void tea6330_write(unsigned char reg, unsigned char val)
     delay(2);
 }
 
-/* serial bit-bang: shift out one byte MSB first */
+/* I2C: shift out one byte MSB first */
 void i2c_write_byte(unsigned char v)
 {
     int i = 0;
@@ -4237,15 +4163,12 @@ void i2c_write_byte(unsigned char v)
     i2c_lines(2);
 }
 
-/* serial bit-bang: output a line state (3 times for timing) */
+/* I2C: set SCL (bit 0) and SDA (bit 1), written 3 times for timing */
 void i2c_lines(unsigned char v)
 {
     int i = 0;
     for (i = 0; i < 3; i++)
         outportb(aux_ctl_port, v);
-    /* no code: marks BX/CX busy so BC 3.1 keeps i in SI as the original
-       compiler did (BC 3.1 otherwise uses BX for register vars in leaf functions) */
-    _BX; _CX;
 }
 
 /* OPTi 82C928 read: unlock password then read port */
@@ -4356,7 +4279,7 @@ int init_opti928(void)
     return 0;
 }
 
-/* probe OPTi controller at 0xf8c and set subtype */
+/* /NOPNP: if an OPTi 82C92x control chip answers at 0xf8c, enable it and note it in nopnp_mode */
 void probe_opti_ctl(void)
 {
     if (opti92x_read(0xf8c, 1) < 0xff && opti92x_read(0xf8c, 3) < 0xff) {
@@ -4527,8 +4450,3 @@ int init_es688(void)
     }
     return 0;
 }
-#undef sb_port
-#undef wss_port
-#undef crystal_ctl_port
-#undef opti_ctl_port
-#undef aux_ctl_port

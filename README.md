@@ -56,7 +56,8 @@ which this repo does not include: put it in `orig/` or set `UNISOUND_COM`.
 
 ## Status
 
-The output is byte-identical, but the source is still raw. Functions and globals are named after
-their addresses (`f_3c21`, `g_c19f`). About 30 globals are reached through type-view macros such
-as `#define g_c19f (*(unsigned char *)&g_c19f)`, where one variable was used with more than one
-type. Renaming and cleanup come next. Any change must keep `tools/build.sh` reporting IDENTICAL.
+The source compiles without warnings and the output is byte-identical. Functions and globals are
+named after what they do. Globals that hold settings say in their comment which BLASTER letter or
+command-line option sets them. Local variables in the large `configure_pnp` routine still have
+partly generic names (`f12`, `r1a`...). Card families are still plain numbers in `type`.
+Any change must keep `tools/build.sh` reporting IDENTICAL.
