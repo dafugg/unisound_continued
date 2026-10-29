@@ -89,6 +89,12 @@ A few card IDs and the options `/XSLAM` and `/XESSB` are experimental: see
   SB Pro mode, with the MPU-401 (BLASTER P and U); experimental, see
   [Wanted](#wanted-testers-and-pnp-dumps).
 
+On the OPTi 82C928 and 82C929, `/NOPNP /XWSS` sets up Windows Sound System mode instead of SB Pro
+mode; the chip runs one mode at a time. The WSS base, DMA and IRQ come from
+`ULTRA16=port,dma,irq,record dma`, which programs such as Mpxplay read to find the WSS codec, and
+not from BLASTER. Without it, UNISOUND uses OPTi's defaults, 530h, DMA 0, IRQ 7, and prints the
+`SET ULTRA16=530,0,7,0` line to add to AUTOEXEC.BAT.
+
 ## Wanted: testers and PnP dumps
 
 Some cards are recognised only from driver files, Linux's tables or 86Box tests with edited PnP
@@ -112,7 +118,7 @@ If you have one of these cards, please open a GitHub issue with:
 | DXP3201 | MED3210 (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
 | CDC1111 | Dynasonic Pro (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
 | ESS1878, ESS1879 | ESS ES1878 / ES1879 | ES1869 | ESS's data sheets give them the ES1869's layout and bypass key; 86Box ES1869 with each chip's internal PnP ROM from its data sheet |
-| none (`/NOPNP`) | OPTi 82C929 (MAD16 Pro): Boca Research Sound Expression 4294 and SE1440, miro PCM10, Acer Magic S20 | OPTi 82C929 | its data sheet; 86Box `acermagic_s20` and `mirosound_pcm10`, where it leaves the same registers as OPTi's own SNDINIT |
+| none (`/NOPNP`) | OPTi 82C929 (MAD16 Pro): Boca Research Sound Expression 4294 and SE1440, miro PCM10, Acer Magic S20 | OPTi 82C929, SB Pro or WSS (`/XWSS`, `ULTRA16`) | its data sheet; 86Box `acermagic_s20` and `mirosound_pcm10`, where it leaves the same registers as OPTi's own SNDINIT |
 
 ### Held back: need a PnP dump first
 
@@ -195,6 +201,7 @@ that prints diagnostic lines (see [Reporting problems](#reporting-problems)).
 | [481f5c0](https://github.com/dafugg/unisound_continued/commit/481f5c0701832c8105a6f2156538ef4d26fe7d30) | Crystal CS4235: every card ID ending in 25 is recognised (CSC0225, CSC1425, CSC1525, CSC4625, CSC4825 and CSCE825 from Linux's cs4236 driver, and 86Box's CSCA725). v0.82a skipped them as unknown; its two older tests, including the CSC8025 one, still apply. Experimental: see [Wanted](#wanted-testers-and-pnp-dumps) | — | ✅ `cs4235` (CSCA725): skipped before, configured after (WSS 534, OPL 388, IRQ 5, DMA 1/1, MPU 330/I9, JOY 200); `cs4232` and `cs4236b` unchanged | ❌ |
 | [92b2a8c](https://github.com/dafugg/unisound_continued/commit/92b2a8c3756a2412c2c174172f5306f686d9a057) | AZT1022: an AZT2320 card is set up as an AZT2320 again. Two Aztech cards use this ID, an AZT2320 card and the AD1816A SC-16 3D, and since v0.80a both were set up as AD1816: WSS at 530 instead of 534, DMA 1/1 instead of 1/3, the AD1816 mixer and no SB Pro mode. It is now an AD1816 only when its first logical device is AZT1018. Experimental: see [Wanted](#wanted-testers-and-pnp-dumps) | — | ✅ `azt2320` and `ad1816` with their PnP ROMs given the ID AZT1022: the AZT2320 now set up exactly like the AZT1008, the AD1816 as before | ❌ |
 | [ab0d87b](https://github.com/dafugg/unisound_continued/commit/ab0d87b334e2e3e259e2aeea60c426b780bd2c2c) | `/NOPNP` sets up the OPTi 82C929 (MAD16 Pro), as on the Boca Research Sound Expression 4294 and SE1440. Its probe tried only the 82C928's password (E2h), so an 82C929 (E3h) was never found. On the 82C929 the SB base, IRQ 10, the MPU-401 (MC6) and the MC4/MC5 bits its data sheet requires are set, and the jumper-set CD-ROM interface is kept. Experimental: see [Wanted](#wanted-testers-and-pnp-dumps) | — | ✅ `acermagic_s20` and `mirosound_pcm10`: "No card detected" before; after, MC1-MC5 read 00 03 82 A2 AF (A5 with the AD1848) as OPTi's SNDINIT leaves them, DMAPLAY plays on IRQ 5 DMA 1, the MPU-401 answers at 330h; `A240 I10 D3 P300 U7` also works | ❌ |
+| [b33b131](https://github.com/dafugg/unisound_continued/commit/b33b131d107354301567ce0d3c7ba62c56fa85e3) | OPTi 82C928/82C929 in WSS mode (`/NOPNP /XWSS`): the WSS configuration register (the codec's IRQ and DMA) is written, from `ULTRA16` (`port,dma,irq,record dma`) or OPTi's defaults 530h, DMA 0, IRQ 7, with a `SET ULTRA16=` line when it is missing. 0.82a never wrote it, so the codec had no IRQ. As OPTi's SNDINIT does, the SB part's IRQ is turned off in WSS mode. Experimental: see [Wanted](#wanted-testers-and-pnp-dumps) | — | ✅ `acermagic_s20`, `mirosound_pcm10`: WSS playback raised no IRQ before; after, it plays on IRQ 7 DMA 0, on IRQ 10 DMA 1 with `ULTRA16=530,1,10,1` and on IRQ 9 DMA 3 at F40h with `ULTRA16=F40,3,9,0`. 86Box has no 82C928 | ❌ |
 | Not fixed | OPTi 82C931: F (388h by default) is written to the FM base register (LD1 62h), which the card's resource data gives as 16-byte aligned. In 86Box that moves AdLib to 390h; real cards evidently still answer at 388h, so this is probably harmless. Writing 380h, as the BIOS and the Windows driver do, would match the resource data | — | ❌ 86Box moves AdLib to 390h, which real cards apparently don't | ❌ |
 
 ## Reporting problems

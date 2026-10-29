@@ -17,7 +17,7 @@ on a Compaq LTE 5000 with its on-board ES1688; the README table marks them.
 | Thread fixes build | branch `thread-fixes` at `50253a7` (bugs 11-24); each fix was tested with the build of its own commit |
 | ESS init build | branch `ess-init`: `aee160e` (B1h/B2h through 2xCh), `05aa0de` (`/LOG`), `8afa28d` (ESSINIT), `d2f397b` (OPTi 82C924/925 probe), `4197954` (82C928 probe), `f91b9bc` (ESSINIT OPTi probe) |
 | Card ID build | branch `id-table`: `481f5c0` (CS4235), `b4c0948` (card ID table), `2046077` (AZT1021), `92b2a8c` (AZT1022), `d5f8c0a` (RTL3000), `01b22e6` (DXP3201, CDC1111); branch `ess1878-1879`: `5318fc2` (ESS1878, ESS1879) |
-| 82C929 build | branch `opti929`: `ab0d87b` (OPTi 82C929 under `/NOPNP`) |
+| 82C929 build | branch `opti929`: `ab0d87b` (OPTi 82C929 under `/NOPNP`), `b33b131` (82C928/82C929 WSS mode, `ULTRA16`) |
 
 Platforms, all a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -395,9 +395,34 @@ nopnp (the same results on both):
 | fix, not set | "Card detected: OPTi 82C929", `ADD:220 IRQ:5 DMA:1 JOY:200 MPU:330/I9`; MC1-MC5 00 03 82 A2 AF, as SNDINIT; 331h reads BFh; DMAPLAY plays on IRQ 5, DMA 1 | the same, MC5 A5 as SNDINIT |
 | fix, `A240 I10 D3 P300 U7 T4` | `ADD:240 IRQ:10 DMA:3 JOY:200 MPU:300/I7`; MC3 66h; 301h reads BFh and 331h FFh; DMAPLAY at 240h plays on IRQ 10, DMA 3 | the same, MC5 A5 |
 
-Not tested: the MPU-401's IRQ; WSS mode (`/XWSS`, which doesn't write the WSS IRQ and DMA
-configuration register, as on the 82C928); and the 82C928 path, since 86Box has no 82C928. Its
-writes are unchanged: E2h is tried first, and E3h only if that finds nothing.
+Not tested: the MPU-401's IRQ, and the 82C928 path, since 86Box has no 82C928. Its SB-mode writes
+are unchanged: E2h is tried first, and E3h only if that finds nothing.
+
+### WSS mode (`/XWSS`) and `ULTRA16`
+
+In WSS mode the 82C928/82C929 code never wrote the WSS configuration register at the WSS base
+(82C929 data sheet page 11; the same layout as the one OSS's mad16 writes on the 82C928): IRQ in
+bits 5:3 (7, 9, 10, 11), DMA in bits 2:0 (0, 1, 3, or a playback/record pair). With the
+`ab0d87b` build, `/NOPNP /XWSS` then WSSPLAY on both cards: "WSS IRQ -1" (no interrupt); the
+register still read its power-on value.
+
+OPTi's SNDINIT with `MODE=1` in SOUND16.CFG (WSS mode, PORT2=530, IRQ2=7, DRQ2=0) on both cards
+leaves MC1 = 80h (WSS mode), MC3 = C2h (SB IRQ off, bits 7:6 = 11b; MC2, MC4 and MC5 as in SB
+mode), and WSSPLAY plays on IRQ 7, DMA 0. None of the OPTi DOS packages mentions ULTRA16; the
+fixed build takes the WSS settings from it, as `port,dma,irq,record dma` (Mpxplay's order: a
+CS4232 at DMA 1, IRQ 7 is `530,1,7,0`), and uses SNDINIT's WSS defaults without it.
+
+`UNISOUND /NOPNP /XWSS`, then MC1/MC3 and WSSPLAY, on pnp2 and nopnp (both cards the same):
+
+| Environment | UNISOUND | MC1 / MC3 | WSSPLAY |
+|---|---|---|---|
+| none | `WSS:530 IRQ:7 DMA:0`, and "Add to AUTOEXEC.BAT: SET ULTRA16=530,0,7,0" | 80 / C2, as SNDINIT | IRQ 7, DMA 0 |
+| `ULTRA16=530,1,10,1` | `WSS:530 IRQ:10 DMA:1` | 80 / C2 | IRQ 10, DMA 1 |
+| `ULTRA16=F40,3,9,0` | `WSS:F40 IRQ:9 DMA:3/0` (record on DMA 0) | A0 / C2 | at F40h: IRQ 9, DMA 3 |
+| `BLASTER=A220 I10 D3 WF40 K3 T4` only | `WSS:530 IRQ:7 DMA:0` and the AUTOEXEC.BAT line: W and K are ignored | 80 / E2 | IRQ 7, DMA 0 |
+| `ULTRA16=F40,3,9,0`, SB mode (no `/XWSS`) | `ADD:220 IRQ:5 DMA:1` | 20 / 82 | DMAPLAY: IRQ 5, DMA 1 |
+
+WSSPLAY only plays, so the record DMA was not tested.
 
 ## Regression check
 
@@ -433,3 +458,5 @@ either; on pnp2 it is configured by both).
 The 82C929 build (`ab0d87b`) ran the same 84 entries on pnp2 and nopnp against `main` (`ca6c682`):
 the only differences were `/NOPNP` on `acermagic_s20` and `mirosound_pcm10`, now set up instead of
 "No card detected".
+
+The WSS build (`b33b131`) ran them again: every run gave the same output as `ab0d87b`.
