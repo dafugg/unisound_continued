@@ -9,18 +9,30 @@ C source for **UNISOUND.COM v0.82a**, the "Universal ISA PnP Sound Card Driver f
 JazeFox, decompiled so that it rebuilds the released binary byte for byte. UNISOUND is released
 and discussed in [its thread on the VOGONS forum](https://www.vogons.org/viewtopic.php?t=72553).
 
-    606f8faec686d56468bb53eecdf1e28e4d6cda7a8a2051c36b7bcec16c37b370  UNISOUND.COM
-
-The branch `0.82a` is the byte-identical source: its head always rebuilds the binary byte for
-byte. Renames, comments and other changes that don't affect the code go there too, and must
-keep `tools/build.sh` reporting IDENTICAL. `main` adds bug fixes on top, so its build no longer
-has that hash. All of this applies only to version 0.82a; other releases will differ.
-
 > **This is an unofficial build. Don't yell at JazeFox if this burns down your house.**
 > Nothing here is made, endorsed or supported by JazeFox. UNISOUND, and the source and data
 > reconstructed from it, remain JazeFox's work; this repository is published only because
 > JazeFox can no longer be reached and the fixes are useful. If JazeFox asks, the
 > reconstruction and the builds will be taken down.
+
+## Decompilation status
+
+The branch `0.82a` is the byte-identical source: its head always rebuilds the released binary
+byte for byte.
+
+    606f8faec686d56468bb53eecdf1e28e4d6cda7a8a2051c36b7bcec16c37b370  UNISOUND.COM
+
+Renames, comments and other changes that don't affect the code go there too, and any change must
+keep `tools/build.sh` reporting IDENTICAL; a build takes about 6 seconds. `main` adds the bug
+fixes below on top, so its build no longer has that hash. All of this applies only to version
+0.82a; other releases will differ.
+
+The source compiles without warnings. Functions, globals, the card families (`CARD_*`) and the
+main routine's locals have names. Globals that hold settings say in their comment which BLASTER
+letter or command-line option sets them. Some names are best guesses from the code and the
+UNISOUND manual (for example `CARD_RJA0`, `CARD_ADS7141`). Locals are named too, apart from loop
+counters and other conventional short names. Beyond the byte-identical build, parts of the
+decompilation have been checked by hand against the original binary in Ghidra 12.1.4.
 
 ## Supported sound cards
 
@@ -64,18 +76,6 @@ drivers needed.
   supported.
 - **OAK OTI601 "Mozart" and OPTi 82C928 (MAD16):** poor compatibility with games. The card may
   need setting up again after some programs, and SB-mode audio is mono only.
-
-## Decompilation status
-
-The source compiles without warnings. On the `0.82a` branch the output is byte-identical; on
-`main` it differs only by the fixes below. Functions, globals, the card families (`CARD_*`) and
-the main routine's locals have names. Globals that hold settings say in their comment which
-BLASTER letter or command-line option sets them. Some names are best guesses from the code and
-the UNISOUND manual (for example `CARD_RJA0`, `CARD_ADS7141`). Locals are named too, apart from
-loop counters and other conventional short names. On the `0.82a` branch, any change must keep
-`tools/build.sh` reporting IDENTICAL; a build takes about 6 seconds. Beyond the byte-identical
-build, parts of the decompilation have been checked by hand against the original binary in
-Ghidra 12.1.4.
 
 ## Fixes & Changes after 0.82a
 
