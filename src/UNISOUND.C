@@ -52,6 +52,19 @@ unsigned outpw(unsigned portid, unsigned value);
 #define CARD_TBS20    0x3b /* Turtle Beach (TBS20) */
 #define CARD_GUSPNP   0x40 /* Gravis UltraSound PnP / InterWave (GRV, ADV55, STB01) */
 
+/* An entry of card_ids, the supported PnP card ids. pat is a 7-character id as pnp_vendor_str
+   makes it, in which '?' matches any character. var sets one of configure_pnp's variant flags:
+   the high nibble says which, the low nibble is the value; 0 sets none. */
+#define VAR_CTL 0x10 /* ctl_state */
+#define VAR_ALS 0x20 /* als_variant */
+#define VAR_CS  0x30 /* cs_variant */
+#define VAR_CMI 0x40 /* cmi_variant */
+struct card_id {
+    char pat[8];
+    unsigned char type;
+    unsigned char var;
+};
+
 /* ---- global data (initialized; addresses in the original DGROUP) ---- */
 /* EMU8000 init data 1 (regs 0x40-0x5f, data port) */
 int emu_init1[32] = {0x0c10, 0x8470, 0x14fe, 0xb488, 0x167f, 0xa470, 0x18e7, 0x84b5,
@@ -383,6 +396,7 @@ void opti93x_write(unsigned port, unsigned char idx, unsigned char val);
 unsigned char opti93x_read(unsigned port, unsigned char idx);
 int pnp_isolate(unsigned port, unsigned char *buf);
 char *pnp_vendor_str(unsigned long *id);
+const struct card_id *card_id_lookup(const char *id);
 int parse_ultrasnd(void);
 int parse_blaster(void);
 void print_blaster_hint(int port, int irq, int dma, int hdma);
@@ -896,110 +910,23 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         delay(1);
         id = pnp_vendor_str((unsigned long *)buf);
         if (id && strlen(id) > 5 && nsup < 6) {
-            if (memcmp(id, "CTL", 3) == 0) {
-                type = CARD_CREATIVE;
-                if (memcmp(id + 5, "F4", 2) == 0) {
-                    ctl_state = 2;
+            const struct card_id *e = card_id_lookup(id);
+            if (e) {
+                type = e->type;
+                switch (e->var & 0xf0) {
+                    case VAR_CTL:
+                        ctl_state = e->var & 0xf;
+                        break;
+                    case VAR_ALS:
+                        als_variant = e->var & 0xf;
+                        break;
+                    case VAR_CS:
+                        cs_variant = e->var & 0xf;
+                        break;
+                    case VAR_CMI:
+                        cmi_variant = e->var & 0xf;
+                        break;
                 }
-            } else if (memcmp(id, "ALS", 3) == 0) {
-                type = CARD_ALS;
-                if (memcmp(id + 5, "07", 2) == 0) {
-                    als_variant = 1;
-                } else if (memcmp(id + 3, "0001", 4) == 0) {
-                    als_variant = 3;
-                }
-            } else if (memcmp(id, "RWB1", 4) == 0) {
-                type = CARD_ALS;
-                als_variant = 2;
-            } else if (memcmp(id, "ESS", 3) == 0) {
-                if (memcmp(id + 3, "096", 3) == 0) {
-                    type = CARD_ES968;
-                } else if (memcmp(id + 3, "1868", 4) == 0) {
-                    type = CARD_ES1868;
-                } else if (memcmp(id + 3, "0003", 4) == 0) {
-                    type = CARD_ES1869;
-                } else if (memcmp(id + 3, "0006", 4) == 0) {
-                    type = CARD_ES1869;
-                } else if (memcmp(id + 3, "1869", 4) == 0) {
-                    type = CARD_ES1869;
-                }
-            } else if (memcmp(id, "SEM3006", 7) == 0) {
-                type = CARD_ES1868;
-            } else if (memcmp(id, "YMH", 3) == 0) {
-                type = CARD_YAMAHA;
-            } else if (memcmp(id, "NMX22", 5) == 0) {
-                type = CARD_YAMAHA;
-            } else if (memcmp(id, "QHA08", 5) == 0) {
-                type = CARD_YAMAHA;
-            } else if (memcmp(id, "MPI0003", 7) == 0) {
-                type = CARD_YAMAHA;
-            } else if (memcmp(id, "RSS", 3) == 0) {
-                type = CARD_ROCKWELL;
-                if (memcmp(id + 3, "58", 2) == 0) {
-                    cmi_variant = 8;
-                }
-            } else if (memcmp(id, "OPT", 3) == 0) {
-                if (memcmp(id + 5, "25", 2) == 0) {
-                    type = CARD_OPTI925;
-                } else if (memcmp(id + 5, "31", 2) == 0) {
-                    type = CARD_OPTI93X;
-                } else if (memcmp(id + 5, "33", 2) == 0) {
-                    type = CARD_OPTI93X;
-                } else if (memcmp(id + 5, "24", 2) == 0) {
-                    type = CARD_OPTI924;
-                }
-            } else if (memcmp(id, "CMI", 3) == 0) {
-                type = CARD_CMI;
-            } else if (memcmp(id, "ADS7141", 7) == 0) {
-                type = CARD_ADS7141;
-            } else if (memcmp(id, "ADS71", 5) == 0 || memcmp(id, "AXS71", 5) == 0 ||
-                       memcmp(id, "TER11", 5) == 0 || memcmp(id, "TER14", 5) == 0 ||
-                       memcmp(id, "AZT1022", 7) == 0 || memcmp(id, "LWC1061", 7) == 0 ||
-                       memcmp(id, "MDK1605", 7) == 0 || memcmp(id, "SMM7180", 7) == 0) {
-                type = CARD_AD1816;
-            } else if (memcmp(id, "AZT", 3) == 0) {
-                if (memcmp(id + 3, "232", 3) == 0 || memcmp(id + 3, "1006", 4) == 0 ||
-                    memcmp(id + 3, "1008", 4) == 0 || memcmp(id + 3, "1023", 4) == 0 ||
-                    memcmp(id + 3, "3011", 4) == 0 || memcmp(id + 3, "3000", 4) == 0 ||
-                    memcmp(id + 3, "3001", 4) == 0 || memcmp(id + 3, "1009", 4) == 0 ||
-                    memcmp(id + 3, "1007", 4) == 0 || memcmp(id + 3, "1005", 4) == 0 ||
-                    memcmp(id + 3, "1015", 4) == 0 || memcmp(id + 3, "1016", 4) == 0 ||
-                    memcmp(id + 3, "1017", 4) == 0 || memcmp(id + 3, "3002", 4) == 0 ||
-                    memcmp(id + 3, "3003", 4) == 0 || memcmp(id + 3, "1026", 4) == 0 ||
-                    memcmp(id + 3, "3005", 4) == 0 || memcmp(id + 3, "3013", 4) == 0) {
-                    type = CARD_AZTECH;
-                }
-            } else if (memcmp(id, "CSC", 3) == 0 || memcmp(id, "CDC", 3) == 0) {
-                if (memcmp(id + 5, "3", 1) == 0) {
-                    type = CARD_CRYSTAL;
-                    if (memcmp(id + 6, "7", 1) == 0) {
-                        cs_variant = 7;
-                    } else {
-                        cs_variant = 0;
-                    }
-                    if (memcmp(id + 6, "2", 1) == 0) {
-                        cs_variant = 1;
-                    }
-                    if (memcmp(id + 3, "A836", 4) == 0) {
-                        cs_variant = 4;
-                    }
-                } else if (memcmp(id + 4, "25", 2) == 0 || memcmp(id + 4, "025", 3) == 0 ||
-                           memcmp(id + 5, "25", 2) == 0) {
-                    /* CS4235: real cards end in 25 (CSC0225, CSC1425, CSC4625, CSCE825...);
-                       v0.82a only tested the two characters before that. */
-                    type = CARD_CRYSTAL;
-                }
-            } else if (memcmp(id, "TBS2004", 7) == 0) {
-                type = CARD_CRYSTAL;
-            } else if (memcmp(id, "RJA0", 4) == 0) {
-                type = CARD_RJA0;
-            } else if (memcmp(id, "ENS4", 4) == 0) {
-                type = CARD_ENSONIQ;
-            } else if (memcmp(id, "TBS20", 5) == 0) {
-                type = CARD_TBS20;
-            } else if (memcmp(id, "GRV", 3) == 0 || memcmp(id, "ADV55", 5) == 0 ||
-                       memcmp(id, "STB01", 5) == 0) {
-                type = CARD_GUSPNP;
             }
         }
         dlog("CSN %d %s %02X%02X%02X%02X%02X%02X%02X%02X %02X t%d", csn, id, (unsigned char)buf[0],
@@ -2569,6 +2496,97 @@ char *pnp_vendor_str(unsigned long *id)
             (unsigned char)((v >> 16) & 0xf), (unsigned char)((v >> 28) & 0xf),
             (unsigned char)((v >> 24) & 0xf));
     return vendor_str;
+}
+
+/* Supported PnP card ids (struct card_id). The first matching entry wins, so specific ids come
+   before the patterns that would also match them. */
+const struct card_id card_ids[] = {
+    {"CTL??F4", CARD_CREATIVE, VAR_CTL | 2},
+    {"CTL????", CARD_CREATIVE, 0},
+    {"ALS??07", CARD_ALS, VAR_ALS | 1},
+    {"ALS0001", CARD_ALS, VAR_ALS | 3},
+    {"ALS????", CARD_ALS, 0},
+    {"RWB1???", CARD_ALS, VAR_ALS | 2},
+    {"ESS096?", CARD_ES968, 0},
+    {"ESS1868", CARD_ES1868, 0},
+    {"ESS0003", CARD_ES1869, 0},
+    {"ESS0006", CARD_ES1869, 0},
+    {"ESS1869", CARD_ES1869, 0},
+    {"SEM3006", CARD_ES1868, 0},
+    {"YMH????", CARD_YAMAHA, 0},
+    {"NMX22??", CARD_YAMAHA, 0},
+    {"QHA08??", CARD_YAMAHA, 0},
+    {"MPI0003", CARD_YAMAHA, 0},
+    {"RSS58??", CARD_ROCKWELL, VAR_CMI | 8},
+    {"RSS????", CARD_ROCKWELL, 0},
+    {"OPT??25", CARD_OPTI925, 0},
+    {"OPT??31", CARD_OPTI93X, 0},
+    {"OPT??33", CARD_OPTI93X, 0},
+    {"OPT??24", CARD_OPTI924, 0},
+    {"CMI????", CARD_CMI, 0},
+    {"ADS7141", CARD_ADS7141, 0},
+    {"ADS71??", CARD_AD1816, 0},
+    {"AXS71??", CARD_AD1816, 0},
+    {"TER11??", CARD_AD1816, 0},
+    {"TER14??", CARD_AD1816, 0},
+    {"AZT1022", CARD_AD1816, 0},
+    {"LWC1061", CARD_AD1816, 0},
+    {"MDK1605", CARD_AD1816, 0},
+    {"SMM7180", CARD_AD1816, 0},
+    {"AZT232?", CARD_AZTECH, 0},
+    {"AZT1005", CARD_AZTECH, 0},
+    {"AZT1006", CARD_AZTECH, 0},
+    {"AZT1007", CARD_AZTECH, 0},
+    {"AZT1008", CARD_AZTECH, 0},
+    {"AZT1009", CARD_AZTECH, 0},
+    {"AZT1015", CARD_AZTECH, 0},
+    {"AZT1016", CARD_AZTECH, 0},
+    {"AZT1017", CARD_AZTECH, 0},
+    {"AZT1023", CARD_AZTECH, 0},
+    {"AZT1026", CARD_AZTECH, 0},
+    {"AZT3000", CARD_AZTECH, 0},
+    {"AZT3001", CARD_AZTECH, 0},
+    {"AZT3002", CARD_AZTECH, 0},
+    {"AZT3003", CARD_AZTECH, 0},
+    {"AZT3005", CARD_AZTECH, 0},
+    {"AZT3011", CARD_AZTECH, 0},
+    {"AZT3013", CARD_AZTECH, 0},
+    {"CSCA836", CARD_CRYSTAL, VAR_CS | 4},
+    {"CSC??37", CARD_CRYSTAL, VAR_CS | 7},
+    {"CSC??32", CARD_CRYSTAL, VAR_CS | 1},
+    {"CSC??3?", CARD_CRYSTAL, VAR_CS | 0},
+    {"CDCA836", CARD_CRYSTAL, VAR_CS | 4},
+    {"CDC??37", CARD_CRYSTAL, VAR_CS | 7},
+    {"CDC??32", CARD_CRYSTAL, VAR_CS | 1},
+    {"CDC??3?", CARD_CRYSTAL, VAR_CS | 0},
+    /* CS4235: v0.82a tested the 5th and 6th characters (CSC?25?, CSC8025); real cards end in 25 */
+    {"CSC?25?", CARD_CRYSTAL, 0},
+    {"CSC??25", CARD_CRYSTAL, 0},
+    {"CDC?25?", CARD_CRYSTAL, 0},
+    {"CDC??25", CARD_CRYSTAL, 0},
+    {"TBS2004", CARD_CRYSTAL, 0},
+    {"RJA0???", CARD_RJA0, 0},
+    {"ENS4???", CARD_ENSONIQ, 0},
+    {"TBS20??", CARD_TBS20, 0},
+    {"GRV????", CARD_GUSPNP, 0},
+    {"ADV55??", CARD_GUSPNP, 0},
+    {"STB01??", CARD_GUSPNP, 0},
+    {"", 0, 0}};
+
+/* Return the card_ids entry that matches the 7-character PnP id, or 0 if the card isn't supported. */
+const struct card_id *card_id_lookup(const char *id)
+{
+    const struct card_id *e;
+    for (e = card_ids; e->pat[0] != 0; e++) {
+        int i = 0;
+        while (i < 7 && (e->pat[i] == '?' || e->pat[i] == id[i])) {
+            i++;
+        }
+        if (i == 7) {
+            return e;
+        }
+    }
+    return 0;
 }
 
 /* Read the ULTRASND environment variable ("port,dma,dma2,irq,irq2") into gus_port, gus_dma,
