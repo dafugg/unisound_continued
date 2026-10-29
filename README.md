@@ -67,4 +67,4 @@ reporting IDENTICAL; a build takes about 6 seconds.
 
 The tools, build files and documentation are under the MIT license (see [LICENSE](LICENSE)).
 `src/UNISOUND.C` and `data/*.json` are not: they are reconstructed from, or derived from,
-UNISOUND by JazeFox, and remain his work.
+UNISOUND by JazeFox, and remain JazeFox's work.
