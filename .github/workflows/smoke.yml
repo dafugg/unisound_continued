@@ -15,9 +15,13 @@ permissions:
 
 jobs:
   build:
+    name: MS-DOS build
     uses: ./.github/workflows/build.yml
+    with:
+      format: false
 
   smoke:
+    name: 86Box smoke test
     needs: build
     runs-on: ubuntu-24.04
     container: debian:trixie

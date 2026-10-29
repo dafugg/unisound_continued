@@ -5,12 +5,20 @@ on:
   pull_request:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      format:
+        description: Also run the clang-format check
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 jobs:
   format:
+    name: clang-format
+    # inputs.format is unset (null) on push and pull_request, so only a caller can turn it off.
+    if: inputs.format != false
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +28,7 @@ jobs:
           git ls-files 'src/*.C' 'tools/dos/*.C' | xargs clang-format-18 --dry-run -Werror
 
   build:
+    name: Turbo C++ 3.0 build
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
