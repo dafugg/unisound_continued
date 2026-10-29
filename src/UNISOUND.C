@@ -19,6 +19,28 @@ int inp(unsigned portid);
 int outp(unsigned portid, int value);
 unsigned outpw(unsigned portid, unsigned value);
 
+/* card families (the type code in configure_pnp and the PnP resource walkers) */
+#define CARD_CREATIVE  0x01  /* Creative SB16/AWE (CTL) */
+#define CARD_ALS       0x02  /* Avance Logic ALS (ALS, RWB1) */
+#define CARD_ES1868    0x03  /* ESS ES1868 (ESS1868, SEM3006) */
+#define CARD_YAMAHA    0x04  /* Yamaha OPL3-SAx (YMH, NMX22, QHA08, MPI0003) */
+#define CARD_ROCKWELL  0x05  /* Rockwell (RSS) */
+#define CARD_ES968     0x06  /* ESS ES968 (ESS096x) */
+#define CARD_OPTI925   0x07  /* OPTi 82C925 (OPT..25) */
+#define CARD_CMI       0x08  /* C-Media (CMI) */
+#define CARD_AD1816    0x09  /* Analog Devices AD1816 based (ADS71, AXS71, TER11/14, ...) */
+#define CARD_AZTECH    0x0a  /* Aztech (AZT) */
+#define CARD_CRYSTAL   0x0b  /* Crystal CS42xx (CSC, CDC, TBS2004) */
+#define CARD_OPTI93X   0x0c  /* OPTi 82C931/82C933 (OPT..31, OPT..33) */
+#define CARD_ES968B    0x0d  /* ES968 whose first logical device id byte is 0x68 */
+#define CARD_ES1869    0x0e  /* ESS ES1869 (ESS1869, ESS0003, ESS0006) */
+#define CARD_OPTI924   0x10  /* OPTi 82C924 (OPT..24) */
+#define CARD_ADS7141   0x13  /* ADS7141 */
+#define CARD_RJA0      0x2c  /* RJA0 */
+#define CARD_ENSONIQ   0x37  /* Ensoniq (ENS4) */
+#define CARD_TBS20     0x3b  /* Turtle Beach (TBS20) */
+#define CARD_GUSPNP    0x40  /* Gravis UltraSound PnP / InterWave (GRV, ADV55, STB01) */
+
 /* ---- global data (initialized; addresses in the original DGROUP) ---- */
 int emu_init1[32] = {
     0x0c10, 0x8470, 0x14fe, 0xb488, 0x167f, 0xa470, 0x18e7, 0x84b5, 0x1b6e, 0x842a, 0x1f1d, 0x852a,
@@ -646,20 +668,20 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     unsigned char cardno = 0;   /* card counter for /CL listing */
     int nsup = 0;               /* number of supported cards found */
     register int type = 0;      /* card family code */
-    unsigned char f11 = 0;      /* ESS: Maxi Sound variant */
-    unsigned char f12 = 0;      /* Crystal: sub-variant (1,2,3,4,7) */
-    int f14 = 0;                /* ALS: sub-variant */
-    unsigned char f15 = 0;      /* CMI / RSS sub-variant */
-    int f18 = 0;                /* Creative: CQM/AWE state */
-    unsigned char f19 = 0;      /* cards listed */
-    unsigned char r1a = 0x60;   /* PnP config registers for SB base, MPU, OPL, WSS, IRQ1/2, DMA1/2 */
-    unsigned char r1b = 0x62;
-    unsigned char r1c = 0x64;
-    unsigned char r1d = 0x62;
-    unsigned char r1e = 0x70;
-    unsigned char r1f = 0x72;
-    unsigned char r20 = 0x74;
-    unsigned char r21 = 0x75;
+    unsigned char ess_maxi = 0;      /* ESS: Maxi Sound variant */
+    unsigned char cs_variant = 0;      /* Crystal: 2 = Orpheus, 3 = Turtle Beach, 1/4/7 by id */
+    int als_variant = 0;                /* ALS: sub-variant */
+    unsigned char cmi_variant = 0;      /* CMI: 1 = AD- name; RSS: 8 = RSS58 */
+    int ctl_state = 0;                /* Creative: CQM/AWE state */
+    unsigned char nlisted = 0;      /* cards listed */
+    unsigned char reg_sb = 0x60;   /* PnP config registers used for each resource; vary by card */
+    unsigned char reg_mpu = 0x62;
+    unsigned char reg_opl = 0x64;
+    unsigned char reg_wss = 0x62;
+    unsigned char reg_irq = 0x70;
+    unsigned char reg_irq2 = 0x72;
+    unsigned char reg_dma = 0x74;
+    unsigned char reg_dma2 = 0x75;
     int ret = 0;                /* return value */
 
     print_banner();
@@ -719,61 +741,61 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         id = pnp_vendor_str((unsigned long *)buf);
         if (id && strlen(id) > 5 && nsup < 6) {
             if (memcmp(id, "CTL", 3) == 0) {
-                type = 1;
+                type = CARD_CREATIVE;
                 if (memcmp(id + 5, "F4", 2) == 0)
-                    f18 = 2;
+                    ctl_state = 2;
             } else if (memcmp(id, "ALS", 3) == 0) {
-                type = 2;
+                type = CARD_ALS;
                 if (memcmp(id + 5, "07", 2) == 0)
-                    f14 = 1;
+                    als_variant = 1;
                 else if (memcmp(id + 3, "0001", 4) == 0)
-                    f14 = 3;
+                    als_variant = 3;
             } else if (memcmp(id, "RWB1", 4) == 0) {
-                type = 2;
-                f14 = 2;
+                type = CARD_ALS;
+                als_variant = 2;
             } else if (memcmp(id, "ESS", 3) == 0) {
                 if (memcmp(id + 3, "096", 3) == 0)
-                    type = 6;
+                    type = CARD_ES968;
                 else if (memcmp(id + 3, "1868", 4) == 0)
-                    type = 3;
+                    type = CARD_ES1868;
                 else if (memcmp(id + 3, "0003", 4) == 0)
-                    type = 0xe;
+                    type = CARD_ES1869;
                 else if (memcmp(id + 3, "0006", 4) == 0)
-                    type = 0xe;
+                    type = CARD_ES1869;
                 else if (memcmp(id + 3, "1869", 4) == 0)
-                    type = 0xe;
+                    type = CARD_ES1869;
             } else if (memcmp(id, "SEM3006", 7) == 0)
-                type = 3;
+                type = CARD_ES1868;
             else if (memcmp(id, "YMH", 3) == 0)
-                type = 4;
+                type = CARD_YAMAHA;
             else if (memcmp(id, "NMX22", 5) == 0)
-                type = 4;
+                type = CARD_YAMAHA;
             else if (memcmp(id, "QHA08", 5) == 0)
-                type = 4;
+                type = CARD_YAMAHA;
             else if (memcmp(id, "MPI0003", 7) == 0)
-                type = 4;
+                type = CARD_YAMAHA;
             else if (memcmp(id, "RSS", 3) == 0) {
-                type = 5;
+                type = CARD_ROCKWELL;
                 if (memcmp(id + 3, "58", 2) == 0)
-                    f15 = 8;
+                    cmi_variant = 8;
             } else if (memcmp(id, "OPT", 3) == 0) {
                 if (memcmp(id + 5, "25", 2) == 0)
-                    type = 7;
+                    type = CARD_OPTI925;
                 else if (memcmp(id + 5, "31", 2) == 0)
-                    type = 0xc;
+                    type = CARD_OPTI93X;
                 else if (memcmp(id + 5, "33", 2) == 0)
-                    type = 0xc;
+                    type = CARD_OPTI93X;
                 else if (memcmp(id + 5, "24", 2) == 0)
-                    type = 0x10;
+                    type = CARD_OPTI924;
             } else if (memcmp(id, "CMI", 3) == 0)
-                type = 8;
+                type = CARD_CMI;
             else if (memcmp(id, "ADS7141", 7) == 0)
-                type = 0x13;
+                type = CARD_ADS7141;
             else if (memcmp(id, "ADS71", 5) == 0 || memcmp(id, "AXS71", 5) == 0 ||
                      memcmp(id, "TER11", 5) == 0 || memcmp(id, "TER14", 5) == 0 ||
                      memcmp(id, "AZT1022", 7) == 0 || memcmp(id, "LWC1061", 7) == 0 ||
                      memcmp(id, "MDK1605", 7) == 0 || memcmp(id, "SMM7180", 7) == 0)
-                type = 9;
+                type = CARD_AD1816;
             else if (memcmp(id, "AZT", 3) == 0) {
                 if (memcmp(id + 3, "232", 3) == 0 || memcmp(id + 3, "1006", 4) == 0 ||
                     memcmp(id + 3, "1008", 4) == 0 || memcmp(id + 3, "1023", 4) == 0 ||
@@ -784,31 +806,31 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     memcmp(id + 3, "1017", 4) == 0 || memcmp(id + 3, "3002", 4) == 0 ||
                     memcmp(id + 3, "3003", 4) == 0 || memcmp(id + 3, "1026", 4) == 0 ||
                     memcmp(id + 3, "3005", 4) == 0 || memcmp(id + 3, "3013", 4) == 0)
-                    type = 0xa;
+                    type = CARD_AZTECH;
             } else if (memcmp(id, "CSC", 3) == 0 || memcmp(id, "CDC", 3) == 0) {
                 if (memcmp(id + 5, "3", 1) == 0) {
-                    type = 0xb;
+                    type = CARD_CRYSTAL;
                     if (memcmp(id + 6, "7", 1) == 0)
-                        f12 = 7;
+                        cs_variant = 7;
                     else
-                        f12 = 0;
+                        cs_variant = 0;
                     if (memcmp(id + 6, "2", 1) == 0)
-                        f12 = 1;
+                        cs_variant = 1;
                     if (memcmp(id + 3, "A836", 4) == 0)
-                        f12 = 4;
+                        cs_variant = 4;
                 } else if (memcmp(id + 4, "25", 2) == 0 || memcmp(id + 4, "025", 3) == 0)
-                    type = 0xb;
+                    type = CARD_CRYSTAL;
             } else if (memcmp(id, "TBS2004", 7) == 0)
-                type = 0xb;
+                type = CARD_CRYSTAL;
             else if (memcmp(id, "RJA0", 4) == 0)
-                type = 0x2c;
+                type = CARD_RJA0;
             else if (memcmp(id, "ENS4", 4) == 0)
-                type = 0x37;
+                type = CARD_ENSONIQ;
             else if (memcmp(id, "TBS20", 5) == 0)
-                type = 0x3b;
+                type = CARD_TBS20;
             else if (memcmp(id, "GRV", 3) == 0 || memcmp(id, "ADV55", 5) == 0 ||
                      memcmp(id, "STB01", 5) == 0)
-                type = 0x40;
+                type = CARD_GUSPNP;
         }
         cardno++;
         if (card > 1) {
@@ -824,7 +846,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 printf(" (BAD CHECKSUM!)");
             type = 0;
             printf("\n");
-            f19++;
+            nlisted++;
         }
         if (type > 0) {
             nsup++;
@@ -884,7 +906,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             if (opt_read != 0)
                 puts("Reading card current settings...\n");
             else if (opt_disable == 0) {
-                if (type == 0x40) {
+                if (type == CARD_GUSPNP) {
                     if (parse_ultrasnd() == 0)
                         puts("Loading Unisound default settings...");
                     else
@@ -897,137 +919,137 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 }
             }
             if (ld.x[3] == 'h')
-                type = 0xd;
-            if (type == 1) {
-                r1b = 0x62;
-                r1c = 0x64;
+                type = CARD_ES968B;
+            if (type == CARD_CREATIVE) {
+                reg_mpu = 0x62;
+                reg_opl = 0x64;
             }
-            if (type == 2) {
-                r1b = 0x60;
-                r1c = 0x60;
+            if (type == CARD_ALS) {
+                reg_mpu = 0x60;
+                reg_opl = 0x60;
             }
-            if (type == 3) {
-                r1b = 0x64;
-                r1c = 0x62;
+            if (type == CARD_ES1868) {
+                reg_mpu = 0x64;
+                reg_opl = 0x62;
             }
-            if (type == 4) {
-                r1b = 0x66;
-                r1c = 0x64;
-                r1d = 0x62;
+            if (type == CARD_YAMAHA) {
+                reg_mpu = 0x66;
+                reg_opl = 0x64;
+                reg_wss = 0x62;
             }
-            if (type == 5) {
-                r1b = 0x60;
-                r1c = 0x62;
+            if (type == CARD_ROCKWELL) {
+                reg_mpu = 0x60;
+                reg_opl = 0x62;
                 sb_hdma = 4;
             }
-            if (type == 6) {
-                r1b = 0x60;
-                r1c = 0x60;
+            if (type == CARD_ES968) {
+                reg_mpu = 0x60;
+                reg_opl = 0x60;
             }
-            if (type == 0xd) {
-                r1b = 0x64;
-                r1c = 0x62;
+            if (type == CARD_ES968B) {
+                reg_mpu = 0x64;
+                reg_opl = 0x62;
             }
-            if (type == 7) {
-                r1b = 0x60;
-                r1c = 0x64;
-                r1d = 0x62;
+            if (type == CARD_OPTI925) {
+                reg_mpu = 0x60;
+                reg_opl = 0x64;
+                reg_wss = 0x62;
                 if (nopnp_mode == 2)
                     opti_ctl_port += 0x80;
             }
-            if (type == 0x10) {
-                r1b = 0x60;
-                r1c = 0x64;
-                r1d = 0x62;
+            if (type == CARD_OPTI924) {
+                reg_mpu = 0x60;
+                reg_opl = 0x64;
+                reg_wss = 0x62;
                 if (nopnp_mode == 2)
                     opti_ctl_port += 0x80;
             }
-            if (type == 8) {
-                r1b = 0x60;
-                r1c = 0x62;
-                r1d = 0x60;
+            if (type == CARD_CMI) {
+                reg_mpu = 0x60;
+                reg_opl = 0x62;
+                reg_wss = 0x60;
             }
-            if (type == 9) {
-                r1b = 0x60;
-                r1c = 0x62;
-                r1d = 0x64;
+            if (type == CARD_AD1816) {
+                reg_mpu = 0x60;
+                reg_opl = 0x62;
+                reg_wss = 0x64;
             }
-            if (type == 0x13) {
-                r1b = 0x60;
-                r1c = 0x60;
-                r1d = 0x60;
+            if (type == CARD_ADS7141) {
+                reg_mpu = 0x60;
+                reg_opl = 0x60;
+                reg_wss = 0x60;
                 sb_hdma = 4;
             }
-            if (type == 0xa) {
-                r1b = 0x60;
-                r1c = 0x62;
-                r1d = 0x64;
+            if (type == CARD_AZTECH) {
+                reg_mpu = 0x60;
+                reg_opl = 0x62;
+                reg_wss = 0x64;
                 if (wss_port != 0)
                     wss_port += 4;
             }
-            if (type == 0xb) {
-                r1b = 0x60;
-                r1c = 0x62;
-                r1d = 0x60;
+            if (type == CARD_CRYSTAL) {
+                reg_mpu = 0x60;
+                reg_opl = 0x62;
+                reg_wss = 0x60;
                 if (wss_port != 0)
                     wss_port += 4;
-                r1a = 0x64;
+                reg_sb = 0x64;
                 irq2 = sb_irq;
             }
-            if (type == 0xc) {
-                r1b = 0x60;
-                r1c = 0x62;
-                r1d = 0x60;
+            if (type == CARD_OPTI93X) {
+                reg_mpu = 0x60;
+                reg_opl = 0x62;
+                reg_wss = 0x60;
                 if (wss_port != 0)
                     wss_port += 4;
-                r1a = 0x64;
+                reg_sb = 0x64;
                 if (wss_port != 0)
                     opti_ctl_port -= 0x100;
             }
-            if (type == 0xe) {
-                r1b = 0x64;
-                r1c = 0x62;
+            if (type == CARD_ES1869) {
+                reg_mpu = 0x64;
+                reg_opl = 0x62;
                 if (opt_xea < 1 && (ess_ctl_port == 0x800 || ess_ctl_port == 0))
                     ess_ctl_port = 0x660;
             }
-            if (type == 0x40) {
-                r1b = 0x60;
-                r1c = 0x62;
+            if (type == CARD_GUSPNP) {
+                reg_mpu = 0x60;
+                reg_opl = 0x62;
                 sb_port = gus_port;
                 sb_dma = gus_dma;
                 sb_hdma = gus_dma2;
                 sb_irq = gus_irq;
             }
-            if (type == 3 && name[0] == 'M' && name[1] == 'a' && name[2] == 'x')
-                f11 = 1;
-            if (type == 0xb && memcmp(name, "Orp", 3) == 0) {
-                f12 = 2;
+            if (type == CARD_ES1868 && name[0] == 'M' && name[1] == 'a' && name[2] == 'x')
+                ess_maxi = 1;
+            if (type == CARD_CRYSTAL && memcmp(name, "Orp", 3) == 0) {
+                cs_variant = 2;
                 if (opt_xof == -1)
                     opt_xof = 0;
             }
-            if (type == 0xb && memcmp(name, "Tur", 3) == 0 && f12 != 1)
-                f12 = 3;
-            if (type == 2 && f14 == 3) {
-                r20 = 0x75;
-                r21 = 0x74;
+            if (type == CARD_CRYSTAL && memcmp(name, "Tur", 3) == 0 && cs_variant != 1)
+                cs_variant = 3;
+            if (type == CARD_ALS && als_variant == 3) {
+                reg_dma = 0x75;
+                reg_dma2 = 0x74;
             }
-            if (type == 0xb && (f12 == 1 || f12 == 4) && crystal_ctl_port == 0x120)
+            if (type == CARD_CRYSTAL && (cs_variant == 1 || cs_variant == 4) && crystal_ctl_port == 0x120)
                 crystal_ctl_port = wss_port + 4;
-            if (type == 8 && memcmp(name, "AD-", 3) == 0)
-                f15 = 1;
-            if (type == 5 && f15 == 8 && memcmp(name, "Zol", 3) == 0)
+            if (type == CARD_CMI && memcmp(name, "AD-", 3) == 0)
+                cmi_variant = 1;
+            if (type == CARD_ROCKWELL && cmi_variant == 8 && memcmp(name, "Zol", 3) == 0)
                 opt_xof = 8;
-            if (((type == 0xe && opt_xea == 0) || (type == 3 && opt_xea == 1)) && !opt_read)
+            if (((type == CARD_ES1869 && opt_xea == 0) || (type == CARD_ES1868 && opt_xea == 1)) && !opt_read)
                 use_alt_pnp_ports();
             pnp_write(3, lcsn);
             delay(1);
             if (ld.ld[0] >= 0) {
                 pnp_write(7, ld.ld[0]);
-                pnp_write16(r1a, sb_port);
+                pnp_write16(reg_sb, sb_port);
                 if (opt_read != 0)
-                    sb_port = pnp_read16(r1a);
+                    sb_port = pnp_read16(reg_sb);
                 printf("ADD:%X", sb_port);
-                if (type == 0x40) {
+                if (type == CARD_GUSPNP) {
                     int o1 = 0x100;
                     int o2 = 0x10c;
                     if (opt_disable != 0) {
@@ -1040,52 +1062,52 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                         sb_port = pnp_read16(0x64) - o2;
                     printf(" CODEC:%X", sb_port + o2);
                 }
-                if (type == 4 || type == 7 || type == 9 || type == 0xa || type == 0xc ||
-                    type == 0xb || type == 0x10) {
-                    pnp_write16(r1d, wss_port);
+                if (type == CARD_YAMAHA || type == CARD_OPTI925 || type == CARD_AD1816 || type == CARD_AZTECH || type == CARD_OPTI93X ||
+                    type == CARD_CRYSTAL || type == CARD_OPTI924) {
+                    pnp_write16(reg_wss, wss_port);
                     if (opt_read != 0)
-                        wss_port = pnp_read16(r1d);
+                        wss_port = pnp_read16(reg_wss);
                     printf(" WSS:%X", wss_port);
                 }
-                if (type == 1 || type == 3 || type == 4 || type == 5 || type == 7 ||
-                    type == 0x10 || type == 9 || type == 0xa || type == 0xc || type == 0xb ||
-                    type == 0xd || type == 0xe) {
-                    pnp_write16(r1c, opl_port);
+                if (type == CARD_CREATIVE || type == CARD_ES1868 || type == CARD_YAMAHA || type == CARD_ROCKWELL || type == CARD_OPTI925 ||
+                    type == CARD_OPTI924 || type == CARD_AD1816 || type == CARD_AZTECH || type == CARD_OPTI93X || type == CARD_CRYSTAL ||
+                    type == CARD_ES968B || type == CARD_ES1869) {
+                    pnp_write16(reg_opl, opl_port);
                     if (opt_read != 0) {
-                        opl_port = pnp_read16(r1c);
-                        if (type == 0xd && opl_port == 0 && (pnp_read(r20) & 7) != 4)
+                        opl_port = pnp_read16(reg_opl);
+                        if (type == CARD_ES968B && opl_port == 0 && (pnp_read(reg_dma) & 7) != 4)
                             opl_port = 0x388;
                     }
-                    if (type == 1 && f18 == 2)
+                    if (type == CARD_CREATIVE && ctl_state == 2)
                         printf(" CQM:%X", opl_port);
                     else
                         printf(" OPL:%X", opl_port);
-                    if (type == 0xb)
-                        pnp_write(r1f, 0);
+                    if (type == CARD_CRYSTAL)
+                        pnp_write(reg_irq2, 0);
                 }
-                if (type == 1 || type == 3 || type == 4 || type == 0xd || type == 0xe) {
-                    if (type == 3 && f11 == 1) {
-                        pnp_write16(r1b, mpu2_port);
+                if (type == CARD_CREATIVE || type == CARD_ES1868 || type == CARD_YAMAHA || type == CARD_ES968B || type == CARD_ES1869) {
+                    if (type == CARD_ES1868 && ess_maxi == 1) {
+                        pnp_write16(reg_mpu, mpu2_port);
                         if (opt_read != 0)
-                            mpu2_port = pnp_read16(r1b);
+                            mpu2_port = pnp_read16(reg_mpu);
                         printf(" MPU2:%X", mpu2_port);
                     } else {
-                        pnp_write16(r1b, mpu_port);
+                        pnp_write16(reg_mpu, mpu_port);
                         if (opt_read != 0) {
-                            mpu_port = pnp_read16(r1b);
-                            if (type == 0xd && mpu_port == 0 && (pnp_read(r20) & 7) != 4)
+                            mpu_port = pnp_read16(reg_mpu);
+                            if (type == CARD_ES968B && mpu_port == 0 && (pnp_read(reg_dma) & 7) != 4)
                                 mpu_port = 0x330;
                         }
                         printf(" MPU:%X", mpu_port);
                     }
                 }
-                if (type == 4) {
+                if (type == CARD_YAMAHA) {
                     pnp_write16(0x68, yamaha_ctl_port);
                     if (opt_read != 0)
                         yamaha_ctl_port = pnp_read16(0x68);
                     printf(" CTR:%X", yamaha_ctl_port);
                 }
-                if (type == 7 || type == 0xc) {
+                if (type == CARD_OPTI925 || type == CARD_OPTI93X) {
                     int o = 1;
                     if (opt_disable != 0)
                         o = 0;
@@ -1094,110 +1116,110 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                         opti_ctl_port = pnp_read16(0x66) - o;
                     printf(" CTR:%X", opti_ctl_port + o);
                 }
-                if (type == 4 || type == 0x40)
+                if (type == CARD_YAMAHA || type == CARD_GUSPNP)
                     irq2 = 0;
-                else if (type != 8)
+                else if (type != CARD_CMI)
                     irq2 = sb_irq;
-                pnp_write(r1e, sb_irq);
-                if (type != 4 && type != 7 && type != 0x10 && type != 0x40 && type != 0xc &&
-                    type != 8)
-                    pnp_write(r1e + 1, 2);
-                if (type != 6 && type != 7 && type != 0x10 && type != 9 && type != 0x13 &&
-                    type != 0xc && type != 0xb && type != 0xd && type != 8)
-                    pnp_write(r1f, irq2);
-                if (type != 4 && type != 6 && type != 7 && type != 0x10 && type != 8 &&
-                    type != 0x40 && type != 9 && type != 0xc && type != 0xd && type != 0x13)
-                    pnp_write(r1f + 1, 2);
+                pnp_write(reg_irq, sb_irq);
+                if (type != CARD_YAMAHA && type != CARD_OPTI925 && type != CARD_OPTI924 && type != CARD_GUSPNP && type != CARD_OPTI93X &&
+                    type != CARD_CMI)
+                    pnp_write(reg_irq + 1, 2);
+                if (type != CARD_ES968 && type != CARD_OPTI925 && type != CARD_OPTI924 && type != CARD_AD1816 && type != CARD_ADS7141 &&
+                    type != CARD_OPTI93X && type != CARD_CRYSTAL && type != CARD_ES968B && type != CARD_CMI)
+                    pnp_write(reg_irq2, irq2);
+                if (type != CARD_YAMAHA && type != CARD_ES968 && type != CARD_OPTI925 && type != CARD_OPTI924 && type != CARD_CMI &&
+                    type != CARD_GUSPNP && type != CARD_AD1816 && type != CARD_OPTI93X && type != CARD_ES968B && type != CARD_ADS7141)
+                    pnp_write(reg_irq2 + 1, 2);
                 if (opt_read != 0)
-                    sb_irq = pnp_read(r1e) & 0xf;
+                    sb_irq = pnp_read(reg_irq) & 0xf;
                 if (opt_read != 0)
-                    irq2 = pnp_read(r1f) & 0xf;
+                    irq2 = pnp_read(reg_irq2) & 0xf;
                 printf(" IRQ:%d", sb_irq);
-                if ((type == 4 && irq2 != 0) || (type == 4 && opt_read != 0))
+                if ((type == CARD_YAMAHA && irq2 != 0) || (type == CARD_YAMAHA && opt_read != 0))
                     printf("/%d", irq2);
                 if (sb_dma == sb_hdma && opt_disable == 0) {
-                    if (type == 4 || type == 0xa) {
+                    if (type == CARD_YAMAHA || type == CARD_AZTECH) {
                         sb_dma = 1;
                         sb_hdma = 3;
                     }
-                    if (type == 8)
+                    if (type == CARD_CMI)
                         sb_hdma = 5;
-                    if (type == 2 && f14 == 3)
+                    if (type == CARD_ALS && als_variant == 3)
                         sb_hdma = 5;
-                    if (type == 3 || type == 0xe)
+                    if (type == CARD_ES1868 || type == CARD_ES1869)
                         sb_hdma = 0;
                 }
-                if (type == 0xb && sb_hdma > 3)
+                if (type == CARD_CRYSTAL && sb_hdma > 3)
                     sb_hdma = 4;
-                if (type == 7 || type == 0xc || type == 0x10) {
+                if (type == CARD_OPTI925 || type == CARD_OPTI93X || type == CARD_OPTI924) {
                     if (sb_dma == sb_hdma || sb_hdma > 4)
                         sb_hdma = 4;
-                    pnp_write(r21, sb_hdma);
+                    pnp_write(reg_dma2, sb_hdma);
                     if (opt_read != 0)
-                        sb_hdma = pnp_read(r21) & 7;
+                        sb_hdma = pnp_read(reg_dma2) & 7;
                 }
-                pnp_write(r20, sb_dma);
+                pnp_write(reg_dma, sb_dma);
                 if (opt_read != 0)
-                    sb_dma = pnp_read(r20) & 7;
+                    sb_dma = pnp_read(reg_dma) & 7;
                 printf(" DMA:%d", sb_dma);
-                if (type != 6 && type != 0xd && f14 != 1 && f14 != 2 &&
-                    (sb_hdma != 4 || (opt_disable != 0 && sb_hdma == 4) || (type == 8 && sb_hdma == 4))) {
-                    pnp_write(r21, sb_hdma);
+                if (type != CARD_ES968 && type != CARD_ES968B && als_variant != 1 && als_variant != 2 &&
+                    (sb_hdma != 4 || (opt_disable != 0 && sb_hdma == 4) || (type == CARD_CMI && sb_hdma == 4))) {
+                    pnp_write(reg_dma2, sb_hdma);
                     if (opt_read != 0)
-                        sb_hdma = pnp_read(r21) & 7;
+                        sb_hdma = pnp_read(reg_dma2) & 7;
                     printf("/%d", sb_hdma);
                 }
                 pnp_write(0x30, opt_disable != 0 ? 0 : 1);
             }
             if (ld.ld[1] >= 0) {
                 pnp_write(7, ld.ld[1]);
-                if (type == 2 || type == 6 || (type == 8 && f15 < 1)) {
-                    pnp_write16(r1c, opl_port);
+                if (type == CARD_ALS || type == CARD_ES968 || (type == CARD_CMI && cmi_variant < 1)) {
+                    pnp_write16(reg_opl, opl_port);
                     if (opt_read != 0)
-                        opl_port = pnp_read16(r1c);
+                        opl_port = pnp_read16(reg_opl);
                     printf(" OPL:%X", opl_port);
                 }
-                if (type == 8 || type == 0x13) {
+                if (type == CARD_CMI || type == CARD_ADS7141) {
                     unsigned char irq = irq2;
                     unsigned char dma = wss_dma;
                     if (opt_disable != 0) {
                         irq = 0;
                         dma = 4;
                     }
-                    pnp_write16(r1d, wss_port);
-                    pnp_write(r1e, irq);
-                    pnp_write(r1e + 1, 2);
-                    pnp_write(r20, dma);
-                    if (type == 0x13) {
-                        pnp_write(r21, dma);
+                    pnp_write16(reg_wss, wss_port);
+                    pnp_write(reg_irq, irq);
+                    pnp_write(reg_irq + 1, 2);
+                    pnp_write(reg_dma, dma);
+                    if (type == CARD_ADS7141) {
+                        pnp_write(reg_dma2, dma);
                         if (opt_read != 0)
-                            dma = pnp_read(r21) & 7;
+                            dma = pnp_read(reg_dma2) & 7;
                     }
                     if (opt_read != 0)
-                        wss_port = pnp_read16(r1d);
+                        wss_port = pnp_read16(reg_wss);
                     if (opt_read != 0)
-                        irq = pnp_read(r1e) & 0xf;
+                        irq = pnp_read(reg_irq) & 0xf;
                     if (opt_read != 0)
-                        dma = pnp_read(r20) & 7;
-                    if (opt_read != 0 && type == 0x13)
-                        dma = pnp_read(r21) & 7;
+                        dma = pnp_read(reg_dma) & 7;
+                    if (opt_read != 0 && type == CARD_ADS7141)
+                        dma = pnp_read(reg_dma2) & 7;
                     printf(" WSS:%X/I%d/D%d", wss_port, irq, dma);
                 }
-                if (type == 0xb && f12 == 4) {
-                    pnp_write16(r1b, mpu2_port);
+                if (type == CARD_CRYSTAL && cs_variant == 4) {
+                    pnp_write16(reg_mpu, mpu2_port);
                     if (opt_read != 0)
-                        mpu2_port = pnp_read16(r1b);
+                        mpu2_port = pnp_read16(reg_mpu);
                     printf(" MPU2:%X", mpu2_port);
                 }
                 if (opt_disable != 0)
                     pnp_write(0x30, 0);
-                if (type == 0x40) {
+                if (type == CARD_GUSPNP) {
                     pnp_write16(0x60, 0);
-                    pnp_write(r1e, 0);
+                    pnp_write(reg_irq, 0);
                     pnp_write(0x30, 0);
                     if (opt_read != 0) {
                         int p = pnp_read16(0x60);
-                        unsigned char q = pnp_read(r1e) & 0xf;
+                        unsigned char q = pnp_read(reg_irq) & 0xf;
                         printf(" SB:%X/I%d", p, q);
                     }
                 } else
@@ -1208,25 +1230,25 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 unsigned char irq = sb_irq;
                 irq = mpu_irq < 0 ? sb_irq : mpu_irq;
                 pnp_write(7, ld.ld[2]);
-                if (type == 2 || type == 5 || type == 6 || type == 7 || type == 0x10 ||
-                    type == 8 || (type == 3 && f11 == 1) || type == 9 || type == 0x13 ||
-                    type == 0xa || type == 0xc || type == 0xb || type == 0x2c || type == 0x3b) {
-                    if (type == 0xb && opt_xom == 0)
+                if (type == CARD_ALS || type == CARD_ROCKWELL || type == CARD_ES968 || type == CARD_OPTI925 || type == CARD_OPTI924 ||
+                    type == CARD_CMI || (type == CARD_ES1868 && ess_maxi == 1) || type == CARD_AD1816 || type == CARD_ADS7141 ||
+                    type == CARD_AZTECH || type == CARD_OPTI93X || type == CARD_CRYSTAL || type == CARD_RJA0 || type == CARD_TBS20) {
+                    if (type == CARD_CRYSTAL && opt_xom == 0)
                         mpu_port = 0;
                     pnp_write16(0x60, mpu_port);
                     if (mpu_irq < 0) {
-                        if (type == 2 || (type == 3 && f11 == 1)) {
+                        if (type == CARD_ALS || (type == CARD_ES1868 && ess_maxi == 1)) {
                             irq = 2;
-                            if (f14 > 1)
+                            if (als_variant > 1)
                                 irq = 9;
                         }
-                        if (type == 7 || type == 8 || type == 9 || type == 0x13 || type == 0xa ||
-                            type == 0xc || type == 0x10 || type == 0xb || type == 0x2c ||
-                            type == 0x3b) {
+                        if (type == CARD_OPTI925 || type == CARD_CMI || type == CARD_AD1816 || type == CARD_ADS7141 || type == CARD_AZTECH ||
+                            type == CARD_OPTI93X || type == CARD_OPTI924 || type == CARD_CRYSTAL || type == CARD_RJA0 ||
+                            type == CARD_TBS20) {
                             irq = 9;
                             en = 1;
                         }
-                        if (type == 6)
+                        if (type == CARD_ES968)
                             irq = 7;
                     } else
                         irq = mpu_irq;
@@ -1235,7 +1257,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     irq = 0;
                     en = 0;
                 }
-                if (type == 0x40) {
+                if (type == CARD_GUSPNP) {
                     pnp_write16(0x60, 0);
                     pnp_write(0x70, 0);
                     en = 0;
@@ -1244,7 +1266,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     pnp_write(0x71, 2);
                 }
                 if (opt_read != 0)
-                    mpu_port = pnp_read16(r1b);
+                    mpu_port = pnp_read16(reg_mpu);
                 if (opt_read != 0)
                     irq = pnp_read(0x70) & 0xf;
                 pnp_write(0x30, (!en || opt_disable != 0) ? 0 : 1);
@@ -1253,26 +1275,26 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             }
             if (ld.ld[6] >= 0) {
                 pnp_write(7, ld.ld[6]);
-                if (type == 3 || type == 0xe) {
-                    if ((type != 0xe && opt_xea == 0) || (type == 0xe && opt_xea == 1))
+                if (type == CARD_ES1868 || type == CARD_ES1869) {
+                    if ((type != CARD_ES1869 && opt_xea == 0) || (type == CARD_ES1869 && opt_xea == 1))
                         pnp_write16(0x60, ess_ctl_port);
                     if (opt_read != 0)
                         ess_ctl_port = pnp_read16(0x60);
                     printf(" CTR:%X", ess_ctl_port);
                 }
-                if (type == 0xb || (type == 8 && f15 == 1)) {
+                if (type == CARD_CRYSTAL || (type == CARD_CMI && cmi_variant == 1)) {
                     pnp_write16(0x60, crystal_ctl_port);
                     if (opt_read != 0)
                         crystal_ctl_port = pnp_read16(0x60);
                     printf(" CTR:%X", crystal_ctl_port);
                 }
-                if (type == 5) {
+                if (type == CARD_ROCKWELL) {
                     pnp_write16(0x60, aux_ctl_port);
                     if (opt_read != 0)
                         aux_ctl_port = pnp_read16(0x60);
                     printf(" CTR:%X", aux_ctl_port);
                 }
-                if (type == 0x40) {
+                if (type == CARD_GUSPNP) {
                     int p = 0x350;
                     if (aux_ctl_port >= 0x300)
                         p = aux_ctl_port;
@@ -1283,7 +1305,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                         p = pnp_read16(0x60);
                     printf(" CTR:%X", p);
                 }
-                if (type == 0x37) {
+                if (type == CARD_ENSONIQ) {
                     int p = 0x2180;
                     if (aux_ctl_port >= 0x2100)
                         p = aux_ctl_port;
@@ -1313,7 +1335,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                         p = pnp_read16(0x64);
                     printf(" CTR:%X", p);
                 }
-                if (type == 0x10) {
+                if (type == CARD_OPTI924) {
                     int o = 1;
                     if (opt_disable != 0)
                         o = 0;
@@ -1323,17 +1345,17 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     printf(" CTR:%X", opti_ctl_port + o);
                     pnp_write(0x70, 0);
                 }
-                pnp_write(0x30, (opt_disable != 0 || type == 0x10) ? 0 : 1);
+                pnp_write(0x30, (opt_disable != 0 || type == CARD_OPTI924) ? 0 : 1);
             }
             if (ld.ld[3] >= 0) {
                 if (joy_port == 0x299) {
-                    if (type == 4 || type == 5 || type == 7 || type == 0x10 || type == 6 ||
-                        type == 0xd || type == 0xe || type == 9 || type == 0x13 || type == 3)
+                    if (type == CARD_YAMAHA || type == CARD_ROCKWELL || type == CARD_OPTI925 || type == CARD_OPTI924 || type == CARD_ES968 ||
+                        type == CARD_ES968B || type == CARD_ES1869 || type == CARD_AD1816 || type == CARD_ADS7141 || type == CARD_ES1868)
                         joy_port = 0x201;
                     else
                         joy_port = 0x200;
                 }
-                if (type == 0x40) {
+                if (type == CARD_GUSPNP) {
                     if (opt_xgj == 1)
                         joy_port = 0x201;
                     else
@@ -1350,19 +1372,19 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             }
             if (ld.ld[4] >= 0) {
                 pnp_write(7, ld.ld[4]);
-                if (type == 1) {
+                if (type == CARD_CREATIVE) {
                     pnp_write16(0x60, awe_port);
                     if (opt_read != 0)
                         awe_port = pnp_read16(0x60);
                     printf(" AWE:%X", awe_port);
                     pnp_write16(0x62, awe_port + 0x400);
                     pnp_write16(0x64, awe_port + 0x800);
-                    if (f18 == 2 && opl_port != 0x388 && opl_detect() == 1)
+                    if (ctl_state == 2 && opl_port != 0x388 && opl_detect() == 1)
                         printf(" OPL3 detected:388");
                     if (ld.ld[0] >= 0)
-                        f18 = 1;
+                        ctl_state = 1;
                     else
-                        f18 = 3;
+                        ctl_state = 3;
                 }
                 pnp_write(0x30, opt_disable != 0 ? 0 : 1);
             }
@@ -1370,15 +1392,15 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 unsigned char irq = 0;
                 unsigned char rp = 0x60;
                 unsigned char rp2 = 0x62;
-                if (type == 7) {
+                if (type == CARD_OPTI925) {
                     rp = 0x62;
                     rp2 = 0x63;
                 }
-                if (type == 0x10) {
+                if (type == CARD_OPTI924) {
                     rp = 0x62;
                     rp2 = 0x60;
                 }
-                if (type == 0x40 && opt_xgc > 0)
+                if (type == CARD_GUSPNP && opt_xgc > 0)
                     ide_port = opt_xgc;
                 if (ide_port == 0x168)
                     irq = 0xa;
@@ -1393,12 +1415,12 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 pnp_write(7, ld.ld[5]);
                 pnp_write16(rp, ide_port);
                 pnp_write(0x70, irq);
-                if (type == 1 || type == 0x40 || type == 2 || type == 7 || type == 0xc ||
-                    type == 4 || type == 0xa || type == 0xe || type == 0xb || type == 0x10) {
+                if (type == CARD_CREATIVE || type == CARD_GUSPNP || type == CARD_ALS || type == CARD_OPTI925 || type == CARD_OPTI93X ||
+                    type == CARD_YAMAHA || type == CARD_AZTECH || type == CARD_ES1869 || type == CARD_CRYSTAL || type == CARD_OPTI924) {
                     pnp_write16(rp2, ide_port + (irq > 0) * 0x206);
                     pnp_write(0x71, 2);
                 }
-                if (type == 0x40)
+                if (type == CARD_GUSPNP)
                     pnp_write(0x74, 0);
                 pnp_write(0x30, (ide_port == 0 || opt_disable != 0) ? 0 : 1);
                 if (opt_read != 0 || ide_port > 0) {
@@ -1412,15 +1434,15 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             }
             if (ld.ld[7] >= 0) {
                 pnp_write(7, ld.ld[7]);
-                pnp_write(0x30, (type == 4 || type == 0xa || opt_disable != 0) ? 0 : 1);
-                if (type == 4 || type == 0xa) {
+                pnp_write(0x30, (type == CARD_YAMAHA || type == CARD_AZTECH || opt_disable != 0) ? 0 : 1);
+                if (type == CARD_YAMAHA || type == CARD_AZTECH) {
                     pnp_write16(0x60, 0);
                     pnp_write(0x70, 0);
                 }
             }
             if (ld.ld[8] >= 0) {
                 pnp_write(7, ld.ld[8]);
-                if (type == 0xb && f12 == 4) {
+                if (type == CARD_CRYSTAL && cs_variant == 4) {
                     int p = 0x328;
                     if (mpu2_port > 0)
                         p = mpu2_port + 8;
@@ -1428,22 +1450,23 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     if (opt_read != 0)
                         mpu_port = pnp_read16(0x60);
                 }
-                if (type == 0x13) {
-                    pnp_write16(r1c, opl_port);
+                if (type == CARD_ADS7141) {
+                    pnp_write16(reg_opl, opl_port);
                     if (opt_read != 0)
-                        opl_port = pnp_read16(r1c);
+                        opl_port = pnp_read16(reg_opl);
                     printf(" OPL:%X", opl_port);
                 }
-                pnp_write(0x30, (type == 0x63 || type == 0xa || opt_disable != 0) ? 0 : 1);
+                /* no card family is 0x63, so that test is always false */
+                pnp_write(0x30, (type == 0x63 || type == CARD_AZTECH || opt_disable != 0) ? 0 : 1);
             }
-            if (type == 7 || type == 0x10) {
+            if (type == CARD_OPTI925 || type == CARD_OPTI924) {
                 delay(10);
                 pnp_write(7, 5);
                 pnp_write(0x70, 0);
                 pnp_write(0x30, 1);
             }
             printf("\n");
-            if (type == 0x13) {
+            if (type == CARD_ADS7141) {
                 if (opt_xwss != 0) {
                     pnp_write(0x20, 8);
                     delay(0x78);
@@ -1464,9 +1487,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 pnp_write(2, 2);
                 return 0;
             }
-            if ((ld.ld[4] < 0 || type != 1) && opt_disable == 0) {
+            if ((ld.ld[4] < 0 || type != CARD_CREATIVE) && opt_disable == 0) {
                 printf("Initialization done. ");
-                if (type != 1)
+                if (type != CARD_CREATIVE)
                     puts("");
             }
             if (opt_disable != 0)
@@ -1474,14 +1497,14 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         } else {
             type = 0;
             printf("No supported PnP card detected.");
-            if (f19 < 1)
+            if (nlisted < 1)
                 ret = !init_nonpnp_sb16();
         }
     } else {
         type = 0;
         if (list != 1)
             printf("No PnP card detected.");
-        if (f19 < 1 && list != 1)
+        if (nlisted < 1 && list != 1)
             ret = !init_nonpnp_sb16();
     }
     pnp_write(2, 2);
@@ -1490,7 +1513,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     delay(1);
     if (opt_disable != 0)
         return 0;
-    if (type == 4) {
+    if (type == CARD_YAMAHA) {
         int p = wss_port + 4;
         if (treble_lvl < 0)
             treble_lvl = 0;
@@ -1560,8 +1583,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         idx01_write(yamaha_ctl_port, 8, master_reg);
         print_mixer("Yamaha", opt_x3d & 7, -1);
     }
-    if (type == 1) {
-        if (f18 > 0 && awe_port > 0) {
+    if (type == CARD_CREATIVE) {
+        if (ctl_state > 0 && awe_port > 0) {
             delay(0x28);
             outportb(sb_port + 4, 0xfe);
             outportb(sb_port + 4, 0xfd);
@@ -1570,18 +1593,18 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             delay(1);
             outportb(sb_port + 0xc, 0xdd);
         }
-        if (f18 < 3) {
+        if (ctl_state < 3) {
             sb_print_dsp_ver(sb_port);
             sb16_mixer_set();
             print_mixer("SB", opt_x3d > 0 ? 1 : -1, opt_xxg);
         }
     }
-    if (type == 2) {
+    if (type == CARD_ALS) {
         int x = opt_x3d;
-        if (f14 == 1 || f14 == 2) {
+        if (als_variant == 1 || als_variant == 2) {
             sbpro_mixer_set();
             opt_x3d = -1;
-        } else if (f14 != 3) {
+        } else if (als_variant != 3) {
             int y = opt_x3d > 0 ? 0xc4 : 0x84;
             sb16_mixer_set();
             idx45_write(sb_port, 0x50, y);
@@ -1595,14 +1618,14 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             x = 1;
         else
             x = opt_x3d;
-        if (f14 != 2)
+        if (als_variant != 2)
             print_mixer("ALS", x, -1);
         else
             print_mixer("Diamond", -1, -1);
     }
-    if (type == 3 && f11 == 1)
+    if (type == CARD_ES1868 && ess_maxi == 1)
         sam9407_upload(mpu_port);
-    if (type == 3 || type == 6 || type == 0xd || type == 0xe) {
+    if (type == CARD_ES1868 || type == CARD_ES968 || type == CARD_ES968B || type == CARD_ES1869) {
         int x = -1;
         sbpro_mixer_set();
         idx45_write(sb_port, 0x3a, fm_reg);
@@ -1640,7 +1663,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         delay(5);
         if (bass_lvl > -1)
             idx45_write(sb_port, 0x3a, bass_lvl * 0xf / 0x5f * 0x11);
-        if (type == 0xe) {
+        if (type == CARD_ES1869) {
             int a = opt_x3d > 0 ? 0xc : 0;
             int b = opt_x3d * 0x3f / 9;
             idx45_write(sb_port, 0x52, b);
@@ -1649,7 +1672,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
         print_mixer("ESS", x, -1);
     }
-    if (type == 5) {
+    if (type == CARD_ROCKWELL) {
         int v = fm_vol * 0x1f / 0x61;
         sbpro_mixer_set();
         if (opt_xof == 8) {
@@ -1673,7 +1696,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         inportb(aux_ctl_port + 5);
         print_mixer("Rockwell", -1, -1);
     }
-    if (type == 8) {
+    if (type == CARD_CMI) {
         int a = opt_x3d > 0 ? 0x20 : 0;
         int b = opt_xxg > 0 ? 0 : 0x40;
         int c = opt_xxg == 9 ? 0 : 0x40;
@@ -1688,7 +1711,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         idx45_write(wss_port, 0xc, 0xa);
         sb16_set_irq_dma(sb_port, sb_irq, sb_dma, sb_hdma);
         sb16_mixer_set();
-        if (f15 == 1) {
+        if (cmi_variant == 1) {
             if (line_vol == 0)
                 line_reg = 0;
             else if (line_vol > 0 && line_vol < 0x32)
@@ -1709,7 +1732,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
         print_mixer("CMI", opt_x3d > 0 ? 1 : 0, d > 0 ? 1 : 0);
     }
-    if (type == 9) {
+    if (type == CARD_AD1816) {
         unsigned char v = (100 - fm_vol) * 0x3f / 0x61;
         int w = opt_x3d * 0xf / 9 << 9;
         sbpro_mixer_set();
@@ -1742,12 +1765,12 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
         print_mixer("ADI", opt_x3d, -1);
     }
-    if (type == 0x13) {
+    if (type == CARD_ADS7141) {
         if (opt_xwss == 0)
             sbpro_mixer_set();
         print_mixer("ADI", -1, -1);
     }
-    if (type == 0xa) {
+    if (type == CARD_AZTECH) {
         sbpro_mixer_set();
         idx45_write(sb_port, 0xe, 0x22);
         print_mixer("Aztech", -1, -1);
@@ -1764,21 +1787,21 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             puts("[SBPro]");
         }
     }
-    if (type == 7 || type == 0x10) {
+    if (type == CARD_OPTI925 || type == CARD_OPTI924) {
         delay(0x14);
-        opti92x_init(type == 7 ? 5 : 4);
+        opti92x_init(type == CARD_OPTI925 ? 5 : 4);
     }
-    if (type == 0xc) {
+    if (type == CARD_OPTI93X) {
         delay(0x14);
         opti93x_init();
         print_mixer("OPTi", opt_x3d > 0 ? 1 : -1, -1);
     }
-    if (type == 0xb) {
+    if (type == CARD_CRYSTAL) {
         int x = -1;
         int y = opt_x3d * 0xf / 9 | ~(opt_x3d * 0xf / 9) << 4;
-        if (f12 == 1)
+        if (cs_variant == 1)
             cs4232_upload_fw();
-        if (f12 == 4)
+        if (cs_variant == 4)
             puts("EWS64 firmware not supported. Output will be silent.");
         outportb(sb_port + 6, 1);
         delay(1);
@@ -1788,13 +1811,13 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         delay(10);
         idx45_write(sb_port, 0x22, 0);
         idx45_write(sb_port, 4, 0);
-        if (f12 == 2 || f12 == 3 || f12 == 7) {
-            crystal_ext_init(f12);
+        if (cs_variant == 2 || cs_variant == 3 || cs_variant == 7) {
+            crystal_ext_init(cs_variant);
             delay(10);
             if (opt_x3d < 1)
                 y = 0;
             cs_ctl_write(2, y);
-            if (f12 == 7)
+            if (cs_variant == 7)
                 cs_ctl_write(3, opt_x3d > 0 ? 0x80 : 0);
             x = opt_x3d;
         }
@@ -1805,13 +1828,13 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
         delay(5);
         sbpro_mixer_set();
-        if (f12 == 1 && mic_vol > 0) {
+        if (cs_variant == 1 && mic_vol > 0) {
             idx01_write(wss_port, 0x40, (mic_reg & 0xf) + 0x80);
             idx01_write(wss_port, 0x41, (mic_reg & 0xf) + 0x80);
             idx01_write(wss_port, 0x46, 2);
             idx01_write(wss_port, 0x47, 2);
         }
-        if (f12 == 2 || (f12 == 3 && opt_xos == 1)) {
+        if (cs_variant == 2 || (cs_variant == 3 && opt_xos == 1)) {
             int i = 0;
             idx01_write(wss_port, 0xc, 0xea);
             if (fm_vol > 0)
@@ -1821,10 +1844,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 for (i = 0; i < 2; i++)
                     cs_xreg_write(i, 0xff);
         }
-        if (f12 != 4)
+        if (cs_variant != 4)
             print_mixer("Crystal", x, -1);
     }
-    if (type == 0x37) {
+    if (type == CARD_ENSONIQ) {
         idx45_write(wss_port, 6, (100 - wave_vol) * 0x3f / 0x61);
         idx45_write(wss_port, 7, (100 - wave_vol) * 0x3f / 0x61);
         idx45_write(wss_port, 2, (100 - line_vol) * 0x1f / 0x61);
@@ -1833,11 +1856,11 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         idx45_write(wss_port, 5, (100 - cd_vol) * 0x1f / 0x61);
         printf("Ensoniq WSS Mixer [PCM:%d LIN:%d CD:%d]", wave_vol, line_vol, cd_vol);
     }
-    if (type == 0x3b) {
+    if (type == CARD_TBS20) {
         outportb(mpu_port + 1, 0xff);
         delay(5);
     }
-    if (type == 0x40) {
+    if (type == CARD_GUSPNP) {
         delay(10);
         master_reg = (100 - master_vol) * 0x1f / 0x61;
         fm_reg = (100 - fm_vol) * 0x1f / 0x61;
@@ -2245,7 +2268,7 @@ int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type)
     unsigned char tag;
     unsigned len;
     if (csn > 0 && buf) {
-        if (type == 11) {
+        if (type == CARD_CRYSTAL) {
             pnp_write(2, 2);
             delay(1);
             pnp_send_key();
@@ -2292,7 +2315,7 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
     int ad = 0;
     int ew = 0;
     int ma = 0;
-    if (type == 11) {
+    if (type == CARD_CRYSTAL) {
         pnp_write(2, 2);
         delay(1);
         pnp_send_key();
@@ -2316,25 +2339,25 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
             ok = pnp_read_res(id, len);
             if (n == 1) {
                 ((unsigned char *)ld)[0x15] = id[3];
-                if (type == 6 && id[3] == 0x68)
-                    type = 13;
-                if (type == 2 && name[3] == '1' && name[4] == '0')
+                if (type == CARD_ES968 && id[3] == 0x68)
+                    type = CARD_ES968B;
+                if (type == CARD_ALS && name[3] == '1' && name[4] == '0')
                     rev10 = 3;
-                if (type == 8 && memcmp(name, "AD-", 3) == 0)
+                if (type == CARD_CMI && memcmp(name, "AD-", 3) == 0)
                     ad = 1;
-                if (type == 11 && memcmp(name + 12, "EW", 2) == 0)
+                if (type == CARD_CRYSTAL && memcmp(name + 12, "EW", 2) == 0)
                     ew = 4;
-                if (type == 3 && memcmp(name, "Ma", 2) == 0)
+                if (type == CARD_ES1868 && memcmp(name, "Ma", 2) == 0)
                     ma = 1;
             }
-            if (type == 2) {
+            if (type == CARD_ALS) {
                 if (n == 1) ld[0] = 0;
                 if (n == 2) ld[1] = 1;
                 if (n == 3) ld[3] = 2;
                 if (n == 4) ld[2] = 3;
                 if (n == 5) ld[5] = 4;
             }
-            if (type == 3) {
+            if (type == CARD_ES1868) {
                 if (n == 1) ld[6] = 0;
                 if (n == 2) ld[0] = 1;
                 if (n == 3) ld[3] = 2;
@@ -2344,39 +2367,39 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                     if (n == 4) ld[5] = 3;
                 }
             }
-            if (type == 4) {
+            if (type == CARD_YAMAHA) {
                 if (n == 1) ld[0] = 0;
                 if (n == 2) ld[3] = 1;
                 if (n == 3) ld[7] = 2;
                 if (n == 4) ld[5] = 3;
             }
-            if (type == 5) {
+            if (type == CARD_ROCKWELL) {
                 if (n == 1) ld[6] = 0;
                 if (n == 2) ld[0] = 1;
                 if (n == 3) ld[2] = 2;
                 if (n == 6) ld[3] = 5;
             }
-            if (type == 6) {
+            if (type == CARD_ES968) {
                 if (n == 1) ld[0] = 0;
                 if (n == 2) ld[1] = 1;
                 if (n == 3) ld[3] = 2;
                 if (n == 4) ld[2] = 3;
                 if (n == 5) ld[5] = 4;
             }
-            if (type == 7 || type == 12) {
+            if (type == CARD_OPTI925 || type == CARD_OPTI93X) {
                 if (n == 2) ld[0] = 1;
                 if (n == 3) ld[3] = 2;
                 if (n == 4) ld[2] = 3;
                 ld[5] = 0;
             }
-            if (type == 16) {
+            if (type == CARD_OPTI924) {
                 if (n == 1) ld[0] = 0;
                 if (n == 2) ld[3] = 1;
                 if (n == 3) ld[2] = 2;
                 if (n == 4) ld[5] = 3;
                 if (n == 6) ld[6] = 5;
             }
-            if (type == 8) {
+            if (type == CARD_CMI) {
                 if (ad == 0) {
                     if (n == 1) ld[1] = 0;
                     if (n == 2) ld[2] = 1;
@@ -2390,12 +2413,12 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                     if (n == 5) ld[6] = 4;
                 }
             }
-            if (type == 9) {
+            if (type == CARD_AD1816) {
                 if (n == 1) ld[0] = 0;
                 if (n == 2) ld[2] = 1;
                 if (n == 3) ld[3] = 2;
             }
-            if (type == 19) {
+            if (type == CARD_ADS7141) {
                 if (n == 1) ld[1] = 0;
                 if (n == 2) ld[0] = 1;
                 if (n == 3) ld[8] = 2;
@@ -2403,7 +2426,7 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                 if (n == 5) ld[3] = 4;
                 if (n == 6) ld[7] = 5;
             }
-            if (type == 64) {
+            if (type == CARD_GUSPNP) {
                 if (n == 1) ld[0] = 0;
                 if (n == 2) ld[5] = 1;
                 if (n == 3) ld[3] = 2;
@@ -2411,7 +2434,7 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                 if (n == 5) ld[2] = 4;
                 if (n == 6 || opt_xgc == 0) ld[6] = 5;
             }
-            if (type == 10) {
+            if (type == CARD_AZTECH) {
                 if (n == 1) ld[5] = 0;
                 if (n == 2) ld[0] = 1;
                 ld[2] = 2;
@@ -2419,7 +2442,7 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                 ld[7] = 4;
                 ld[8] = 5;
             }
-            if (type == 11) {
+            if (type == CARD_CRYSTAL) {
                 if (n == 1) ld[0] = 0;
                 if (n == 2) ld[3] = 1;
                 if (n == 3) ld[6] = 2;
@@ -2431,28 +2454,28 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                     if (n == 5) ld[5] = 4;
                 }
             }
-            if (type == 13) {
+            if (type == CARD_ES968B) {
                 if (n == 1) ld[0] = 0;
                 if (n == 2) ld[3] = 1;
             }
-            if (type == 14) {
+            if (type == CARD_ES1869) {
                 if (n == 1) ld[6] = 0;
                 if (n == 2) ld[0] = 1;
                 if (n == 3) ld[3] = 2;
                 if (n == 4) ld[5] = 3;
             }
-            if (type == 44) {
+            if (type == CARD_RJA0) {
                 if (n == 1) ld[2] = 0;
             }
-            if (type == 55) {
+            if (type == CARD_ENSONIQ) {
                 if (n == 1) ld[6] = 0;
                 if (n == 2) ld[3] = 1;
             }
-            if (type == 59) {
+            if (type == CARD_TBS20) {
                 if (n == 2) ld[2] = 1;
                 ld[3] = 2;
             }
-            if (type == 2 && rev10 == 3 && n == 4 && ld[2] == 3) {
+            if (type == CARD_ALS && rev10 == 3 && n == 4 && ld[2] == 3) {
                 done = 1;
                 ld[5] = 4;
                 break;
