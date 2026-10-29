@@ -2542,6 +2542,7 @@ const struct card_id card_ids[] = {
     {"AZT1015", CARD_AZTECH, 0},
     {"AZT1016", CARD_AZTECH, 0},
     {"AZT1017", CARD_AZTECH, 0},
+    {"AZT1021", CARD_AZTECH, 0}, /* Aztech's AUD1021.INF and PNPID.DAT */
     {"AZT1023", CARD_AZTECH, 0},
     {"AZT1026", CARD_AZTECH, 0},
     {"AZT3000", CARD_AZTECH, 0},
