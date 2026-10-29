@@ -2677,7 +2677,8 @@ int parse_ultrasnd(void)
 
 /* Read the ULTRA16 environment variable ("port,dma,irq,record dma"), which DOS programs such as
    Mpxplay read to find a WSS codec, into port (530, E80, F40, 604), dma and rdma (0, 1, 3) and
-   irq (7, 9, 10, 11), the values a WSS configuration register can take. Missing or out-of-range
+   irq (5 on the 82C930 only, 7, 9, 10, 11), the values a WSS configuration register can take.
+   Missing or out-of-range
    fields leave the caller's values. Returns 1 if the variable exists and its port, DMA and IRQ
    are all valid, else 0. */
 int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
@@ -2702,7 +2703,7 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
             *(field == 1 ? dma : rdma) = v;
             ok += field == 1;
         }
-        if (field == 2 && (v == 7 || v == 9 || v == 10 || v == 11)) {
+        if (field == 2 && (v == 5 || v == 7 || v == 9 || v == 10 || v == 11)) {
             *irq = v;
             ok++;
         }
@@ -5473,6 +5474,10 @@ int init_opti928(void)
            the SB part. Without it, OPTi's SOUND16.CFG defaults: 530, IRQ 7, DMA 0. */
         wss_port = 0x530;
         u16 = parse_ultra16(&wss_port, &wss_pdma, &wss_irq, &wss_rdma);
+        if (wss_irq == 5) { /* the 82C928/82C929 WSS has no IRQ 5 */
+            wss_irq = 7;
+            u16 = 0;
+        }
         if (c929) {
             /* MC1 bits 3:1 are the CD-ROM interface, set by jumpers, and MC2 bit 5 tells an OPL4
                from an OPL3: keep both. The SB base is MC3 bit 2, apart from the WSS base. */
@@ -5701,14 +5706,22 @@ int init_nonpnp_fallback(void)
 }
 
 /* /NOPNP: detect and configure a non-PnP OPTi 82C930 (control registers at 0xE0E). Applies the
-   SB base, WSS base, gameport, IRQ, DMA, MPU port and MPU IRQ from BLASTER or the defaults, then
-   initializes the WSS codec, mixer and volumes.
+   SB base, gameport, IRQ, DMA, MPU port and MPU IRQ from BLASTER or the defaults, then
+   initializes the WSS codec, mixer and volumes. MC1-MC6 get the values OPTi's SNDINIT 2.50 (930
+   package) leaves in both of its modes; SB and WSS both stay enabled (MC6 bits 0 and 1), and MC3
+   holds the SB IRQ and DMA. The WSS base comes from ULTRA16 (see parse_ultra16), not BLASTER.
+   With /XWSS, as SNDINIT's WSS mode does, the WSS configuration register at the WSS base also
+   gets the codec's own IRQ and DMA, from ULTRA16 or SNDINIT's defaults (IRQ 7, DMA 0).
    Returns 1 if the chip was found, else 0. */
 int init_opti930(void)
 {
     unsigned char cfg1 = 0;
     unsigned char cfg2 = 0;
     unsigned char cfg3 = 0x83;
+    int wss_irq = 7; /* the WSS codec's IRQ, DMA and record DMA (ULTRA16; -1 = none) */
+    int wss_pdma = 0;
+    int wss_rdma = -1;
+    int u16;
     if (mpu_irq < 0) {
         mpu_irq = 9;
     }
@@ -5722,6 +5735,10 @@ int init_opti930(void)
         opti93x_read(0xe0e, 0x12) < 8) {
         puts("Card detected: OPTi 82C930");
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
+        wss_port = 0x530;
+        u16 = parse_ultra16(&wss_port, &wss_pdma, &wss_irq, &wss_rdma);
+        /* MC1 bits 3:1 select the CD-ROM interface (SNDINIT sets them from CDROM.CFG): keep them */
+        cfg1 = opti93x_read(0xe0e, 1) & 0x0e;
         if (sb_port == 0x240) {
             cfg1 |= 0x80;
         } else {
@@ -5731,6 +5748,9 @@ int init_opti930(void)
         switch (wss_port) {
             case 0xe80:
                 cfg1 |= 0x10;
+                break;
+            case 0xf40:
+                cfg1 |= 0x20;
                 break;
             case 0x604:
                 cfg1 |= 0x30;
@@ -5831,8 +5851,30 @@ int init_opti930(void)
         delay(80);
         sbpro_mixer_set();
         printf("Settings: ADD:%X IRQ:%d DMA:%d WSS:%X", sb_port, sb_irq, sb_dma, wss_port);
+        if (opt_xwss > 0) {
+            /* WSS configuration register, as on the 82C929 plus IRQ 5 (code 5, as in MC3) */
+            unsigned char dbits = wss_pdma == 3 ? 3 : wss_pdma + 1;
+            if (wss_pdma == 0 && wss_rdma == 1) {
+                dbits = 5;
+            } else if (wss_pdma != 0 && wss_rdma == 0) {
+                dbits = wss_pdma == 1 ? 6 : 7;
+            } else {
+                wss_rdma = -1;
+            }
+            outportb(wss_port, (wss_irq == 5 ? 5 : wss_irq == 7 ? 1 : wss_irq - 7) << 3 | dbits);
+            printf("/I%d/D%d", wss_irq, wss_pdma);
+            if (wss_rdma >= 0) {
+                printf("/%d", wss_rdma);
+            }
+        }
         printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
         puts("");
+        if (opt_xwss > 0 && !u16) {
+            /* programs find a WSS codec through ULTRA16, which UNISOUND can't set for them */
+            printf("ULTRA16 is missing or not valid, so programs can't find the WSS codec.\n"
+                   "Add to AUTOEXEC.BAT: SET ULTRA16=%X,%d,%d,%d\n",
+                   wss_port, wss_pdma, wss_irq, wss_rdma >= 0 ? wss_rdma : wss_pdma);
+        }
         print_mixer("OPTi", -1, -1);
         if (opt_log != 0) {
             log_codec(wss_port + 4);
