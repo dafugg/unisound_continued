@@ -1,8 +1,9 @@
 name: 0.82a byte-identical
 
 # Builds the 0.82a branch in 86Box under FreeDOS 1.4 (build.yml) and fails unless UNISOUND.COM
-# matches the original v0.82a's hash (UNISOUND.SHA256). The 0.82a branch has no workflows of its
-# own, so this runs from main: on every push to main, daily, and on demand.
+# matches the original v0.82a's hash (UNISOUND.SHA256). The 0.82a branch runs the same check on
+# its own pushes and PRs (its 0.82a.yml calls build.yml here); this copy runs it on every push to
+# main, daily and on demand, so a CI change on main can't silently break it.
 on:
   push:
     branches: [main]
