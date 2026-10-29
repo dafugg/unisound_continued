@@ -2517,6 +2517,10 @@ const struct card_id card_ids[] = {
     {"ESS0003", CARD_ES1869, 0},
     {"ESS0006", CARD_ES1869, 0},
     {"ESS1869", CARD_ES1869, 0},
+    /* ES1878 and ES1879: the ES1869's layout and bypass key (ESS data sheets); experimental,
+       not yet tried on a real chip */
+    {"ESS1878", CARD_ES1869, 0},
+    {"ESS1879", CARD_ES1869, 0},
     {"SEM3006", CARD_ES1868, 0},
     {"YMH????", CARD_YAMAHA, 0},
     {"NMX22??", CARD_YAMAHA, 0},
