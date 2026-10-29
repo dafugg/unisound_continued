@@ -12,7 +12,7 @@ on real hardware.
 | 86box-mcp | github.com/dafugg/86box-mcp |
 | Original build | UNISOUND.COM v0.82a, sha256 `606f8fae…b370` |
 | Fixed build | branch `fixes` at `44bf539` (bugs 1-10) |
-| Thread fixes build | branch `thread-fixes` at `1cebfd6` (bugs 11-24); each fix was tested with the build of its own commit |
+| Thread fixes build | branch `thread-fixes` at `65240e2` (bugs 11-24); each fix was tested with the build of its own commit |
 
 Platforms, both a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
