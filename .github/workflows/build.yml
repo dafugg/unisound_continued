@@ -75,7 +75,7 @@ jobs:
           FLAG: ${{ !inputs.check_hash && '--no-hash' || '' }}
         run: |
           /opt/86box/venv/bin/python -I tools/freedos-vm.py /opt/86box/FD14LITE.img vm \
-            "dos-build-action/programs/turbo-c++/3.00"
+            --tc "dos-build-action/programs/turbo-c++/3.00"
           sh "$SRC/tools/build.sh" ${FLAG:+"$FLAG"}
           sha256sum "$SRC/build/out/UNISOUND.COM"
       - uses: actions/upload-artifact@v7

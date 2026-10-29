@@ -1,7 +1,7 @@
 name: FreeDOS smoke test
 
-# Builds UNISOUND.COM (build.yml), then runs it in 86Box under FreeDOS 1.4 on a few emulated sound
-# cards and checks the output (tools/smoke.py).
+# Builds UNISOUND.COM (build.yml), then runs it in 86Box under FreeDOS 1.4 (on the 486SP3C and the
+# 486-VIP-IO2) on a few emulated sound cards and checks the output (tools/smoke.py).
 on:
   push:
     branches: [main]
@@ -38,7 +38,9 @@ jobs:
           BOX86_ROMS: /opt/86box/roms
         run: |
           /opt/86box/venv/bin/python -I tools/freedos-vm.py /opt/86box/FD14LITE.img vm
-          /opt/86box/venv/bin/python -I tools/smoke.py com/UNISOUND.COM vm smoke-out
+          /opt/86box/venv/bin/python -I tools/freedos-vm.py /opt/86box/FD14LITE.img vm2 \
+            --machine 486vipio2 --nvr tools/nvr/486vipio2.nvr
+          /opt/86box/venv/bin/python -I tools/smoke.py com/UNISOUND.COM smoke-out pnp=vm pnp2=vm2
       - uses: actions/upload-artifact@v7
         if: always()
         with:
