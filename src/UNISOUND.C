@@ -1145,6 +1145,19 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                                 mpu_port = 0x330;
                         }
                         printf(" MPU:%X", mpu_port);
+                        if (type == CARD_ES1868 || type == CARD_ES1869) {
+                            /* The MPU-401 of the audio device takes its IRQ from the card-level
+                               register 0x28, not from the device's 0x72 (that is the Audio 2 IRQ).
+                               Registers below 0x30 are written even with /R, hence the test. */
+                            unsigned char mirq = mpu_irq < 0 ? sb_irq : mpu_irq;
+                            if (mpu_port == 0)
+                                mirq = 0;
+                            if (opt_read != 0)
+                                mirq = pnp_read(0x28) & 0xf;
+                            else
+                                pnp_write(0x28, mirq);
+                            printf("/I%d", mirq);
+                        }
                     }
                 }
                 if (type == CARD_YAMAHA) {
