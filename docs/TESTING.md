@@ -11,7 +11,7 @@ on real hardware.
 | ROM set | github.com/86Box/roms |
 | 86box-mcp | github.com/dafugg/86box-mcp |
 | Original build | UNISOUND.COM v0.82a, sha256 `606f8fae…b370` |
-| Fixed build | branch `bugfixes` at `92dff98` (bugs 1-10) |
+| Fixed build | branch `fixes` at `44bf539` (bugs 1-10) |
 
 Platforms, both a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
