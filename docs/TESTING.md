@@ -13,9 +13,9 @@ on a Compaq LTE 5000 with its on-board ES1688; the README table marks them.
 | ROM set | github.com/86Box/roms |
 | 86box-mcp | github.com/dafugg/86box-mcp |
 | Original build | UNISOUND.COM v0.82a, sha256 `606f8fae…b370` |
-| Fixed build | branch `fixes` at `44bf539` (bugs 1-10) |
-| Thread fixes build | branch `thread-fixes` at `65240e2` (bugs 11-24); each fix was tested with the build of its own commit |
-| ESS init build | branch `ess-init`: `4c4cba6` (B1h/B2h through 2xCh), `fde5b60` (`/LOG`), `d63339e` (ESSINIT), `33d7aa8` (OPTi 82C924/925 probe), `6e1d892` (82C928 probe), `245da48` (ESSINIT OPTi probe) |
+| Fixed build | branch `fixes` at `17868c1` (bugs 1-10) |
+| Thread fixes build | branch `thread-fixes` at `50253a7` (bugs 11-24); each fix was tested with the build of its own commit |
+| ESS init build | branch `ess-init`: `aee160e` (B1h/B2h through 2xCh), `05aa0de` (`/LOG`), `8afa28d` (ESSINIT), `d2f397b` (OPTi 82C924/925 probe), `4197954` (82C928 probe), `f91b9bc` (ESSINIT OPTi probe) |
 
 Platforms, both a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -125,7 +125,7 @@ Each case ran with the original and the fixed build on both platforms.
 | 12 option names | sb16_pnp, `/DUMMY` | card disabled, ERRORLEVEL 0 | "Unknown option: /DUMMY", ERRORLEVEL 2 |
 | 12 option names | sb16_pnp, `/XAE`, `/XEM`, `/CN1`, `/C0`, `/C10`, `/FOO`, `/NOTHING`, `/HELLO`, `/RX`, `/VF123`, `/XGC1`, `/XPW1`, `/QQQ`, `C2` | ignored or misread, ERRORLEVEL 0 | rejected, ERRORLEVEL 2 |
 | 12 control | every documented option, on sb16_pnp, guspnp, azt2320, ess_es1868, ymf719, cs4236b and sbawe32_pnp | | same output as before |
-| 12 one-digit volumes | sb16_pnp, `/VL0 /V5 /VW99 /VT99 /VB7`; then `/VW100`, `/VL123`, `/VLX`, `/V`, `/VX` | `/VL0` and `/V5` ignored (v0.82a), or "Unknown option" (33f2334) | `VOL:5 LIN:0 TRB:99 BAS:7`; "Invalid value: /VW100 (0-99)" etc., ERRORLEVEL 2; `/VX` "Unknown option" |
+| 12 one-digit volumes | sb16_pnp, `/VL0 /V5 /VW99 /VT99 /VB7`; then `/VW100`, `/VL123`, `/VLX`, `/V`, `/VX` | `/VL0` and `/V5` ignored (v0.82a), or "Unknown option" (e75475b) | `VOL:5 LIN:0 TRB:99 BAS:7`; "Invalid value: /VW100 (0-99)" etc., ERRORLEVEL 2; `/VX` "Unknown option" |
 | 13 non-PnP SB16 `/R` | sb16, sbawe32, `BLASTER=A220 I7 D0 H6`, mixer 80h/81h read with PIO | `/R` sets them from 02/22 to 04/41 | unchanged, "Reading card current settings..." |
 | 13 non-PnP SB16 `/D` | the same | the card is configured | "Non-PnP card, can't be disabled. Card left unchanged." |
 | 14 ES186x second DMA | ess_es1868, ess_es1869, PnP 75h read with PNPDUMP | H4 after H3: 75h = 03, `DMA:1`; D1 H1: 75h = 00 | 75h = 04, `DMA:1/4`, in both cases |
@@ -229,8 +229,8 @@ registers and read 00h with or without the password. `/NOPNP` from a cold boot, 
 | Build | ES1688 or ES688 + NE2000 at F80h | sbawe32_pnp + NE2000 at F80h | ES1688, ES688 alone |
 |---|---|---|---|
 | v0.82a, `ess-init` before the fix | "No PnP card detected." (the user's report) | OPTi match, PnP scan configures the AWE32 | found |
-| fix, OPTi probe only (`33d7aa8`) | no OPTi match (F8Dh 00 again), ES found | "Card detected: OAK OTI601 / OPTi 82C928": that probe had the same weakness | found, unchanged |
-| fix with the 82C928 gate check too (`6e1d892`) | the same | no 82C928; "No card detected" (nopnp, the AWE32 isn't active) or the SB16 fallback (pnp), as without the NE2000 | found, unchanged |
+| fix, OPTi probe only (`d2f397b`) | no OPTi match (F8Dh 00 again), ES found | "Card detected: OAK OTI601 / OPTi 82C928": that probe had the same weakness | found, unchanged |
+| fix with the 82C928 gate check too (`4197954`) | the same | no 82C928; "No card detected" (nopnp, the AWE32 isn't active) or the SB16 fallback (pnp), as without the NE2000 | found, unchanged |
 | fix with the 82C924/925 gate check removed (test build) | OPTi match, "No PnP card detected.", then the ES found by the fallback | OPTi match, PnP scan configures the AWE32 | found, unchanged |
 
 The last row checks the `nopnp_mode` 2 path: the PnP scan still configures a PnP card, and the
@@ -271,7 +271,7 @@ DMAPLAY played on the BLASTER IRQ and DMA; the control port still answered after
 `MPU:330/I15`, which is 86Box's answer for card register 28h through the control port. On `sb16`
 it prints "No ES1868/ES1869 answered the ESS bypass key at 800." with ERRORLEVEL 1. A first
 version also wrote and activated logical device 0 (the control port); in 86Box that moved the
-port away, so the `/LOG` readback read FFh, and `73ee3f4` leaves it as the key set it.
+port away, so the `/LOG` readback read FFh, and `bdc7684` leaves it as the key set it.
 
 **The BLASTER suggestion** was checked on `sb16pnp+3c509b`, `sb16`, `ess_es1688` and
 `awe32pnp+sb16-240+3c509b` on both platforms, with no BLASTER, a matching one, `A220 I7 D3 P300
@@ -299,13 +299,13 @@ fixes intend: the unknown cards cs4235, ess_ess0100_pnp and ess_ess0102_pnp are 
 were `/NOPNP` now finding the ess_es1788 and the ES1688 on gusextreme and gusvipermax (19; the ES1788 is also named, 20)
 and the `WSS-DMA` field on ymf718 and ymf719 (24). azt2320 on pnp doesn't boot (see above).
 
-The `ess-init` build (`fde5b60`, with `/LOG`) ran the full matrix against the `main` build: all 175
+The `ess-init` build (`05aa0de`, with `/LOG`) ran the full matrix against the `main` build: all 175
 runs gave identical output (azt2320 on pnp doesn't boot with either).
 
-With the OPTi probe fixes (`6e1d892`), all 175 runs gave the same output as `93f2271`
+With the OPTi probe fixes (`4197954`), all 175 runs gave the same output as `6eb15a0`
 (azt2320 on pnp doesn't boot with either).
 
-The build with `/XSLAM`, `/XESSB`, the no-card lines and the longer `/LOG` (`ac324d4`) ran the
-matrix against `4369834`: the only differences were the two new lines after "No PnP card
+The build with `/XSLAM`, `/XESSB`, the no-card lines and the longer `/LOG` (`29c56b6`) ran the
+matrix against `f2b97f7`: the only differences were the two new lines after "No PnP card
 detected." or "No card detected" (495 outputs on the runs where no card is found); everything
 else was byte-identical (azt2320 on pnp doesn't boot with either).
