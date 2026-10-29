@@ -1756,7 +1756,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             delay(200);
             idx45_write(sb_port, 0x28, fm_reg);
         }
-        idx45_write(sb_port, 0xe, 0x22);
+        idx45_write(sb_port, 0xe, 0x20);    /* output filter off, mono: games set stereo themselves */
         fm_level = fm_level << 6;
         outpw(aux_ctl_port, 0x32);
         inportb(aux_ctl_port + 5);
@@ -1844,7 +1844,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     }
     if (type == CARD_AZTECH) {
         sbpro_mixer_set();
-        idx45_write(sb_port, 0xe, 0x22);
+        idx45_write(sb_port, 0xe, 0x20);    /* output filter off, mono: games set stereo themselves */
         print_mixer("Aztech", -1, -1);
         printf("Card mode: ");
         if (opt_xwss > 0) {
