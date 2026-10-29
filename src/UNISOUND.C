@@ -358,6 +358,7 @@ int ide_irq = 0;  /* IDE IRQ (Y) */
 int sb_dma = 1;  /* DMA (D) */
 int sb_hdma = 1;  /* high DMA (H) */
 int wss_dma = 0;  /* WSS DMA (K) */
+char wss_dma_set = 0;  /* 1 when BLASTER has K */
 int aux_ctl_port = 0x0250;  /* control port for Rockwell / GUS PnP / Ensoniq (R); TEA6330T port on GUS */
 int gus_port = 0x0240;  /* GUS port (ULTRASND) */
 int gus_dma = 3;  /* GUS DMA 1 */
@@ -723,6 +724,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     unsigned char nlisted = 0;      /* cards listed */
     unsigned char nunknown = 0;     /* unknown cards skipped */
     int asked = card;               /* card number given with /Cn (1 without it, 10 with /CL) */
+    char k_ignored = 0;             /* Yamaha: BLASTER K couldn't be used as the WSS DMA */
     unsigned char reg_sb = 0x60;   /* PnP config registers used for each resource; vary by card */
     unsigned char reg_mpu = 0x62;
     unsigned char reg_opl = 0x64;
@@ -1208,6 +1210,14 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 printf(" IRQ:%d", sb_irq);
                 if ((type == CARD_YAMAHA && irq2 != 0) || (type == CARD_YAMAHA && opt_read != 0))
                     printf("/%d", irq2);
+                /* Yamaha: control register 0x06 = 0x34 (set below) puts WSS playback and capture
+                   on the second DMA, so K goes there when it can. */
+                if (type == CARD_YAMAHA && wss_dma_set && opt_disable == 0) {
+                    if (wss_dma != sb_dma && (wss_dma == 0 || wss_dma == 1 || wss_dma == 3))
+                        sb_hdma = wss_dma;
+                    else
+                        k_ignored = 1;
+                }
                 /* The AZT2320's second DMA can only be 0, 1 or 3: anything else (an SB16-style
                    H5, for one) is treated like H = D below. */
                 if (type == CARD_AZTECH && opt_disable == 0 && sb_hdma != 0 && sb_hdma != 1 && sb_hdma != 3)
@@ -1244,6 +1254,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                         sb_hdma = pnp_read(reg_dma2) & 7;
                     printf("/%d", sb_hdma);
                 }
+                if (type == CARD_YAMAHA && opt_disable == 0)
+                    printf(" WSS-DMA:%d", sb_hdma);
                 pnp_write(0x30, opt_disable != 0 ? 0 : 1);
             }
             if (ld.ld[1] >= 0) {
@@ -1541,6 +1553,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 pnp_write(0x30, 1);
             }
             printf("\n");
+            if (k_ignored)
+                printf("K%d ignored: the WSS DMA is the second DMA, which must be 0, 1 or 3 and differ from D.\n", wss_dma);
             if (type == CARD_ADS7141) {
                 if (opt_xwss != 0) {
                     pnp_write(0x20, 8);
@@ -2350,6 +2364,7 @@ int parse_blaster(void)
             case 'K':
                 if (hex >= 0 && hex <= 7) {
                     wss_dma = hex;
+                    wss_dma_set = 1;
                     break;
                 }
                 break;
