@@ -431,6 +431,7 @@ int pnp_isolate(unsigned port, unsigned char *buf);
 char *pnp_vendor_str(unsigned long *id);
 int parse_ultrasnd(void);
 int parse_blaster(void);
+void print_blaster_hint(int port, int irq, int dma, int hdma);
 int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type);
 int pnp_read_res(unsigned char *buf, int n);
@@ -748,6 +749,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     unsigned char reg_dma = 0x74;
     unsigned char reg_dma2 = 0x75;
     int ret = 0;                /* return value */
+    int hint = 0;               /* SB device set up: check BLASTER at the end */
+    int h16 = -1;               /* SB16-compatible card: the H DMA, else -1 */
 
     print_banner();
     if (nopnp_mode != 0)
@@ -1275,6 +1278,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     if (opt_read != 0)
                         sb_hdma = pnp_read(reg_dma2) & 7;
                     printf("/%d", sb_hdma);
+                    if ((type == CARD_CREATIVE || type == CARD_ALS || type == CARD_CMI) && sb_hdma != 4)
+                        h16 = sb_hdma;    /* SB16-compatible: H */
                 }
                 if (type == CARD_YAMAHA && opt_disable == 0)
                     printf(" WSS-DMA:%d", sb_hdma);
@@ -1603,6 +1608,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 if (type != CARD_CREATIVE)
                     puts("");
             }
+            if (ld.ld[0] >= 0 && type != CARD_GUSPNP && opt_disable == 0 && opt_xwss == 0)
+                hint = 1;
             if (opt_disable != 0)
                 puts("Card disabled.");
         } else {
@@ -2023,6 +2030,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
     }
     printf("\n");
+    if (hint != 0)
+        print_blaster_hint(sb_port, sb_irq, sb_dma, h16);
     if (opt_xnet > 0)
         xnet_workaround(pnp_rdata_port);
     return ret;
@@ -2417,6 +2426,67 @@ int parse_blaster(void)
     if (field < 1)
         return 0;
     return 1;
+}
+
+/* After a card's SB part is set up, check that BLASTER describes it: programs find the card
+   through BLASTER, which UNISOUND can't set for them. A, I, D and H all describe one SB DSP;
+   the other fields (MPU, FM, AWE...) may point at other cards, so they are never checked and
+   are kept as they are. If BLASTER is missing, or its A is this card's port but I, D or H differ
+   from what the card was given (irq, dma, and hdma, the SB16 H or -1 for none; no H in BLASTER
+   is fine, programs then use the 8-bit DMA), suggest a SET BLASTER line for AUTOEXEC.BAT. If A
+   is another port, BLASTER is taken to be for another card, perhaps one UNISOUND doesn't know,
+   as long as a DSP answers there. */
+void print_blaster_hint(int port, int irq, int dma, int hdma)
+{
+    char *env = getenv("BLASTER");
+    char *dup;
+    char *tok;
+    int a = -1;
+    int i = -1;
+    int d = -1;
+    int h = -1;
+    int t = -1;
+    while (env != 0 && *env == ' ')
+        env++;
+    if (env != 0 && *env == 0)
+        env = 0;    /* a blank BLASTER is no BLASTER */
+    if (env != 0) {
+        dup = strdup(env);
+        for (tok = strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
+            switch (toupper(*tok)) {
+            case 'A': a = (int)strtol(tok + 1, 0, 16); break;
+            case 'I': i = (int)strtol(tok + 1, 0, 10); break;
+            case 'D': d = (int)strtol(tok + 1, 0, 16); break;
+            case 'H': h = (int)strtol(tok + 1, 0, 16); break;
+            case 'T': t = (int)strtol(tok + 1, 0, 10); break;
+            }
+        }
+        free(dup);
+        if (a == port && i == irq && d == dma && (h == hdma || h < 0))
+            return;
+        if (a != port && a >= 0x200 && a <= 0x2f0 && sb_dsp_reset(a))
+            return;
+        if (a >= 0 && a != port)
+            printf("\nBLASTER=%s: no card answers at A%X.\n", env, a);
+        else
+            printf("\nBLASTER=%s doesn't match this card.\n", env);
+        puts("If programs should use this card, change the line in AUTOEXEC.BAT to:");
+    } else {
+        puts("\nBLASTER is not set, so programs can't find the card. Add to AUTOEXEC.BAT:");
+    }
+    printf("SET BLASTER=A%X I%d D%d", port, irq, dma);
+    if (hdma >= 0)
+        printf(" H%d", hdma);
+    if (env != 0) {
+        dup = strdup(env);
+        for (tok = strtok(dup, " "); tok != 0; tok = strtok(0, " "))
+            if (strchr("AIDHaidh", *tok) == 0)
+                printf(" %s", tok);
+        free(dup);
+    }
+    if (t < 0)
+        printf(" T%d", hdma >= 0 ? 6 : 4);
+    puts("");
 }
 
 /* Wake card csn and read its resource data up to the first ANSI identifier string (tag 0x82),
@@ -2947,6 +3017,7 @@ int init_nonpnp_sb16(void)
             printf("\n");
         sb16_mixer_set();
         print_mixer("SB", -1, opt_xxg);
+        print_blaster_hint(port, irqr, dmar & 0xf, (dmar >> 4) > 0 ? dmar >> 4 : dmar & 0xf);
         return 1;
     }
     if (opt_cs == 1)
@@ -4611,6 +4682,7 @@ int init_opti928(void)
             delay(20);
             outportb(sb_port + 12, 0x20);
             printf("\nMixer [WAV:%d FM:%d LIN/CD:%d]\n", wave_vol, fm_vol, line_vol);
+            print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
         }
         return 1;
     }
@@ -4740,6 +4812,7 @@ int init_opti930(void)
         printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
         puts("");
         print_mixer("OPTi", -1, -1);
+        print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
         return 1;
     }
     return 0;
@@ -5055,6 +5128,7 @@ int init_es688(void)
             puts("");
             sbpro_mixer_set();
             print_mixer("ESS", -1, -1);
+            print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
             return 1;
         }
     }
