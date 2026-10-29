@@ -1193,7 +1193,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     if (type == CARD_ALS && als_variant == 3)
                         sb_hdma = 5;
                     if (type == CARD_ES1868 || type == CARD_ES1869)
-                        sb_hdma = 0;
+                        sb_hdma = 4;    /* no second DMA */
                 }
                 if (type == CARD_CRYSTAL && sb_hdma > 3)
                     sb_hdma = 4;
@@ -1209,7 +1209,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     sb_dma = pnp_read(reg_dma) & 7;
                 printf(" DMA:%d", sb_dma);
                 if (type != CARD_ES968 && type != CARD_ES968B && als_variant != 1 && als_variant != 2 &&
-                    (sb_hdma != 4 || (opt_disable != 0 && sb_hdma == 4) || (type == CARD_CMI && sb_hdma == 4))) {
+                    (sb_hdma != 4 || (opt_disable != 0 && sb_hdma == 4) || (type == CARD_CMI && sb_hdma == 4) ||
+                     ((type == CARD_ES1868 || type == CARD_ES1869) && sb_hdma == 4))) {
                     pnp_write(reg_dma2, sb_hdma);
                     if (opt_read != 0)
                         sb_hdma = pnp_read(reg_dma2) & 7;
