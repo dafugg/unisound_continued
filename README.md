@@ -168,6 +168,25 @@ a real machine yet. Please include `UNISOUND /LOG` output with the option.
 | `/XSLAM` | Crystal CS423x chips whose PnP key is disabled, so they take no part in isolation | Laptops and boards whose BIOS or CWDINIT sets up the chip, where UNISOUND says "No PnP card detected." |
 | `/XESSB` | ES1868/ES1869 chips that isolation doesn't find | On-board ES1868/ES1869, or chipsets that don't pass A79h on to the chip; 86Box always passes it on, so only a real machine can test this |
 
+### Fixes for VOGONS reports, not yet tried on real hardware
+
+These fix problems reported on VOGONS and work in 86Box, but no one has tried them on a real card
+yet. Details and links to the reports are in
+[docs/changes_since_official_082a.md](docs/changes_since_official_082a.md). Please include
+`UNISOUND /LOG` output.
+
+| Commit | Card | Fix | Reported by |
+|---|---|---|---|
+| [d2f397b](https://github.com/dafugg/unisound_continued/commit/d2f397b) | OPTi 82C924/925 with `/NOPNP`, in a machine with another device at F80h-F8Fh (an NE2000, for one) | The 82C924/925 probe no longer takes that device for the card | analog_programmer |
+| [00806ef](https://github.com/dafugg/unisound_continued/commit/00806ef) | Any card | After setup, BLASTER's A, I, D and H are compared with what the card got | analog_programmer |
+| [5281f0f](https://github.com/dafugg/unisound_continued/commit/5281f0f) | Crystal CS4237B/CS4238B cards (Orpheus, Turtle Beach) | The codec is put back in MODE 1 | vanfanel |
+| [1adfd17](https://github.com/dafugg/unisound_continued/commit/1adfd17) | ES1868/ES1869 | BLASTER `U` sets the MPU-401 IRQ | crvs |
+| [f73bb3f](https://github.com/dafugg/unisound_continued/commit/f73bb3f) | ES1868/ES1869 | `H4`, or D = H, means no second DMA | Kahenraz |
+| [26f3356](https://github.com/dafugg/unisound_continued/commit/26f3356) | ES1887/ES1888 with `/NOPNP` | The IRQ the BIOS set up is kept | 0xDEADBEEF |
+| [ff390e3](https://github.com/dafugg/unisound_continued/commit/ff390e3) | Creative cards | A BLASTER `F` that isn't a multiple of 4 is rounded down | Mr.Hunt |
+| [50253a7](https://github.com/dafugg/unisound_continued/commit/50253a7) | Yamaha OPL3-SAx | BLASTER `K` sets the WSS DMA | TgamesFR |
+| [ecbe7de](https://github.com/dafugg/unisound_continued/commit/ecbe7de) | Yamaha OPL3-SAx | The SB Pro master volume is set correctly | badmojo, --Freeman-- |
+
 Also wanted: Dell, Compaq and other laptops whose ESS chip has a PnP BIOS ID from `ESS0100` to
 `ESS0119` (ES688, ES888, ES1688, ES1698, ES1788, ES1887, ES1888 and ES1869B chips). ESS's device list
 gives these IDs to on-board chips that the BIOS describes, not to ISA PnP cards, so UNISOUND's PnP
