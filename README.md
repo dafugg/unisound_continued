@@ -47,8 +47,9 @@ drivers needed.
 - **Creative:** every Sound Blaster 16 and ViBRA16, AWE32, AWE64, SB32 PnP and the AWE upgrade
   card (CT1920). The EMU8000 is set up so FM and wavetable work without AWEUTIL, but no
   SoundFonts are loaded.
-- **ESS AudioDrive:** ES1868 and ES1869, including on-board chips that the PnP scan misses
-  (`/XESSB`), and ES968 with an ES688 or ES1688. On the Maxi Sound 64 (ES1868 + SAM9407 versions
+- **ESS AudioDrive:** ES1868 (including `SEM3006` cards) and ES1869 (including ES1869F cards
+  with on-board wavetable, `ESS0003`), also on-board chips that the PnP scan misses (`/XESSB`),
+  and ES968 with an ES688 or ES1688. On the Maxi Sound 64 (ES1868 + SAM9407 versions
   only), the SAM9407 firmware is uploaded, but the firmware itself isn't included.
 - **Yamaha:** YMF715, YMF718 and YMF719 (OPL3-SAx, OPL3-SA3, AudioTrix XG-3D). ISA PnP models
   only: Yamaha chips built into laptops are usually configured through the BIOS and aren't
@@ -77,7 +78,9 @@ A few card IDs and the options `/XSLAM` and `/XESSB` are experimental: see
 
 - **Creative:** SB16 and AWE32 (software-configurable models), with the same EMU8000 setup as
   the PnP cards.
-- **ESS:** ES688, ES1688, ES1788 and ES1887/ES1888.
+- **ESS:** ES688, ES1688, ES1788 and ES1887/ES1888, including on-board chips such as the
+  Compaq LTE 5000's and Presario 7100's ES1688 and the Presario 224x's ES1888, and the ES1688 on
+  the Gravis UltraSound Extreme and ViperMax.
 - **OPTi:** 82C924 and 82C925 in non-PnP mode, and 82C930. On the 82C930 the CD interface isn't
   supported.
 - **OAK OTI601 "Mozart" and OPTi 82C928 (MAD16):** poor compatibility with games. The card may
@@ -124,6 +127,10 @@ a real machine yet. Please include `UNISOUND /LOG` output with the option.
 |---|---|---|
 | `/XSLAM` | Crystal CS423x chips whose PnP key is disabled, so they take no part in isolation | Laptops and boards whose BIOS or CWDINIT sets up the chip, where UNISOUND says "No PnP card detected." |
 | `/XESSB` | ES1868/ES1869 chips that isolation doesn't find | On-board ES1868/ES1869, or chipsets that don't pass A79h on to the chip; 86Box always passes it on, so only a real machine can test this |
+
+Also wanted: Dell and Compaq laptops whose ESS chip has a PnP ID from `ESS0100` to `ESS0116`
+(mostly ES688, ES1688, ES1788, ES1887 and ES1888 chips). UNISOUND doesn't recognise these IDs, but
+`/NOPNP` may find the chip once the BIOS has enabled it.
 
 ## Fixes & Changes after 0.82a
 
