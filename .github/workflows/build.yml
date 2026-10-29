@@ -28,7 +28,7 @@ jobs:
           git ls-files 'src/*.C' 'tools/dos/*.C' | xargs clang-format-18 --dry-run -Werror
 
   build:
-    name: Turbo C++ 3.0 build
+    name: UNISOUND.COM
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
