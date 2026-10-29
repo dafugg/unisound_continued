@@ -492,6 +492,8 @@ void es_enable_reads(int port);
 int sb_dsp_reset(int port);
 void sb_dsp_write(int port, unsigned char val);
 unsigned char sb_dsp_read(int port);
+int ess_mixer_writable(int port, unsigned char reg, unsigned char mask);
+unsigned char ess_ext_read(int port, unsigned char reg);
 
 /* Entry point. Uppercases every argument and parses the options into the global settings:
    /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
@@ -4708,11 +4710,35 @@ unsigned char sb_dsp_read(int port)
     return inportb(port + 0xa);
 }
 
+/* Return 1 if the bits in mask of ESS mixer register reg at port can be changed (the register
+   is restored afterwards). */
+int ess_mixer_writable(int port, unsigned char reg, unsigned char mask)
+{
+    unsigned char old;
+    unsigned char now;
+    outportb(port + 4, reg);
+    old = inportb(port + 5);
+    outportb(port + 5, old ^ mask);
+    now = inportb(port + 5);
+    outportb(port + 5, old);
+    return now == (old ^ mask);
+}
+
+/* Read ESS extended register reg (0xA0-0xBF) of the DSP at port with command 0xC0. */
+unsigned char ess_ext_read(int port, unsigned char reg)
+{
+    sb_dsp_flush(port);
+    sb_dsp_write(port, 0xc0);
+    sb_dsp_write(port, reg);
+    return sb_dsp_read(port);
+}
+
 /* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. For each base from 0x220 to 0x260 it
    sends the enable reads, resets the DSP and asks for the ESS identify command
    (0xE7 answering 0x68 and a version byte), then sets the IRQ and DMA through
-   extended registers 0xB1/0xB2. On the ES1688 it also sets the MPU-401 and gameport (register
-   0x40), then sets up the SB Pro mixer.
+   extended registers 0xB1/0xB2 and reads them back. On the ES1688 and later it also sets the
+   MPU-401 and gameport (register 0x40), then sets up the SB Pro mixer. An ES1788 or ES1887/ES1888
+   is named as such; on the ES1887/ES1888, an IRQ pin chosen by the BIOS in mixer 0x7F is kept.
    Returns 1 if a card was found, else 0. */
 int init_es688(void)
 {
@@ -4741,9 +4767,23 @@ int init_es688(void)
         outportb(port + 0xc, 0xc6);
         outportb(port + 4, 0x40);
         if (inportb(port + 5) != 0x18 || inportb(port + 5) < 0x68) {
-            printf("Card detected: ES");
-            printf(ver < 0x88 ? "688" : "1688");
-            printf(" at [%xh] \n", port);
+            char *name = ver < 0x88 ? "688" : "1688";
+            unsigned char pin = 0;      /* ES1887/ES1888: IRQ pin selected in mixer 0x7F, 0 = none */
+            unsigned char b;
+            int want = 0;               /* IRQ asked for (BLASTER I or the default) */
+            /* Tell the later chips from the ES1688 as Linux es18xx does: mixer 0x64 bit 2 is
+               writable from the ES1788 on, and 0x70 only on the ES1887/ES1888. */
+            if (ver >= 0x88 && ess_mixer_writable(port, 0x64, 0x04)) {
+                name = "1788";
+                if (ess_mixer_writable(port, 0x70, 0x7f)) {
+                    name = "1887/ES1888";
+                    outportb(port + 4, 0x7f);
+                    pin = (inportb(port + 5) >> 1) & 7;
+                    if (pin > 5)
+                        pin = 0;
+                }
+            }
+            printf("Card detected: ES%s at [%xh] \n", name, port);
             puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
             sb_port = port;
             delay(50);
@@ -4754,12 +4794,30 @@ int init_es688(void)
             default: sb_irq = 5;
             }
             idx45_write_slow(sb_port + 8, 0xb1, irqv);
+            want = sb_irq;
             switch (sb_dma) {
             case 0: dmav -= 4; break;
             case 3: dmav += 4; break;
             default: sb_dma = 1;
             }
             idx45_write_slow(sb_port + 8, 0xb2, dmav);
+            /* Show what the chip took: read B1h and B2h back (bits 3-2 select IRQ 2/9, 5, 7, 10
+               and DMA -, 0, 1, 3). */
+            b = (ess_ext_read(sb_port, 0xb1) >> 2) & 3;
+            if (b != 0 || (sb_irq != 2 && sb_irq != 9))
+                sb_irq = b == 0 ? 9 : b == 1 ? 5 : b == 2 ? 7 : 10;
+            b = (ess_ext_read(sb_port, 0xb2) >> 2) & 3;
+            if (b != 0)
+                sb_dma = b == 1 ? 0 : b == 2 ? 1 : 3;
+            if (pin > 0) {
+                /* The ES1887/ES1888 ignore B1h when mixer 0x7F (bits 3-1) routes the interrupt
+                   to one of their IRQ pins A-E (IRQ 9, 5, 7, 10, 11), which a notebook BIOS
+                   sets to match the board's wiring. Leave the BIOS's choice alone. */
+                unsigned char bios_irq = pin == 1 ? 9 : pin == 2 ? 5 : pin == 3 ? 7 : pin == 4 ? 10 : 11;
+                if (bios_irq != want)
+                    printf("IRQ %d ignored: the BIOS has set this chip to IRQ %d.\n", want, bios_irq);
+                sb_irq = bios_irq;
+            }
             if (ver >= 0x88) {
                 switch (mpu_irq) {
                 case 2: case 9: mpu |= 0x80; break;
