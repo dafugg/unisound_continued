@@ -54,8 +54,11 @@ drivers needed.
   SoundFonts are loaded.
 - **ESS AudioDrive:** ES1868 (including `SEM3006` cards) and ES1869 (including ES1869F cards
   with on-board wavetable, `ESS0003`), also on-board chips that the PnP scan misses (`/XESSB`),
-  and ES968 with an ES688 or ES1688. On the Maxi Sound 64 (ES1868 + SAM9407 versions
-  only), the SAM9407 firmware is uploaded, but the firmware itself isn't included.
+  and ES1898. The ES1898 is identified as an ES1869 because it effectively is one: a minor,
+  pin-compatible upgrade of the ES1869F ([dosdays](https://dosdays.co.uk/topics/Manufacturers/ess.php)).
+  An ES1898F card with ID `ESS0003` works through both the PnP scan and `/XESSB`. Also ES968
+  with an ES688 or ES1688. On the Maxi Sound 64 (ES1868 + SAM9407 versions only), the SAM9407
+  firmware is uploaded, but the firmware itself isn't included.
 - **Yamaha:** YMF715, YMF718 and YMF719 (OPL3-SAx, OPL3-SA3, AudioTrix XG-3D). ISA PnP models
   only: Yamaha chips built into laptops are usually configured through the BIOS and aren't
   supported.
@@ -225,8 +228,9 @@ and say in the issue what each one printed:
    in it with their ports.
 
 `/XESSB` and `/XSLAM` skip the PnP scan, so they never read the card's ID and print a fixed
-name for the chip instead. The same card can show up under different names: an ES1869F card is
-`ESS0003` normally and `[ESS1869] (ESS bypass key)` with `/XESSB`.
+name for the chip instead. The same card can show up under different names: an ES1898F card is
+`ESS0003` normally and `[ESS1869] (ESS bypass key)` with `/XESSB`, because the chip reports
+itself as an ES1869.
 
 ### What `/LOG` shows
 
