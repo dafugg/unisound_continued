@@ -18,7 +18,7 @@ runs:
           libsdl3-dev libpng-dev libfreetype-dev libopenal-dev librtmidi-dev libfluidsynth-dev \
           libsndfile1-dev libslirp-dev libserialport-dev libevdev-dev libxkbcommon-x11-dev \
           libx11-dev libwayland-dev libzstd-dev libedit-dev qt6-qpa-plugins libxcb-cursor0
-    - uses: actions/cache@v4
+    - uses: actions/cache@v6
       with:
         path: /opt/86box
         key: 86box-deps-${{ hashFiles('tools/86box-deps.sh') }}

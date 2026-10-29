@@ -25,9 +25,9 @@ jobs:
     runs-on: ubuntu-24.04
     container: debian:trixie
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-86box
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: UNISOUND.COM
           path: com
@@ -39,7 +39,7 @@ jobs:
         run: |
           /opt/86box/venv/bin/python -I tools/freedos-vm.py /opt/86box/FD14LITE.img vm
           /opt/86box/venv/bin/python -I tools/smoke.py com/UNISOUND.COM vm smoke-out
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: smoke-output

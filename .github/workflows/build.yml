@@ -23,7 +23,7 @@ jobs:
     if: ${{ !inputs.skip_format }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: clang-format
         run: |
           command -v clang-format-18 || { sudo apt-get update -qq && sudo apt-get install -y -qq clang-format-18; }
@@ -34,11 +34,11 @@ jobs:
     runs-on: ubuntu-24.04
     container: debian:trixie
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-86box
       # Turbo C++ 3.00 from joncloud/dos-build-action; its files are byte-identical to the TC 3.0
       # the original UNISOUND.COM was matched with.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: joncloud/dos-build-action
           ref: 76b53e600a47530c209e5de8344cef9a94c43515
@@ -57,7 +57,7 @@ jobs:
             "dos-build-action/programs/turbo-c++/3.00"
           sh tools/build.sh --no-hash
           sha256sum build/out/UNISOUND.COM
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: UNISOUND.COM
           path: build/out/UNISOUND.COM
