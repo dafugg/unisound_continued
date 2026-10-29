@@ -427,7 +427,7 @@ void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned c
 unsigned char sb16_get_irq(int port);
 unsigned char sb16_get_dma(int port);
 unsigned char awe_detect(int port);
-void print_mixer(char *name, int d3, int gain);
+void print_mixer(char *name, int x3d, int gain);
 void sbpro_mixer_set(void);
 void sb16_mixer_set(void);
 void sb16_mixer_switches(void);
@@ -449,7 +449,7 @@ void iw_set_mic(int flag, unsigned char v);
 void emu_wait_read(void);
 void emu_wait_write(void);
 int emu_detect_dram(void);
-void emu_dma_open(int a);
+void emu_dma_open(int odd_read);
 void emu_dma_close(void);
 void emu_write32(unsigned reg, unsigned port, unsigned long val);
 void emu_write16(unsigned reg, unsigned port, unsigned val);
@@ -479,8 +479,8 @@ int init_es688(void);
 /* main: parse command line options, then run the card configuration */
 int main(int argc, char *argv[])
 {
-    int fs = 0;
-    int fsval = 0x20b;
+    int full_scan = 0;
+    int scan_port = 0x20b;
     int card = 1;
     int list = 0;
     int i = 0;
@@ -545,9 +545,9 @@ int main(int argc, char *argv[])
                         awe_reverb = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
                 }
                 if (argv[i][1] == 'F') {
-                    fs = 1;
+                    full_scan = 1;
                     if (argv[i][2] == 'S') {
-                        fsval = 0x20b;
+                        scan_port = 0x20b;
                         isolate_limit = 0x50;
                     }
                 }
@@ -574,9 +574,9 @@ int main(int argc, char *argv[])
                     }
                     if (argv[i][2] == 'G') {
                         if (argv[i][3] == 'C') {
-                            int n = argv[i][4] - '0';
-                            if (n > 1 && n < 6) {
-                                switch (n) {
+                            int gc_sel = argv[i][4] - '0';
+                            if (gc_sel > 1 && gc_sel < 6) {
+                                switch (gc_sel) {
                                 case 2: opt_xgc = 0x170; break;
                                 case 3: opt_xgc = 0x1e8; break;
                                 case 4: opt_xgc = 0x168; break;
@@ -617,7 +617,7 @@ int main(int argc, char *argv[])
             }
         }
     }
-    return configure_pnp(card, list, fs, fsval);
+    return configure_pnp(card, list, full_scan, scan_port);
 }
 
 /* print the program banner followed by a horizontal rule */
@@ -1050,17 +1050,17 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     sb_port = pnp_read16(reg_sb);
                 printf("ADD:%X", sb_port);
                 if (type == CARD_GUSPNP) {
-                    int o1 = 0x100;
-                    int o2 = 0x10c;
+                    int iw_off = 0x100;
+                    int codec_off = 0x10c;
                     if (opt_disable != 0) {
-                        o1 = 0;
-                        o2 = 0;
+                        iw_off = 0;
+                        codec_off = 0;
                     }
-                    pnp_write16(0x62, sb_port + o1);
-                    pnp_write16(0x64, sb_port + o2);
+                    pnp_write16(0x62, sb_port + iw_off);
+                    pnp_write16(0x64, sb_port + codec_off);
                     if (opt_read != 0)
-                        sb_port = pnp_read16(0x64) - o2;
-                    printf(" CODEC:%X", sb_port + o2);
+                        sb_port = pnp_read16(0x64) - codec_off;
+                    printf(" CODEC:%X", sb_port + codec_off);
                 }
                 if (type == CARD_YAMAHA || type == CARD_OPTI925 || type == CARD_AD1816 || type == CARD_AZTECH || type == CARD_OPTI93X ||
                     type == CARD_CRYSTAL || type == CARD_OPTI924) {
@@ -1108,13 +1108,13 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     printf(" CTR:%X", yamaha_ctl_port);
                 }
                 if (type == CARD_OPTI925 || type == CARD_OPTI93X) {
-                    int o = 1;
+                    int ctl_off = 1;
                     if (opt_disable != 0)
-                        o = 0;
-                    pnp_write16(0x66, opti_ctl_port + o);
+                        ctl_off = 0;
+                    pnp_write16(0x66, opti_ctl_port + ctl_off);
                     if (opt_read != 0)
-                        opti_ctl_port = pnp_read16(0x66) - o;
-                    printf(" CTR:%X", opti_ctl_port + o);
+                        opti_ctl_port = pnp_read16(0x66) - ctl_off;
+                    printf(" CTR:%X", opti_ctl_port + ctl_off);
                 }
                 if (type == CARD_YAMAHA || type == CARD_GUSPNP)
                     irq2 = 0;
@@ -1218,15 +1218,15 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     pnp_write(reg_irq, 0);
                     pnp_write(0x30, 0);
                     if (opt_read != 0) {
-                        int p = pnp_read16(0x60);
-                        unsigned char q = pnp_read(reg_irq) & 0xf;
-                        printf(" SB:%X/I%d", p, q);
+                        int rd_port = pnp_read16(0x60);
+                        unsigned char rd_irq = pnp_read(reg_irq) & 0xf;
+                        printf(" SB:%X/I%d", rd_port, rd_irq);
                     }
                 } else
                     pnp_write(0x30, opt_disable != 0 ? 0 : 1);
             }
             if (ld.ld[2] >= 0) {
-                unsigned char en = 1;
+                unsigned char enable = 1;
                 unsigned char irq = sb_irq;
                 irq = mpu_irq < 0 ? sb_irq : mpu_irq;
                 pnp_write(7, ld.ld[2]);
@@ -1246,7 +1246,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                             type == CARD_OPTI93X || type == CARD_OPTI924 || type == CARD_CRYSTAL || type == CARD_RJA0 ||
                             type == CARD_TBS20) {
                             irq = 9;
-                            en = 1;
+                            enable = 1;
                         }
                         if (type == CARD_ES968)
                             irq = 7;
@@ -1255,12 +1255,12 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 }
                 if (mpu_port == 0) {
                     irq = 0;
-                    en = 0;
+                    enable = 0;
                 }
                 if (type == CARD_GUSPNP) {
                     pnp_write16(0x60, 0);
                     pnp_write(0x70, 0);
-                    en = 0;
+                    enable = 0;
                 } else {
                     pnp_write(0x70, irq);
                     pnp_write(0x71, 2);
@@ -1269,8 +1269,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     mpu_port = pnp_read16(reg_mpu);
                 if (opt_read != 0)
                     irq = pnp_read(0x70) & 0xf;
-                pnp_write(0x30, (!en || opt_disable != 0) ? 0 : 1);
-                if (en != 0 || opt_read != 0)
+                pnp_write(0x30, (!enable || opt_disable != 0) ? 0 : 1);
+                if (enable != 0 || opt_read != 0)
                     printf(" MPU:%X/I%d", mpu_port, irq);
             }
             if (ld.ld[6] >= 0) {
@@ -1295,20 +1295,20 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     printf(" CTR:%X", aux_ctl_port);
                 }
                 if (type == CARD_GUSPNP) {
-                    int p = 0x350;
+                    int ctl = 0x350;
                     if (aux_ctl_port >= 0x300)
-                        p = aux_ctl_port;
+                        ctl = aux_ctl_port;
                     else
-                        aux_ctl_port = p;
-                    pnp_write16(0x60, p);
+                        aux_ctl_port = ctl;
+                    pnp_write16(0x60, ctl);
                     if (opt_read != 0)
-                        p = pnp_read16(0x60);
-                    printf(" CTR:%X", p);
+                        ctl = pnp_read16(0x60);
+                    printf(" CTR:%X", ctl);
                 }
                 if (type == CARD_ENSONIQ) {
-                    int p = 0x2180;
+                    int ctl = 0x2180;
                     if (aux_ctl_port >= 0x2100)
-                        p = aux_ctl_port;
+                        ctl = aux_ctl_port;
                     pnp_write16(0x62, wss_port);
                     pnp_write(0x70, sb_irq);
                     if (opt_read != 0)
@@ -1330,19 +1330,19 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     if (opt_read != 0)
                         sb_hdma = pnp_read16(0x75) & 7;
                     printf(" DMA:%d/%d", sb_dma, sb_hdma);
-                    pnp_write16(0x64, p);
+                    pnp_write16(0x64, ctl);
                     if (opt_read != 0)
-                        p = pnp_read16(0x64);
-                    printf(" CTR:%X", p);
+                        ctl = pnp_read16(0x64);
+                    printf(" CTR:%X", ctl);
                 }
                 if (type == CARD_OPTI924) {
-                    int o = 1;
+                    int ctl_off = 1;
                     if (opt_disable != 0)
-                        o = 0;
-                    pnp_write16(0x60, opti_ctl_port + o);
+                        ctl_off = 0;
+                    pnp_write16(0x60, opti_ctl_port + ctl_off);
                     if (opt_read != 0)
-                        opti_ctl_port = pnp_read16(0x60) - o;
-                    printf(" CTR:%X", opti_ctl_port + o);
+                        opti_ctl_port = pnp_read16(0x60) - ctl_off;
+                    printf(" CTR:%X", opti_ctl_port + ctl_off);
                     pnp_write(0x70, 0);
                 }
                 pnp_write(0x30, (opt_disable != 0 || type == CARD_OPTI924) ? 0 : 1);
@@ -1390,15 +1390,15 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             }
             if (ld.ld[5] >= 0) {
                 unsigned char irq = 0;
-                unsigned char rp = 0x60;
-                unsigned char rp2 = 0x62;
+                unsigned char reg_ide = 0x60;
+                unsigned char reg_ide2 = 0x62;
                 if (type == CARD_OPTI925) {
-                    rp = 0x62;
-                    rp2 = 0x63;
+                    reg_ide = 0x62;
+                    reg_ide2 = 0x63;
                 }
                 if (type == CARD_OPTI924) {
-                    rp = 0x62;
-                    rp2 = 0x60;
+                    reg_ide = 0x62;
+                    reg_ide2 = 0x60;
                 }
                 if (type == CARD_GUSPNP && opt_xgc > 0)
                     ide_port = opt_xgc;
@@ -1413,11 +1413,11 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 if (ide_irq > 0 && ide_port > 0)
                     irq = ide_irq;
                 pnp_write(7, ld.ld[5]);
-                pnp_write16(rp, ide_port);
+                pnp_write16(reg_ide, ide_port);
                 pnp_write(0x70, irq);
                 if (type == CARD_CREATIVE || type == CARD_GUSPNP || type == CARD_ALS || type == CARD_OPTI925 || type == CARD_OPTI93X ||
                     type == CARD_YAMAHA || type == CARD_AZTECH || type == CARD_ES1869 || type == CARD_CRYSTAL || type == CARD_OPTI924) {
-                    pnp_write16(rp2, ide_port + (irq > 0) * 0x206);
+                    pnp_write16(reg_ide2, ide_port + (irq > 0) * 0x206);
                     pnp_write(0x71, 2);
                 }
                 if (type == CARD_GUSPNP)
@@ -1443,10 +1443,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             if (ld.ld[8] >= 0) {
                 pnp_write(7, ld.ld[8]);
                 if (type == CARD_CRYSTAL && cs_variant == 4) {
-                    int p = 0x328;
+                    int mpu2_cfg = 0x328;
                     if (mpu2_port > 0)
-                        p = mpu2_port + 8;
-                    pnp_write16(0x60, p);
+                        mpu2_cfg = mpu2_port + 8;
+                    pnp_write16(0x60, mpu2_cfg);
                     if (opt_read != 0)
                         mpu_port = pnp_read16(0x60);
                 }
@@ -1514,7 +1514,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     if (opt_disable != 0)
         return 0;
     if (type == CARD_YAMAHA) {
-        int p = wss_port + 4;
+        int mix_port = wss_port + 4;
         if (treble_lvl < 0)
             treble_lvl = 0;
         if (bass_lvl < 0)
@@ -1569,15 +1569,15 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             mic_reg = (100 - mic_vol) * 0x1f / 0x61;
         else
             mic_reg = 0x88;
-        idx01_write(p, 0xc, 0x40);
-        idx01_write(p, 4, fm_reg);
-        idx01_write(p, 5, fm_reg);
-        idx01_write(p, 6, wave_reg);
-        idx01_write(p, 7, wave_reg);
-        idx01_write(p, 0x12, line_reg);
-        idx01_write(p, 0x13, line_reg);
-        idx01_write(p, 2, cd_reg);
-        idx01_write(p, 3, cd_reg);
+        idx01_write(mix_port, 0xc, 0x40);
+        idx01_write(mix_port, 4, fm_reg);
+        idx01_write(mix_port, 5, fm_reg);
+        idx01_write(mix_port, 6, wave_reg);
+        idx01_write(mix_port, 7, wave_reg);
+        idx01_write(mix_port, 0x12, line_reg);
+        idx01_write(mix_port, 0x13, line_reg);
+        idx01_write(mix_port, 2, cd_reg);
+        idx01_write(mix_port, 3, cd_reg);
         idx01_write(yamaha_ctl_port, 9, mic_reg);
         idx01_write(yamaha_ctl_port, 7, master_reg);
         idx01_write(yamaha_ctl_port, 8, master_reg);
@@ -1600,33 +1600,33 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
     }
     if (type == CARD_ALS) {
-        int x = opt_x3d;
+        int shown_3d = opt_x3d;
         if (als_variant == 1 || als_variant == 2) {
             sbpro_mixer_set();
             opt_x3d = -1;
         } else if (als_variant != 3) {
-            int y = opt_x3d > 0 ? 0xc4 : 0x84;
+            int x3d_reg = opt_x3d > 0 ? 0xc4 : 0x84;
             sb16_mixer_set();
-            idx45_write(sb_port, 0x50, y);
-            y = opt_x3d > 0 ? 0 : 0xa;
-            idx45_write(sb_port, 0x51, y);
+            idx45_write(sb_port, 0x50, x3d_reg);
+            x3d_reg = opt_x3d > 0 ? 0 : 0xa;
+            idx45_write(sb_port, 0x51, x3d_reg);
         } else {
             sb16_mixer_set();
             opt_x3d = -1;
         }
         if (opt_x3d > 0)
-            x = 1;
+            shown_3d = 1;
         else
-            x = opt_x3d;
+            shown_3d = opt_x3d;
         if (als_variant != 2)
-            print_mixer("ALS", x, -1);
+            print_mixer("ALS", shown_3d, -1);
         else
             print_mixer("Diamond", -1, -1);
     }
     if (type == CARD_ES1868 && ess_maxi == 1)
         sam9407_upload(mpu_port);
     if (type == CARD_ES1868 || type == CARD_ES968 || type == CARD_ES968B || type == CARD_ES1869) {
-        int x = -1;
+        int shown_3d = -1;
         sbpro_mixer_set();
         idx45_write(sb_port, 0x3a, fm_reg);
         outportb(mpu_port + 1, 0xff);
@@ -1664,16 +1664,16 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         if (bass_lvl > -1)
             idx45_write(sb_port, 0x3a, bass_lvl * 0xf / 0x5f * 0x11);
         if (type == CARD_ES1869) {
-            int a = opt_x3d > 0 ? 0xc : 0;
-            int b = opt_x3d * 0x3f / 9;
-            idx45_write(sb_port, 0x52, b);
-            idx45_write(sb_port, 0x50, a);
-            x = opt_x3d;
+            int x3d_ctl = opt_x3d > 0 ? 0xc : 0;
+            int x3d_level = opt_x3d * 0x3f / 9;
+            idx45_write(sb_port, 0x52, x3d_level);
+            idx45_write(sb_port, 0x50, x3d_ctl);
+            shown_3d = opt_x3d;
         }
-        print_mixer("ESS", x, -1);
+        print_mixer("ESS", shown_3d, -1);
     }
     if (type == CARD_ROCKWELL) {
-        int v = fm_vol * 0x1f / 0x61;
+        int fm_level = fm_vol * 0x1f / 0x61;
         sbpro_mixer_set();
         if (opt_xof == 8) {
             outpw(aux_ctl_port, 0xc00e);
@@ -1685,25 +1685,25 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             idx45_write(sb_port, 0x28, fm_reg);
         }
         idx45_write(sb_port, 0xe, 0x22);
-        v = v << 6;
+        fm_level = fm_level << 6;
         outpw(aux_ctl_port, 0x32);
         inportb(aux_ctl_port + 5);
         delay(300);
-        outpw(aux_ctl_port, 0x282e | v);
+        outpw(aux_ctl_port, 0x282e | fm_level);
         inportb(aux_ctl_port + 5);
         delay(300);
-        outpw(aux_ctl_port, 0x682e | v);
+        outpw(aux_ctl_port, 0x682e | fm_level);
         inportb(aux_ctl_port + 5);
         print_mixer("Rockwell", -1, -1);
     }
     if (type == CARD_CMI) {
-        int a = opt_x3d > 0 ? 0x20 : 0;
-        int b = opt_xxg > 0 ? 0 : 0x40;
-        int c = opt_xxg == 9 ? 0 : 0x40;
-        int d = opt_xxg;
+        int x3d_bit = opt_x3d > 0 ? 0x20 : 0;
+        int gain_bit = opt_xxg > 0 ? 0 : 0x40;
+        int xxg9_bit = opt_xxg == 9 ? 0 : 0x40;
+        int gain = opt_xxg;
         idx45_write(wss_port, 0xc, 0x4a);
-        idx45_write(wss_port, 0x10, c | a);
-        idx45_write(wss_port, 0x11, 0x3f | b);
+        idx45_write(wss_port, 0x10, xxg9_bit | x3d_bit);
+        idx45_write(wss_port, 0x11, 0x3f | gain_bit);
         idx45_write(wss_port, 0x17, 3);
         idx45_write(wss_port, 0x16, fm_reg);
         idx45_write(wss_port, 0x14, line_reg);
@@ -1730,19 +1730,19 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             idx45_write(wss_port, 7, (100 - wave_vol) * 0x1f / 0x61);
             outportb(crystal_ctl_port, line_reg);
         }
-        print_mixer("CMI", opt_x3d > 0 ? 1 : 0, d > 0 ? 1 : 0);
+        print_mixer("CMI", opt_x3d > 0 ? 1 : 0, gain > 0 ? 1 : 0);
     }
     if (type == CARD_AD1816) {
-        unsigned char v = (100 - fm_vol) * 0x3f / 0x61;
-        int w = opt_x3d * 0xf / 9 << 9;
+        unsigned char fm_att = (100 - fm_vol) * 0x3f / 0x61;
+        int x3d_word = opt_x3d * 0xf / 9 << 9;
         sbpro_mixer_set();
         outportb(wss_port, 0x27);
-        outpw(wss_port + 2, w);
+        outpw(wss_port + 2, x3d_word);
         outportb(wss_port, 0x2c);
         outpw(wss_port + 2, 0);
         if (fm_vol > 2) {
             outportb(wss_port, 0x10);
-            outpw(wss_port + 2, v << 8 | v);
+            outpw(wss_port + 2, fm_att << 8 | fm_att);
             outportb(wss_port, 0x23);
             outpw(wss_port + 2, 0xac44);
             outportb(wss_port, 0x24);
@@ -1750,9 +1750,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             outportb(wss_port, 0x20);
             outpw(wss_port + 2, 0xf5);
             outportb(wss_port, 6);
-            outpw(wss_port + 2, v << 8 | v);
+            outpw(wss_port + 2, fm_att << 8 | fm_att);
             outportb(wss_port, 7);
-            outpw(wss_port + 2, v << 8 | v);
+            outpw(wss_port + 2, fm_att << 8 | fm_att);
         } else {
             outportb(wss_port, 6);
             outpw(wss_port + 2, 0x8080);
@@ -1797,8 +1797,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         print_mixer("OPTi", opt_x3d > 0 ? 1 : -1, -1);
     }
     if (type == CARD_CRYSTAL) {
-        int x = -1;
-        int y = opt_x3d * 0xf / 9 | ~(opt_x3d * 0xf / 9) << 4;
+        int shown_3d = -1;
+        int x3d_reg = opt_x3d * 0xf / 9 | ~(opt_x3d * 0xf / 9) << 4;
         if (cs_variant == 1)
             cs4232_upload_fw();
         if (cs_variant == 4)
@@ -1815,11 +1815,11 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             crystal_ext_init(cs_variant);
             delay(10);
             if (opt_x3d < 1)
-                y = 0;
-            cs_ctl_write(2, y);
+                x3d_reg = 0;
+            cs_ctl_write(2, x3d_reg);
             if (cs_variant == 7)
                 cs_ctl_write(3, opt_x3d > 0 ? 0x80 : 0);
-            x = opt_x3d;
+            shown_3d = opt_x3d;
         }
         if (sb_dma == sb_hdma) {
             idx01_write(wss_port, 0x49, 4);
@@ -1845,7 +1845,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     cs_xreg_write(i, 0xff);
         }
         if (cs_variant != 4)
-            print_mixer("Crystal", x, -1);
+            print_mixer("Crystal", shown_3d, -1);
     }
     if (type == CARD_ENSONIQ) {
         idx45_write(wss_port, 6, (100 - wave_vol) * 0x3f / 0x61);
@@ -2079,17 +2079,17 @@ int parse_ultrasnd(void)
     int dec = 0;
     int hex = 0;
     char *tok;
-    unsigned char n;
+    unsigned char field;
     env = getenv("ULTRASND");
     if (env == 0)
         return 0;
     dup = strdup(env);
     tok = strtok(dup, ",");
-    n = 0;
-    while (n < 5 || tok != 0) {
+    field = 0;
+    while (field < 5 || tok != 0) {
         dec = strtol(tok, 0, 10);
         hex = strtol(tok, 0, 16);
-        switch (n) {
+        switch (field) {
         case 0:
             if (hex == 0x220 || hex == 0x230 || hex == 0x240 || hex == 0x250 || hex == 0x260) {
                 gus_port = hex;
@@ -2124,10 +2124,10 @@ int parse_ultrasnd(void)
             break;
         }
         tok = strtok(0, ",");
-        n++;
+        field++;
     }
     free(dup);
-    if (n < 3)
+    if (field < 3)
         return 0;
     return 1;
 }
@@ -2140,21 +2140,21 @@ int parse_blaster(void)
     int dec = 0;
     int hex = 0;
     char *tok;
-    unsigned char n;
-    char c;
+    unsigned char field;
+    char letter;
     env = getenv("BLASTER");
     if (env == 0)
         return 0;
     dup = strdup(env);
     tok = strtok(dup, " ");
-    n = 0;
-    while (n < 12 || tok != 0) {
+    field = 0;
+    while (field < 12 || tok != 0) {
         if (isalpha(*tok) && strlen(tok) > 1) {
-            c = *tok;
+            letter = *tok;
             tok++;
             dec = strtol(tok, 0, 10);
             hex = strtol(tok, 0, 16);
-            switch (toupper(c)) {
+            switch (toupper(letter)) {
             case 'A':
                 if (hex >= 0x220 && hex <= 0x280) {
                     sb_port = hex;
@@ -2252,10 +2252,10 @@ int parse_blaster(void)
             }
         }
         tok = strtok(0, " ");
-        n++;
+        field++;
     }
     free(dup);
-    if (n < 1)
+    if (field < 1)
         return 0;
     return 1;
 }
@@ -2310,11 +2310,11 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
     unsigned char tag = 0;
     unsigned len = 0;
     int done = 0;
-    int n = 0;
+    int ldn = 0;
     int rev10 = 0;
-    int ad = 0;
-    int ew = 0;
-    int ma = 0;
+    int ad_name = 0;
+    int ews = 0;
+    int maxi = 0;
     if (type == CARD_CRYSTAL) {
         pnp_write(2, 2);
         delay(1);
@@ -2327,7 +2327,7 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
     if (ok)
         *name = 0;
     while (ok && !done) {
-        unsigned char id[7] = { 0 };
+        unsigned char ldid[7] = { 0 };
         delay(1);
         ok = pnp_read_tag(&tag, &len);
         delay(1);
@@ -2335,147 +2335,147 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
             break;
         switch (tag) {
         case 2:
-            n++;
-            ok = pnp_read_res(id, len);
-            if (n == 1) {
-                ((unsigned char *)ld)[0x15] = id[3];
-                if (type == CARD_ES968 && id[3] == 0x68)
+            ldn++;
+            ok = pnp_read_res(ldid, len);
+            if (ldn == 1) {
+                ((unsigned char *)ld)[0x15] = ldid[3];
+                if (type == CARD_ES968 && ldid[3] == 0x68)
                     type = CARD_ES968B;
                 if (type == CARD_ALS && name[3] == '1' && name[4] == '0')
                     rev10 = 3;
                 if (type == CARD_CMI && memcmp(name, "AD-", 3) == 0)
-                    ad = 1;
+                    ad_name = 1;
                 if (type == CARD_CRYSTAL && memcmp(name + 12, "EW", 2) == 0)
-                    ew = 4;
+                    ews = 4;
                 if (type == CARD_ES1868 && memcmp(name, "Ma", 2) == 0)
-                    ma = 1;
+                    maxi = 1;
             }
             if (type == CARD_ALS) {
-                if (n == 1) ld[0] = 0;
-                if (n == 2) ld[1] = 1;
-                if (n == 3) ld[3] = 2;
-                if (n == 4) ld[2] = 3;
-                if (n == 5) ld[5] = 4;
+                if (ldn == 1) ld[0] = 0;
+                if (ldn == 2) ld[1] = 1;
+                if (ldn == 3) ld[3] = 2;
+                if (ldn == 4) ld[2] = 3;
+                if (ldn == 5) ld[5] = 4;
             }
             if (type == CARD_ES1868) {
-                if (n == 1) ld[6] = 0;
-                if (n == 2) ld[0] = 1;
-                if (n == 3) ld[3] = 2;
-                if (ma == 1) {
-                    if (n == 4) ld[2] = 3;
+                if (ldn == 1) ld[6] = 0;
+                if (ldn == 2) ld[0] = 1;
+                if (ldn == 3) ld[3] = 2;
+                if (maxi == 1) {
+                    if (ldn == 4) ld[2] = 3;
                 } else {
-                    if (n == 4) ld[5] = 3;
+                    if (ldn == 4) ld[5] = 3;
                 }
             }
             if (type == CARD_YAMAHA) {
-                if (n == 1) ld[0] = 0;
-                if (n == 2) ld[3] = 1;
-                if (n == 3) ld[7] = 2;
-                if (n == 4) ld[5] = 3;
+                if (ldn == 1) ld[0] = 0;
+                if (ldn == 2) ld[3] = 1;
+                if (ldn == 3) ld[7] = 2;
+                if (ldn == 4) ld[5] = 3;
             }
             if (type == CARD_ROCKWELL) {
-                if (n == 1) ld[6] = 0;
-                if (n == 2) ld[0] = 1;
-                if (n == 3) ld[2] = 2;
-                if (n == 6) ld[3] = 5;
+                if (ldn == 1) ld[6] = 0;
+                if (ldn == 2) ld[0] = 1;
+                if (ldn == 3) ld[2] = 2;
+                if (ldn == 6) ld[3] = 5;
             }
             if (type == CARD_ES968) {
-                if (n == 1) ld[0] = 0;
-                if (n == 2) ld[1] = 1;
-                if (n == 3) ld[3] = 2;
-                if (n == 4) ld[2] = 3;
-                if (n == 5) ld[5] = 4;
+                if (ldn == 1) ld[0] = 0;
+                if (ldn == 2) ld[1] = 1;
+                if (ldn == 3) ld[3] = 2;
+                if (ldn == 4) ld[2] = 3;
+                if (ldn == 5) ld[5] = 4;
             }
             if (type == CARD_OPTI925 || type == CARD_OPTI93X) {
-                if (n == 2) ld[0] = 1;
-                if (n == 3) ld[3] = 2;
-                if (n == 4) ld[2] = 3;
+                if (ldn == 2) ld[0] = 1;
+                if (ldn == 3) ld[3] = 2;
+                if (ldn == 4) ld[2] = 3;
                 ld[5] = 0;
             }
             if (type == CARD_OPTI924) {
-                if (n == 1) ld[0] = 0;
-                if (n == 2) ld[3] = 1;
-                if (n == 3) ld[2] = 2;
-                if (n == 4) ld[5] = 3;
-                if (n == 6) ld[6] = 5;
+                if (ldn == 1) ld[0] = 0;
+                if (ldn == 2) ld[3] = 1;
+                if (ldn == 3) ld[2] = 2;
+                if (ldn == 4) ld[5] = 3;
+                if (ldn == 6) ld[6] = 5;
             }
             if (type == CARD_CMI) {
-                if (ad == 0) {
-                    if (n == 1) ld[1] = 0;
-                    if (n == 2) ld[2] = 1;
-                    if (n == 3) ld[3] = 2;
-                    if (n == 4) ld[0] = 3;
-                } else if (ad == 1) {
-                    if (n == 1) ld[0] = 0;
-                    if (n == 2) ld[2] = 1;
-                    if (n == 3) ld[3] = 2;
-                    if (n == 4) ld[1] = 3;
-                    if (n == 5) ld[6] = 4;
+                if (ad_name == 0) {
+                    if (ldn == 1) ld[1] = 0;
+                    if (ldn == 2) ld[2] = 1;
+                    if (ldn == 3) ld[3] = 2;
+                    if (ldn == 4) ld[0] = 3;
+                } else if (ad_name == 1) {
+                    if (ldn == 1) ld[0] = 0;
+                    if (ldn == 2) ld[2] = 1;
+                    if (ldn == 3) ld[3] = 2;
+                    if (ldn == 4) ld[1] = 3;
+                    if (ldn == 5) ld[6] = 4;
                 }
             }
             if (type == CARD_AD1816) {
-                if (n == 1) ld[0] = 0;
-                if (n == 2) ld[2] = 1;
-                if (n == 3) ld[3] = 2;
+                if (ldn == 1) ld[0] = 0;
+                if (ldn == 2) ld[2] = 1;
+                if (ldn == 3) ld[3] = 2;
             }
             if (type == CARD_ADS7141) {
-                if (n == 1) ld[1] = 0;
-                if (n == 2) ld[0] = 1;
-                if (n == 3) ld[8] = 2;
-                if (n == 4) ld[2] = 3;
-                if (n == 5) ld[3] = 4;
-                if (n == 6) ld[7] = 5;
+                if (ldn == 1) ld[1] = 0;
+                if (ldn == 2) ld[0] = 1;
+                if (ldn == 3) ld[8] = 2;
+                if (ldn == 4) ld[2] = 3;
+                if (ldn == 5) ld[3] = 4;
+                if (ldn == 6) ld[7] = 5;
             }
             if (type == CARD_GUSPNP) {
-                if (n == 1) ld[0] = 0;
-                if (n == 2) ld[5] = 1;
-                if (n == 3) ld[3] = 2;
-                if (n == 4) ld[1] = 3;
-                if (n == 5) ld[2] = 4;
-                if (n == 6 || opt_xgc == 0) ld[6] = 5;
+                if (ldn == 1) ld[0] = 0;
+                if (ldn == 2) ld[5] = 1;
+                if (ldn == 3) ld[3] = 2;
+                if (ldn == 4) ld[1] = 3;
+                if (ldn == 5) ld[2] = 4;
+                if (ldn == 6 || opt_xgc == 0) ld[6] = 5;
             }
             if (type == CARD_AZTECH) {
-                if (n == 1) ld[5] = 0;
-                if (n == 2) ld[0] = 1;
+                if (ldn == 1) ld[5] = 0;
+                if (ldn == 2) ld[0] = 1;
                 ld[2] = 2;
                 ld[3] = 3;
                 ld[7] = 4;
                 ld[8] = 5;
             }
             if (type == CARD_CRYSTAL) {
-                if (n == 1) ld[0] = 0;
-                if (n == 2) ld[3] = 1;
-                if (n == 3) ld[6] = 2;
-                if (n == 4 || opt_xom == 1) ld[2] = 3;
-                if (ew == 4) {
-                    if (n == 5) ld[1] = 4;
-                    if (n == 6) ld[8] = 5;
+                if (ldn == 1) ld[0] = 0;
+                if (ldn == 2) ld[3] = 1;
+                if (ldn == 3) ld[6] = 2;
+                if (ldn == 4 || opt_xom == 1) ld[2] = 3;
+                if (ews == 4) {
+                    if (ldn == 5) ld[1] = 4;
+                    if (ldn == 6) ld[8] = 5;
                 } else {
-                    if (n == 5) ld[5] = 4;
+                    if (ldn == 5) ld[5] = 4;
                 }
             }
             if (type == CARD_ES968B) {
-                if (n == 1) ld[0] = 0;
-                if (n == 2) ld[3] = 1;
+                if (ldn == 1) ld[0] = 0;
+                if (ldn == 2) ld[3] = 1;
             }
             if (type == CARD_ES1869) {
-                if (n == 1) ld[6] = 0;
-                if (n == 2) ld[0] = 1;
-                if (n == 3) ld[3] = 2;
-                if (n == 4) ld[5] = 3;
+                if (ldn == 1) ld[6] = 0;
+                if (ldn == 2) ld[0] = 1;
+                if (ldn == 3) ld[3] = 2;
+                if (ldn == 4) ld[5] = 3;
             }
             if (type == CARD_RJA0) {
-                if (n == 1) ld[2] = 0;
+                if (ldn == 1) ld[2] = 0;
             }
             if (type == CARD_ENSONIQ) {
-                if (n == 1) ld[6] = 0;
-                if (n == 2) ld[3] = 1;
+                if (ldn == 1) ld[6] = 0;
+                if (ldn == 2) ld[3] = 1;
             }
             if (type == CARD_TBS20) {
-                if (n == 2) ld[2] = 1;
+                if (ldn == 2) ld[2] = 1;
                 ld[3] = 2;
             }
-            if (type == CARD_ALS && rev10 == 3 && n == 4 && ld[2] == 3) {
+            if (type == CARD_ALS && rev10 == 3 && ldn == 4 && ld[2] == 3) {
                 done = 1;
                 ld[5] = 4;
                 break;
@@ -2495,13 +2495,13 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                 ok = pnp_read_res(str, len);
                 if (ok) {
                     if (str[0] == 'A' && str[1] == 'u' && str[2] == 'd')
-                        ld[0] = n - 1;
+                        ld[0] = ldn - 1;
                     else if (str[0] == 'G' && str[1] == 'a' && str[2] == 'm')
-                        ld[3] = n - 1;
+                        ld[3] = ldn - 1;
                     else if (str[0] == 'W' && str[1] == 'a' && str[2] == 'v')
-                        ld[4] = n - 1;
+                        ld[4] = ldn - 1;
                     else if (str[0] == 'I' && str[1] == 'D' && str[2] == 'E')
-                        ld[5] = n - 1;
+                        ld[5] = ldn - 1;
                 }
             }
             break;
@@ -2519,24 +2519,24 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
 int pnp_read_res(unsigned char *buf, int n)
 {
     int i = 0;
-    unsigned char st = 0;
-    unsigned char d = 0;
-    unsigned char cnt = 15;
+    unsigned char ready = 0;
+    unsigned char data = 0;
+    unsigned char tries = 15;
     while (i < n) {
-        cnt = 15;
+        tries = 15;
         outportb(pnp_addr_port, 5);
-        while (cnt--) {
-            st = inportb(pnp_rdata_port) & 1;
-            if (!st)
+        while (tries--) {
+            ready = inportb(pnp_rdata_port) & 1;
+            if (!ready)
                 delay(1);
             else
                 break;
         }
         outportb(pnp_addr_port, 4);
-        if (st != 0) {
-            d = inportb(pnp_rdata_port);
+        if (ready != 0) {
+            data = inportb(pnp_rdata_port);
             if (buf)
-                buf[i] = d;
+                buf[i] = data;
             i++;
         } else
             return 0;
@@ -2547,32 +2547,32 @@ int pnp_read_res(unsigned char *buf, int n)
 /* read a PnP resource tag header: tag in *tag, length in *len */
 int pnp_read_tag(unsigned char *tag, unsigned *len)
 {
-    int r = 0;
-    unsigned char b = 0;
-    unsigned char w[2] = { 0, 0 };
-    r = pnp_read_res(&b, 1);
-    if (r) {
-        if (b & 0x80) {
-            *tag = b;
-            r = pnp_read_res(w, 2);
-            if (r)
-                *len = (w[1] << 8) | w[0];
+    int ok = 0;
+    unsigned char hdr = 0;
+    unsigned char lenb[2] = { 0, 0 };
+    ok = pnp_read_res(&hdr, 1);
+    if (ok) {
+        if (hdr & 0x80) {
+            *tag = hdr;
+            ok = pnp_read_res(lenb, 2);
+            if (ok)
+                *len = (lenb[1] << 8) | lenb[0];
         } else {
-            *tag = (b >> 1 >> 1 >> 1) & 0xf;
-            *len = b & 7;
+            *tag = (hdr >> 1 >> 1 >> 1) & 0xf;
+            *len = hdr & 7;
         }
-        r = (r && *tag != 0xff && *len != 0xffff) ? 1 : 0;
+        ok = (ok && *tag != 0xff && *len != 0xffff) ? 1 : 0;
     }
-    return r;
+    return ok;
 }
 
 /* detect and initialize the AWE EMU8000 at port */
 void awe_init(unsigned port)
 {
     unsigned char ver = 2;
-    unsigned char a;
-    unsigned char b;
-    unsigned char st;
+    unsigned char mix_fe;
+    unsigned char mix_fd;
+    unsigned char status;
     char *msg = "AWE EMU8000 chip not found. WaveTable and/or FM may not be available\nInitialization done.\n";
     outportb(port + 0x802, 0x3d);
     outportb(port + 0x400, 0x59);
@@ -2581,25 +2581,25 @@ void awe_init(unsigned port)
     outportb(port + 0x802, 0x3f);
     outportb(port + 0x400, 0);
     outportb(port + 0x802, 0x3d);
-    st = inportb(port + 0x400);
-    if ((st & 0x7e) != 0x58) {
+    status = inportb(port + 0x400);
+    if ((status & 0x7e) != 0x58) {
         printf(msg);
         return;
     }
     outportb(port + 0x802, 0x3e);
-    st = inportb(port + 0x400);
-    if ((st & 3) != 3) {
+    status = inportb(port + 0x400);
+    if ((status & 3) != 3) {
         printf(msg);
         return;
     }
     delay(1);
     outportb(port - 0x400 + 4, 0xfe);
     delay(1);
-    a = inportb(port - 0x400 + 5);
+    mix_fe = inportb(port - 0x400 + 5);
     outportb(port - 0x400 + 4, 0xfd);
     delay(1);
-    b = inportb(port - 0x400 + 5);
-    if (a == 0xff && b == 0xff)
+    mix_fd = inportb(port - 0x400 + 5);
+    if (mix_fe == 0xff && mix_fd == 0xff)
         ver = 1;
     printf("AWE [%Xh] EMU8000 v%d Synth chip found. ", port, ver);
     emu_write16(0x3f, port + 0x400, 0);
@@ -2650,10 +2650,10 @@ int init_nonpnp_sb16(void)
     unsigned char k;
     unsigned char maj = 0;
     unsigned char min = 0;
-    unsigned char t = 0;
+    unsigned char resp = 0;
     unsigned char irqr = 2;
     unsigned char dmar = 2;
-    unsigned char mr = 0;
+    unsigned char mixreg = 0;
     char *name = "";
     unsigned char type = 0;
     int blaster = 0;
@@ -2672,13 +2672,13 @@ int init_nonpnp_sb16(void)
             if (min < 0x20) {
                 outportb(port + 0xc, 0xe3);
                 delay(1);
-                t = inportb(port + 0xa);
+                resp = inportb(port + 0xa);
                 delay(1);
-                if (t == 0x43) {
+                if (resp == 0x43) {
                     for (k = 0; k < 100; k++) {
-                        t = inportb(port + 0xa);
+                        resp = inportb(port + 0xa);
                         delay(1);
-                        if (t == 0)
+                        if (resp == 0)
                             break;
                     }
                     name = "SB16";
@@ -2703,9 +2703,9 @@ int init_nonpnp_sb16(void)
         sb16_set_irq_dma(port, irq, dma, hdma);
         outportb(port + 4, 0x84);
         delay(1);
-        mr = inportb(port + 5);
+        mixreg = inportb(port + 5);
         delay(1);
-        if (mr > 0x7f && mr < 0xf0) {
+        if (mixreg > 0x7f && mixreg < 0xf0) {
             if (mpu_port == 0)
                 outportb(port + 5, 0xe2);
             else if (mpu_port == 0x300)
@@ -2803,7 +2803,7 @@ unsigned char sb16_get_dma(int port)
 {
     unsigned char lo;
     unsigned char hi;
-    unsigned char r = 0;
+    unsigned char res = 0;
     unsigned char v;
     outportb(port + 4, 0x81);
     delay(1);
@@ -2811,19 +2811,19 @@ unsigned char sb16_get_dma(int port)
     lo = v & 0xb;
     hi = (v >> 4) & 0xe;
     switch (hi) {
-    case 2: r = 5; break;
-    case 4: r = 6; break;
-    case 8: r = 7; break;
-    default: r = 0;
+    case 2: res = 5; break;
+    case 4: res = 6; break;
+    case 8: res = 7; break;
+    default: res = 0;
     }
-    r = r << 4;
+    res = res << 4;
     switch (lo) {
-    case 1: r += 0; break;
-    case 2: r += 1; break;
-    case 8: r += 3; break;
-    default: r += 0;
+    case 1: res += 0; break;
+    case 2: res += 1; break;
+    case 8: res += 3; break;
+    default: res += 0;
     }
-    return r;
+    return res;
 }
 
 /* check for an EMU8000 at port+0x400 */
@@ -2851,7 +2851,7 @@ unsigned char awe_detect(int port)
 }
 
 /* print mixer settings line */
-void print_mixer(char *name, int d3, int gain)
+void print_mixer(char *name, int x3d, int gain)
 {
     printf("%s Mixer [VOL:%d WAV:%d FM:%d LIN:%d CD:%d MIC:%d", name,
            master_vol, wave_vol, fm_vol, line_vol, cd_vol, mic_vol);
@@ -2863,8 +2863,8 @@ void print_mixer(char *name, int d3, int gain)
         printf(" AUXB:%d", bass_lvl);
     if (gain > -1)
         printf(" GAIN:%d", gain);
-    if (d3 > -1)
-        printf(" 3D:%d", d3);
+    if (x3d > -1)
+        printf(" 3D:%d", x3d);
     puts("]");
 }
 
@@ -2951,11 +2951,11 @@ void sb16_mixer_switches(void)
 /* initialize an OPTi 82C925 (mode 5) or 82C924 (mode 4) and its codec */
 void opti92x_init(int mode)
 {
-    unsigned char c = 0xf0;
-    unsigned char d = 0x87;
-    int e = 0;
-    int f = 0;
-    int g = 0;
+    unsigned char cfg3 = 0xf0;
+    unsigned char cfg6 = 0x87;
+    int mpu_sel = 0;
+    int cfg1 = 0;
+    int cfg7_keep = 0;
     cd_reg = (100 - cd_vol) * 31 / 97;
     mic_reg = 0xc0 | ((100 - mic_vol) * 31 / 97) << 1;
     line_reg = (100 - line_vol) * 31 / 97;
@@ -2974,19 +2974,19 @@ void opti92x_init(int mode)
     if (fm_reg < 9)
         fm_reg = 9;
     if (sb_port == 0x240)
-        c = 0xf4;
+        cfg3 = 0xf4;
     if (ide_port > 0)
-        f |= 8;
+        cfg1 |= 8;
     if (opt_xwss > 0)
-        f |= 0x80;
+        cfg1 |= 0x80;
     switch (mpu_port) {
-    case 0x330: e = 4; break;
-    case 0x320: e = 5; break;
-    case 0x310: e = 6; break;
-    case 0x300: e = 7; break;
+    case 0x330: mpu_sel = 4; break;
+    case 0x320: mpu_sel = 5; break;
+    case 0x310: mpu_sel = 6; break;
+    case 0x300: mpu_sel = 7; break;
     }
-    d = 7 | e << 5;
-    g = opti92x_read(opti_ctl_port, 7) & 0x40;
+    cfg6 = 7 | mpu_sel << 5;
+    cfg7_keep = opti92x_read(opti_ctl_port, 7) & 0x40;
     opti92x_write(opti_ctl_port, 1, 0x40);
     opti92x_write(opti_ctl_port, 1, 0);
     delay(120);
@@ -2994,11 +2994,11 @@ void opti92x_init(int mode)
         opti92x_write(opti_ctl_port, 0xd, 2);
     outportb(wss_port + 6, 0);
     delay(250);
-    opti92x_write(opti_ctl_port, 1, f);
-    opti92x_write(opti_ctl_port, 3, c);
+    opti92x_write(opti_ctl_port, 1, cfg1);
+    opti92x_write(opti_ctl_port, 3, cfg3);
     opti92x_write(opti_ctl_port, 4, 0xa2);
-    opti92x_write(opti_ctl_port, 6, d);
-    opti92x_write(opti_ctl_port, 7, wave_reg | g);
+    opti92x_write(opti_ctl_port, 6, cfg6);
+    opti92x_write(opti_ctl_port, 7, wave_reg | cfg7_keep);
     opti92x_write(opti_ctl_port, 2, 0x23);
     opti92x_write(opti_ctl_port, 2, 3);
     opti92x_write(opti_ctl_port, 5, 0x9b);
@@ -3055,7 +3055,7 @@ void opti93x_init(void)
 {
     register unsigned codec = wss_port + -4;
     register unsigned mix = opti_ctl_port + 2;
-    unsigned char b = opt_x3d > 0 ? 0x60 : 0;
+    unsigned char x3d_bits = opt_x3d > 0 ? 0x60 : 0;
 
     opti93x_write(mix, 0x14, 0);
     opti93x_write(mix, 4, 0x16);
@@ -3076,7 +3076,7 @@ void opti93x_init(void)
     idx45_write_slow(codec, 0x48, 3);
     delay(100);
     idx45_write_slow(codec, 0x30, (unsigned char)((100 - fm_vol) * 15 / 97) << 1);
-    idx45_write_slow(codec, 0x31, (unsigned char)((100 - fm_vol) * 15 / 97) << 1 | b);
+    idx45_write_slow(codec, 0x31, (unsigned char)((100 - fm_vol) * 15 / 97) << 1 | x3d_bits);
     idx45_write_slow(codec, 0x20, 0xac);
     idx45_write_slow(codec, 0x21, 0xac);
     idx45_write_slow(codec, 0x36, 5);
@@ -3120,35 +3120,35 @@ unsigned char sam9407_start[37] = {
 void sam9407_upload(unsigned base)
 {
     register unsigned port = base;
-    unsigned w = 0;
+    unsigned word = 0;
     unsigned long size;
-    register FILE *f;
+    register FILE *fp;
     int i;
-    unsigned p;
+    unsigned out;
 
-    f = fopen("SAM9407.BIN", "rb");
-    if (f == NULL) {
+    fp = fopen("SAM9407.BIN", "rb");
+    if (fp == NULL) {
         puts("SAM9407.BIN firmware file not found. Sound will be silent.");
         return;
     }
     /* TC 3.0 pushes long 0 as xor ax,ax/push ax/push ax; BC 3.1 emits xor ax,ax/xor dx,dx */
-    fseek(f, 0L, SEEK_END);
-    size = ftell(f);
-    rewind(f);
+    fseek(fp, 0L, SEEK_END);
+    size = ftell(fp);
+    rewind(fp);
     if (size > 0x20000L || size < 0x1000L) {
         puts("Bad SAM9407 firmware file.");
-        fclose(f);
+        fclose(fp);
         return;
     }
-    fseek(f, 0x400L, SEEK_SET);
-    w = fgetc(f);
-    w = (fgetc(f) << 8) | w;
-    if (w != 0xd0ce) {
+    fseek(fp, 0x400L, SEEK_SET);
+    word = fgetc(fp);
+    word = (fgetc(fp) << 8) | word;
+    if (word != 0xd0ce) {
         puts("Bad SAM9407 firmware file.");
-        fclose(f);
+        fclose(fp);
         return;
     }
-    fseek(f, 0L, SEEK_SET);     /* same long-0 difference as above */
+    fseek(fp, 0L, SEEK_SET);     /* same long-0 difference as above */
     outportb(port + 1, 0x3f);
     outportb(port + 1, 0x48);
     outportb(port, 0);
@@ -3166,26 +3166,26 @@ void sam9407_upload(unsigned base)
     outportb(port + 1, 0x93);
     outportb(port + 1, 0x66);
     delay(20);
-    fseek(f, 0x400L, SEEK_SET);
+    fseek(fp, 0x400L, SEEK_SET);
     i = 0;
     printf("Uploading SAM9407 firmware");
-    while (!feof(f)) {
-        w = fgetc(f);
-        w = (fgetc(f) << 8) | w;
-        outpw(port + 2, w);
+    while (!feof(fp)) {
+        word = fgetc(fp);
+        word = (fgetc(fp) << 8) | word;
+        outpw(port + 2, word);
         i++;
         if (i % 5000 == 0)
             printf(".");
     }
     puts(" Done.");
-    fclose(f);
+    fclose(fp);
     delay(100);
     for (i = 0; i < 0x25; i++) {
         if (i < 4 || i == 0x24)
-            p = port + 1;
+            out = port + 1;
         else
-            p = port;
-        outportb(p, sam9407_start[i]);
+            out = port;
+        outportb(out, sam9407_start[i]);
     }
 }
 
@@ -3215,7 +3215,7 @@ int iw_list_roms(void)
     unsigned char old = 0;
     unsigned char sum = 0;
     unsigned char mask = 0;
-    unsigned w = 0;
+    unsigned mcfg = 0;
     unsigned long size = 0;
     unsigned long addr = 0;
     char sig[5] = { 0 };
@@ -3230,8 +3230,8 @@ int iw_list_roms(void)
     outportb(sb_port + 0x103, 0x53);
     outportb(sb_port + 0x105, 3);
     outportb(sb_port + 0x103, 0x52);
-    w = inpw(sb_port + 0x104) & 0xff10;
-    outpw(sb_port + 0x104, w | 0x4c);
+    mcfg = inpw(sb_port + 0x104) & 0xff10;
+    outpw(sb_port + 0x104, mcfg | 0x4c);
     for (addr = 0; addr < 0x1000000L; addr += 0x400000L) {
         for (i = 0; i < 4; i++)
             sig[i] = iw_mem_read(addr + i);
@@ -3268,14 +3268,14 @@ int iw_detect_dram(unsigned long *dst)
 {
     register unsigned long *out = dst;
     unsigned long sizes[4] = { 0 };
-    unsigned long a = 0;
+    unsigned long addr = 0;
     unsigned long base = 0;
     unsigned long off = 0;
     unsigned char bank = 0;
     unsigned char cfg = 0;
     unsigned char old = 0;
     unsigned char found = 0;
-    register unsigned w = 0;
+    register unsigned mcfg = 0;
     int total = 0;
 
     outportb(sb_port + 0x103, 0x99);
@@ -3285,10 +3285,10 @@ int iw_detect_dram(unsigned long *dst)
     outportb(sb_port + 0x103, 0x53);
     outportb(sb_port + 0x105, 1);
     outportb(sb_port + 0x103, 0x52);
-    w = inpw(sb_port + 0x104) & 0xfff0;
-    outpw(sb_port + 0x104, w | 0xc);
-    for (; a < 0x1000000L; a += 0x10000L)
-        iw_mem_write(a, 0);
+    mcfg = inpw(sb_port + 0x104) & 0xfff0;
+    outpw(sb_port + 0x104, mcfg | 0xc);
+    for (; addr < 0x1000000L; addr += 0x10000L)
+        iw_mem_write(addr, 0);
     for (bank = 0; bank < 4; bank++) {
         iw_mem_write(base, 0xaa);
         iw_mem_write(base + 1, 0x55);
@@ -3298,8 +3298,8 @@ int iw_detect_dram(unsigned long *dst)
             while (off < 0x400000L) {
                 sizes[bank] += 0x10000L;
                 off += 0x10000L;
-                a = base + off;
-                if (iw_mem_read(a) == 0xaa)
+                addr = base + off;
+                if (iw_mem_read(addr) == 0xaa)
                     break;
             }
         }
@@ -3310,9 +3310,9 @@ int iw_detect_dram(unsigned long *dst)
         off = 0;
         found = 0;
     }
-    for (a = 0; a < 0x200000L; a += 0x400) {
-        iw_mem_write(a, 0);
-        iw_mem_write(a + 1, 0);
+    for (addr = 0; addr < 0x200000L; addr += 0x400) {
+        iw_mem_write(addr, 0);
+        iw_mem_write(addr + 1, 0);
     }
     outportb(sb_port + 0x103, 0x52);
     if (sizes[0] == 0x100 && sizes[1] == 0 && sizes[2] == 0 && sizes[3] == 0)
@@ -3352,7 +3352,7 @@ int iw_detect_dram(unsigned long *dst)
     if (opt_xgl == 1)
         cfg = 1;
     cfg |= 0x80;
-    outpw(sb_port + 0x104, w | cfg);
+    outpw(sb_port + 0x104, mcfg | cfg);
     outportb(sb_port + 0x103, 0x19);
     outportb(sb_port + 0x105, old);
     total = sizes[0] + sizes[1] + sizes[2] + sizes[3];
@@ -3363,8 +3363,8 @@ int iw_detect_dram(unsigned long *dst)
 void iw_write(unsigned long reg, unsigned val)
 {
     unsigned char sel;
-    unsigned char t2;
-    unsigned char t3;
+    unsigned char ctl_f;
+    unsigned char saved;
     unsigned type;
     unsigned width;
 
@@ -3380,18 +3380,18 @@ void iw_write(unsigned long reg, unsigned val)
             return;
         {
             outp(sb_port + 0x103, 0x5b);
-            t3 = inp(sb_port + 0x105);
-            outp(sb_port + 0x105, (unsigned char)(t3 | 9));
-            t2 = inp(sb_port + 0xf);
-            t2 = (t2 & 0xf8) | sel;
-            outp(sb_port + 0xf, t2);
+            saved = inp(sb_port + 0x105);
+            outp(sb_port + 0x105, (unsigned char)(saved | 9));
+            ctl_f = inp(sb_port + 0xf);
+            ctl_f = (ctl_f & 0xf8) | sel;
+            outp(sb_port + 0xf, ctl_f);
             if (reg == 0xf000bL || reg == 0x10000bL) {
-                t2 = inp(sb_port);
-                outp(sb_port, (unsigned char)(reg == 0xf000bL ? t2 & 0xbf : t2 | 0x40));
+                ctl_f = inp(sb_port);
+                outp(sb_port, (unsigned char)(reg == 0xf000bL ? ctl_f & 0xbf : ctl_f | 0x40));
             }
             outp(sb_port + 0xb, (unsigned char)val);
             outp(sb_port + 0x103, 0x5b);
-            outp(sb_port + 0x105, t3);
+            outp(sb_port + 0x105, saved);
         }
     } else if (type >= 0x1a && type <= 0x5c) {
         if (type == 0x5c) {
@@ -3414,9 +3414,9 @@ void iw_write(unsigned long reg, unsigned val)
         if (type <= 0x61) {
             outp(sb_port + 0x10c + width, (unsigned char)val);
         } else {
-            t3 = inp(sb_port + 0x10c);
-            t3 = (t3 & 0xe0) + sel;
-            outp(sb_port + 0x10c, t3);
+            saved = inp(sb_port + 0x10c);
+            saved = (saved & 0xe0) + sel;
+            outp(sb_port + 0x10c, saved);
             outp(sb_port + 0x10d, (unsigned char)val);
         }
     }
@@ -3582,8 +3582,8 @@ int emu_detect_dram(void)
     return size;
 }
 
-/* EMU8000: set up the 30 DRAM DMA channels (odd ones read if a != 0) */
-void emu_dma_open(int a)
+/* EMU8000: set up the 30 DRAM DMA channels (odd ones read if odd_read != 0) */
+void emu_dma_open(int odd_read)
 {
     unsigned i;
     for (i = 0; i < 0x1e; i++) {
@@ -3594,7 +3594,7 @@ void emu_dma_open(int a)
         emu_write32(i, awe_port, 0x40000000L);
         emu_write32(i + 0xc0, awe_port, 0L);
         emu_write32(i + 0xe0, awe_port, 0L);
-        emu_write32(i, awe_port + 0x400, (i & 1) && a ? 0x04000000L : 0x06000000L);
+        emu_write32(i, awe_port + 0x400, (i & 1) && odd_read ? 0x04000000L : 0x06000000L);
     }
 }
 
@@ -3649,11 +3649,11 @@ int emu_init(int ver)
 {
     int i = 0;
     int j = 1;
-    unsigned v1 = 0x3ff;
-    unsigned v2 = 0x30;
-    unsigned v3 = 0x8030;
-    unsigned cnt = 0;
-    unsigned t = 0;
+    unsigned pat_lo = 0x3ff;
+    unsigned pat_hi = 0x30;
+    unsigned pat_hi2 = 0x8030;
+    unsigned spin = 0;
+    unsigned target = 0;
     int mem = 0;
     long rev = awe_chorus * 0xff / 0x63;
     int cho = (awe_reverb * 0xff / 0x63) << 8;
@@ -3701,89 +3701,89 @@ int emu_init(int ver)
 
     j = 1;
     for (i = 0; i < 0x20; i += 2) {
-        emu_write16(i + 0x40, awe_port + 0x400, v1);
-        emu_write16(j + 0x40, awe_port + 0x400, v2);
-        v1 += 0x400;
-        v2 += 0x100;
+        emu_write16(i + 0x40, awe_port + 0x400, pat_lo);
+        emu_write16(j + 0x40, awe_port + 0x400, pat_hi);
+        pat_lo += 0x400;
+        pat_hi += 0x100;
         j += 2;
     }
     j = 1;
-    v2 = 0x30;
+    pat_hi = 0x30;
     for (i = 0; i < 0x20; i += 2) {
-        emu_write16(i + 0x40, awe_port + 0x402, v1);
-        emu_write16(j + 0x40, awe_port + 0x402, v2);
-        v1 += 0x400;
-        v2 += 0x100;
+        emu_write16(i + 0x40, awe_port + 0x402, pat_lo);
+        emu_write16(j + 0x40, awe_port + 0x402, pat_hi);
+        pat_lo += 0x400;
+        pat_hi += 0x100;
         j += 2;
     }
     j = 1;
-    v2 = 0x30;
+    pat_hi = 0x30;
     for (i = 0; i < 0x20; i += 2) {
-        emu_write16(i + 0x60, awe_port + 0x400, v1);
-        emu_write16(j + 0x60, awe_port + 0x400, v2);
-        v1 += 0x400;
-        v2 += 0x100;
+        emu_write16(i + 0x60, awe_port + 0x400, pat_lo);
+        emu_write16(j + 0x60, awe_port + 0x400, pat_hi);
+        pat_lo += 0x400;
+        pat_hi += 0x100;
         j += 2;
     }
     j = 1;
-    v2 = 0x30;
+    pat_hi = 0x30;
     for (i = 0; i < 0x20; i += 2) {
-        emu_write16(i + 0x60, awe_port + 0x402, v1);
-        emu_write16(j + 0x60, awe_port + 0x402, v2);
-        v1 += 0x400;
-        v2 += 0x100;
+        emu_write16(i + 0x60, awe_port + 0x402, pat_lo);
+        emu_write16(j + 0x60, awe_port + 0x402, pat_hi);
+        pat_lo += 0x400;
+        pat_hi += 0x100;
         j += 2;
     }
     for (i = 0; i < 0x14; i++)
         emu_read16(0x3b, awe_port + 0x402);
 
-    cnt = 0;
+    spin = 0;
     outpw(awe_port + 0x802, 0x3b);
-    t = inpw(awe_port + 0x402);
-    t += 0x400;
-    if (t - 0x400 < t) {
-        while (inpw(awe_port + 0x402) > t && cnt < 0xfff0)
-            cnt++;
+    target = inpw(awe_port + 0x402);
+    target += 0x400;
+    if (target - 0x400 < target) {
+        while (inpw(awe_port + 0x402) > target && spin < 0xfff0)
+            spin++;
     }
-    cnt = 0;
-    while (inpw(awe_port + 0x402) < t && cnt < 0xfff0)
-        cnt++;
+    spin = 0;
+    while (inpw(awe_port + 0x402) < target && spin < 0xfff0)
+        spin++;
 
     j = 1;
-    v1 = 0x3ff;
-    v3 = 0x8030;
+    pat_lo = 0x3ff;
+    pat_hi2 = 0x8030;
     for (i = 0; i < 0x20; i += 2) {
-        emu_write16(i + 0x40, awe_port + 0x400, v1);
-        emu_write16(j + 0x40, awe_port + 0x400, v3);
-        v1 += 0x400;
-        v3 += 0x100;
+        emu_write16(i + 0x40, awe_port + 0x400, pat_lo);
+        emu_write16(j + 0x40, awe_port + 0x400, pat_hi2);
+        pat_lo += 0x400;
+        pat_hi2 += 0x100;
         j += 2;
     }
     j = 1;
-    v3 = 0x8030;
+    pat_hi2 = 0x8030;
     for (i = 0; i < 0x20; i += 2) {
-        emu_write16(i + 0x40, awe_port + 0x402, v1);
-        emu_write16(j + 0x40, awe_port + 0x402, v3);
-        v1 += 0x400;
-        v3 += 0x100;
+        emu_write16(i + 0x40, awe_port + 0x402, pat_lo);
+        emu_write16(j + 0x40, awe_port + 0x402, pat_hi2);
+        pat_lo += 0x400;
+        pat_hi2 += 0x100;
         j += 2;
     }
     j = 1;
-    v3 = 0x8030;
+    pat_hi2 = 0x8030;
     for (i = 0; i < 0x20; i += 2) {
-        emu_write16(i + 0x60, awe_port + 0x400, v1);
-        emu_write16(j + 0x60, awe_port + 0x400, v3);
-        v1 += 0x400;
-        v3 += 0x100;
+        emu_write16(i + 0x60, awe_port + 0x400, pat_lo);
+        emu_write16(j + 0x60, awe_port + 0x400, pat_hi2);
+        pat_lo += 0x400;
+        pat_hi2 += 0x100;
         j += 2;
     }
     j = 1;
-    v3 = 0x8030;
+    pat_hi2 = 0x8030;
     for (i = 0; i < 0x20; i += 2) {
-        emu_write16(i + 0x60, awe_port + 0x402, v1);
-        emu_write16(j + 0x60, awe_port + 0x402, v3);
-        v1 += 0x400;
-        v3 += 0x100;
+        emu_write16(i + 0x60, awe_port + 0x402, pat_lo);
+        emu_write16(j + 0x60, awe_port + 0x402, pat_hi2);
+        pat_lo += 0x400;
+        pat_hi2 += 0x100;
         j += 2;
     }
     for (i = 0; i < 0x14; i++)
@@ -4100,22 +4100,22 @@ void cs_xreg_write(unsigned char unit, unsigned char val)
 /* OPL (AdLib) timer detection at 0x388 */
 int opl_detect(void)
 {
-    int s1 = 0;
-    int s2 = 0;
+    int stat1 = 0;
+    int stat2 = 0;
     int found = 0;
     opl_write(4, 0x60);
     opl_write(4, 0x80);
     delay(10);
-    s1 = inportb(0x388);
+    stat1 = inportb(0x388);
     opl_write(2, 0xff);
     opl_write(4, 0x21);
     delay(10);
-    s2 = inportb(0x388);
+    stat2 = inportb(0x388);
     opl_write(4, 0x60);
     opl_write(4, 0x80);
-    s1 = s1 & 0xe0;
-    s2 = s2 & 0xe0;
-    if (s1 == 0 && s2 == 0xc0)
+    stat1 = stat1 & 0xe0;
+    stat2 = stat2 & 0xe0;
+    if (stat1 == 0 && stat2 == 0xc0)
         found = 1;
     else
         found = 0;
@@ -4176,11 +4176,11 @@ void tea6330_write(unsigned char reg, unsigned char val)
 void i2c_write_byte(unsigned char v)
 {
     int i = 0;
-    unsigned char b = 0;
+    unsigned char bit = 0;
     for (i = 7; i >= 0; i--) {
-        b = ((v >> i) & 1) << 1;
-        i2c_lines(1 | b);
-        i2c_lines(b);
+        bit = ((v >> i) & 1) << 1;
+        i2c_lines(1 | bit);
+        i2c_lines(bit);
     }
     i2c_lines(3);
     i2c_lines(2);
@@ -4212,14 +4212,14 @@ void opti928_write(unsigned port, unsigned char val)
 /* detect and configure OAK OTI601 / OPTi 82C928 */
 int init_opti928(void)
 {
-    unsigned char r2 = 0;
-    unsigned char r1 = 0;
+    unsigned char id_f8f = 0;
+    unsigned char id_f8d = 0;
     unsigned char cfg1 = 0x80;
     unsigned char cfg2 = 0;
-    unsigned char st = 0;
-    r1 = opti928_read(0xf8d);
-    r2 = opti928_read(0xf8f);
-    if (r1 < 0xff && r2 < 0xff) {
+    unsigned char codec_st = 0;
+    id_f8d = opti928_read(0xf8d);
+    id_f8f = opti928_read(0xf8f);
+    if (id_f8d < 0xff && id_f8f < 0xff) {
         puts("Card detected: OAK OTI601 / OPTi 82C928");
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         if (sb_port == 0x240 || wss_port == 0xf40) {
@@ -4273,7 +4273,7 @@ int init_opti928(void)
         line_reg = line_vol > 0 ? (100 - line_vol) * 31 / 97 : 0x80;
         opti928_write(0xf91, 0x1a);
         outportb(wss_port + 4, 0x2c);
-        st = inportb(wss_port + 5);
+        codec_st = inportb(wss_port + 5);
         idx45_write_slow(wss_port, 0x24, fm_reg);
         idx45_write_slow(wss_port, 0x25, fm_reg);
         idx45_write_slow(wss_port, 0x26, wave_reg);
@@ -4283,7 +4283,7 @@ int init_opti928(void)
         if (opt_xwss == 0)
             opti928_write(0xf8d, opti928_read(0xf8d) & 0x7f);
         delay(50);
-        opti928_write(0xf91, (st & 0xfd) == 2 ? 0x2a : 0x20);
+        opti928_write(0xf91, (codec_st & 0xfd) == 2 ? 0x2a : 0x20);
         printf("Settings: ADD:%X IRQ:%d DMA:%d JOY:%X", sb_port, sb_irq, sb_dma, joy_port);
         if (opt_xwss > 0)
             printf(" [WSS mode: %X]", wss_port);
