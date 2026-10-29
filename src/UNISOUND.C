@@ -421,6 +421,7 @@ void pnp_send_key(void);
 void pnp_write(unsigned char reg, unsigned char val);
 void slam_write(unsigned char reg, unsigned char val);
 int ess_bypass_id(void);
+void no_card_hint(void);
 unsigned char pnp_read(unsigned char reg);
 void pnp_write16(unsigned char reg, unsigned val);
 unsigned pnp_read16(unsigned char reg);
@@ -655,6 +656,14 @@ int main(int argc, char *argv[])
     return configure_pnp(card, list, full_scan, scan_port);
 }
 
+/* After "No card detected" or "No PnP card detected.", point to the options for chips that
+   isolation doesn't find, and to /LOG. Ends without a newline. */
+void no_card_hint(void)
+{
+    printf("Crystal chip set up by the BIOS? Try /XSLAM. On-board ESS chip? Try /XESSB.\n"
+           "To report a problem: UNISOUND /LOG > LOG.TXT");
+}
+
 /* Return the value of a two-digit option value s ("00" to "99"), or -1 if s is anything else. */
 int opt_2digits(char *s)
 {
@@ -776,6 +785,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     if (nopnp_mode == 1) {
         if (init_es688() == 0 && init_opti930() == 0 && init_opti928() == 0 && init_nonpnp_sb16() == 0) {
             puts("No card detected");
+            no_card_hint();
+            puts("");
             return 1;
         }
         return 0;
@@ -1672,6 +1683,11 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 puts("");    /* end the line before the fallback's output */
             if (nlisted < 1)
                 ret = !init_nonpnp_fallback();
+            if (ret != 0) {
+                if (opt_log == 0 && nopnp_mode != 2)
+                    puts("");
+                no_card_hint();
+            }
         }
     } else {
         type = 0;
@@ -1683,6 +1699,11 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             if (opt_log != 0 || nopnp_mode == 2)
                 puts("");
             ret = !init_nonpnp_fallback();
+            if (ret != 0) {
+                if (opt_log == 0 && nopnp_mode != 2)
+                    puts("");
+                no_card_hint();
+            }
         }
     }
     pnp_write(2, 2);
