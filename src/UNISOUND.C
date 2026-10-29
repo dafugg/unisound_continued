@@ -3821,7 +3821,7 @@ int emu_init(int ver)
     unsigned target = 0;
     int mem = 0;
     long rev = awe_chorus * 0xff / 0x63;
-    int cho = (awe_reverb * 0xff / 0x63) << 8;
+    unsigned long cho = (unsigned long)(awe_reverb * 0xff / 0x63) << 8;
 
     emu_write16(0x3d, awe_port + 0x400, 0x59);
     emu_write16(0x3e, awe_port + 0x400, 0x20);
@@ -4011,13 +4011,13 @@ int emu_init(int ver)
     emu_write16(0xbe, awe_port + 0x400, 0x80);
     emu_write32(0xde, awe_port, 0xffffffe0L);
     emu_write32(0xfe, awe_port, 0xffffe8L | rev);
-    emu_write32(0x3e, awe_port, (long)cho);
+    emu_write32(0x3e, awe_port, cho);
     emu_write32(0x1e, awe_port, 0L);
     emu_write32(0x1e, awe_port + 0x400, 0xffffe3L);
     emu_write16(0xbf, awe_port + 0x400, 0x80);
     emu_write32(0xdf, awe_port, 0xfffff0L);
     emu_write32(0xff, awe_port, 0xfffff8L | rev);
-    emu_write32(0x3f, awe_port, (long)(0xff | cho));
+    emu_write32(0x3f, awe_port, 0xff | cho);
     emu_write32(0x1f, awe_port, 0x8000L);
     emu_write32(0x1f, awe_port + 0x400, 0xfffff3L);
     emu_write32(0x3e, awe_port, (unsigned long)(ver == 1 ? 0x4828u : 0x4800u) << 16);
