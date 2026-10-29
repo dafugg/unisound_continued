@@ -11,6 +11,12 @@ byte. Renames, comments and other changes that don't affect the code go there to
 keep `tools/build.sh` reporting IDENTICAL. `main` adds bug fixes on top, so its build no longer
 has that hash. All of this applies only to version 0.82a; other releases will differ.
 
+> **This is an unofficial build. Don't yell at JazeFox if this burns down your house.**
+> Nothing here is made, endorsed or supported by JazeFox. UNISOUND, and the source and data
+> reconstructed from it, remain JazeFox's work; this repository is published only because
+> JazeFox can no longer be reached and the fixes are useful. If JazeFox asks, the
+> reconstruction and the builds will be taken down.
+
 ## Decompilation status
 
 The source compiles without warnings. On the `0.82a` branch the output is byte-identical; on
@@ -171,4 +177,4 @@ which this repo does not include: put it in `orig/` or set `UNISOUND_COM`.
 
 The tools, DOS test programs, build files and documentation are under the MIT license (see
 [LICENSE](LICENSE)). `src/UNISOUND.C` and `data/*.json` are not: they are reconstructed from, or
-derived from, UNISOUND by JazeFox, and remain his work.
+derived from, UNISOUND by JazeFox, and remain JazeFox's work.

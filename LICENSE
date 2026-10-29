@@ -4,8 +4,8 @@ local.env.example, README.md and the other repository files.
 
 It does NOT cover src/UNISOUND.C, which is a reconstruction of UNISOUND by
 JazeFox (c) 2019-2025, or data/funcs.json and data/syms.json, which are derived
-from his UNISOUND.COM. Those remain his work and are not offered under any
-license here.
+from JazeFox's UNISOUND.COM. Those remain JazeFox's work and are not offered
+under any license here.
 
 MIT License
 
