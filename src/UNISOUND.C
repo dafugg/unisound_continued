@@ -18,7 +18,8 @@
    ld[1] second audio (OPL,  ld[4] wavetable (AWE)     ld[7] device that gets disabled
          WSS, or SB on GUS)  ld[5] IDE                       (Yamaha, Aztech)
    ld[2] MPU-401                                       ld[8] extra (MPU2 on EWS64, OPL on ADS7141)
-   x[3] is byte 3 of the first logical device id; 'h' (0x68) marks CARD_ES968B. */
+   x[2] and x[3] are bytes 2 and 3 of the first logical device id; x[3] 'h' (0x68) marks
+   CARD_ES968B, and 10h 18h (AZT1018) an AZT1022 with an AD1816A. */
 struct ldinfo {
     int ld[9];
     char x[7];
@@ -1032,6 +1033,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             }
             if (ld.x[3] == 'h') {
                 type = CARD_ES968B;
+            }
+            if (type == CARD_AZTECH && ld.x[2] == 0x10 && ld.x[3] == 0x18) {
+                type = CARD_AD1816; /* AZT1022 with an AD1816A (see card_ids) */
             }
             if (type == CARD_CREATIVE) {
                 reg_mpu = 0x62;
@@ -2529,7 +2533,6 @@ const struct card_id card_ids[] = {
     {"AXS71??", CARD_AD1816, 0},
     {"TER11??", CARD_AD1816, 0},
     {"TER14??", CARD_AD1816, 0},
-    {"AZT1022", CARD_AD1816, 0},
     {"LWC1061", CARD_AD1816, 0},
     {"MDK1605", CARD_AD1816, 0},
     {"SMM7180", CARD_AD1816, 0},
@@ -2543,6 +2546,11 @@ const struct card_id card_ids[] = {
     {"AZT1016", CARD_AZTECH, 0},
     {"AZT1017", CARD_AZTECH, 0},
     {"AZT1021", CARD_AZTECH, 0}, /* Aztech's AUD1021.INF and PNPID.DAT */
+    /* AZT1022 is two cards: an AZT2320 (JazeFox's, VOGONS p836545) and the AD1816A Aztech/Newcom
+       SC-16 3D (Linux ad1816a.c). The AD1816A's first logical device is AZT1018, and
+       pnp_map_devices and configure_pnp turn that one into CARD_AD1816. v0.80a and v0.82a
+       treated both as AD1816. */
+    {"AZT1022", CARD_AZTECH, 0},
     {"AZT1023", CARD_AZTECH, 0},
     {"AZT1026", CARD_AZTECH, 0},
     {"AZT3000", CARD_AZTECH, 0},
@@ -2924,8 +2932,9 @@ int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type)
 /* Wake card csn and walk its whole resource data. The first ANSI string becomes the card's name.
    For each logical device (tag 2) it fills in ld[], the logical device number for each function
    (see struct ldinfo). The mapping depends on the card family `type`, its name and option flags,
-   and later ANSI strings starting "Aud", "Gam", "Wav" or "IDE" override it. Also stores byte 3 of
-   the first logical device id after ld[] (ldinfo.x[3]), which marks ES968 variants.
+   and later ANSI strings starting "Aud", "Gam", "Wav" or "IDE" override it. Also stores bytes 2
+   and 3 of the first logical device id after ld[] (ldinfo.x[2], x[3]), which mark ES968 variants
+   and the AD1816A AZT1022.
    Returns 1 on success, 0 if the resource data could not be read. */
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
 {
@@ -2972,9 +2981,13 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                 ldn++;
                 ok = pnp_read_res(ldid, len);
                 if (ldn == 1) {
+                    ((unsigned char *)ld)[0x14] = ldid[2];
                     ((unsigned char *)ld)[0x15] = ldid[3];
                     if (type == CARD_ES968 && ldid[3] == 0x68) {
                         type = CARD_ES968B;
+                    }
+                    if (type == CARD_AZTECH && ldid[2] == 0x10 && ldid[3] == 0x18) {
+                        type = CARD_AD1816; /* AZT1022 with an AD1816A (see card_ids) */
                     }
                     if (type == CARD_ALS && name[3] == '1' && name[4] == '0') {
                         rev10 = 3;
