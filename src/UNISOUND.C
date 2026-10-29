@@ -2140,7 +2140,7 @@ int parse_ultrasnd(void)
     dup = strdup(env);
     tok = strtok(dup, ",");
     field = 0;
-    while (field < 5 || tok != 0) {
+    while (field < 5 && tok != 0) {
         dec = strtol(tok, 0, 10);
         hex = strtol(tok, 0, 16);
         switch (field) {
