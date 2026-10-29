@@ -26,6 +26,9 @@ int inp(unsigned portid);
 int outp(unsigned portid, int value);
 unsigned outpw(unsigned portid, unsigned value);
 
+/* longest ANSI identifier string kept; the buffers hold ANSI_MAX + 1 bytes or more */
+#define ANSI_MAX       63
+
 /* card families (the type code in configure_pnp and the PnP resource walkers) */
 #define CARD_CREATIVE  0x01  /* Creative SB16/AWE (CTL) */
 #define CARD_ALS       0x02  /* Avance Logic ALS (ALS, RWB1) */
@@ -427,6 +430,7 @@ int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type);
 int pnp_read_res(unsigned char *buf, int n);
 int pnp_read_tag(unsigned char *tag, unsigned *len);
+int pnp_read_str(char *buf, unsigned len);
 void awe_init(unsigned port);
 void sb_print_dsp_ver(int port);
 int init_nonpnp_sb16(void);
@@ -2344,9 +2348,7 @@ int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type)
             while (!done) {
                 if (pnp_read_tag(&tag, &len)) {
                     if (tag == 0x82) {
-                        if (pnp_read_res(buf, len))
-                            buf[len] = 0;
-                        else
+                        if (!pnp_read_str(buf, len))
                             ok = 0;
                         done = 1;
                     }
@@ -2553,12 +2555,10 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
             break;
         case 0x82:
             if (*name == 0) {
-                ok = pnp_read_res(name, len);
-                if (ok)
-                    name[len] = 0;
+                ok = pnp_read_str(name, len);
             } else {
                 char str[64] = { 0 };
-                ok = pnp_read_res(str, len);
+                ok = pnp_read_str(str, len);
                 if (ok) {
                     if (str[0] == 'A' && str[1] == 'u' && str[2] == 'd')
                         ld[0] = ldn - 1;
@@ -2635,6 +2635,17 @@ int pnp_read_tag(unsigned char *tag, unsigned *len)
         }
         ok = (ok && *tag != 0xff && *len != 0xffff) ? 1 : 0;
     }
+    return ok;
+}
+
+/* Read an ANSI identifier string of len bytes from the resource data into buf and NUL-terminate
+   it. At most ANSI_MAX bytes are kept; the rest is read and discarded.
+   Returns 1 on success, 0 on a read error. */
+int pnp_read_str(char *buf, unsigned len)
+{
+    unsigned keep = len > ANSI_MAX ? ANSI_MAX : len;
+    int ok = pnp_read_res(buf, keep) && pnp_read_res(0, len - keep);
+    buf[ok ? keep : 0] = 0;
     return ok;
 }
 
