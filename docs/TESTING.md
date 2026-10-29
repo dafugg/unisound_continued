@@ -2,8 +2,8 @@
 
 All results here come from emulation in 86Box. Six fixes have since also been confirmed on real
 hardware: the ULTRASND and BLASTER parsing, option names (bug 12), unknown PnP cards (bug 11),
-the ESS DSP flush (bug 10) and the ES1688 enable reads (bug 19), the last two on a Compaq LTE 5000
-with its on-board ES1688; the README table marks them.
+the ESS DSP flush (bug 10) and the ES1688 enable reads (bug 19). All but the unknown PnP cards ran
+on a Compaq LTE 5000 with its on-board ES1688; the README table marks them.
 
 ## Environment
 
