@@ -3241,6 +3241,7 @@ void sam9407_upload(unsigned base)
     unsigned long size;
     register FILE *fp;
     int i;
+    int lo, hi;
     unsigned out;
 
     fp = fopen("SAM9407.BIN", "rb");
@@ -3286,9 +3287,11 @@ void sam9407_upload(unsigned base)
     fseek(fp, 0x400L, SEEK_SET);
     i = 0;
     printf("Uploading SAM9407 firmware");
-    while (!feof(fp)) {
-        word = fgetc(fp);
-        word = (fgetc(fp) << 8) | word;
+    while ((lo = fgetc(fp)) != EOF) {
+        hi = fgetc(fp);
+        if (hi == EOF)
+            hi = 0;
+        word = hi << 8 | lo;
         outpw(port + 2, word);
         i++;
         if (i % 5000 == 0)
