@@ -108,15 +108,14 @@ If you have one of these cards, please open a GitHub issue with:
 | RTL3000 | Realtek-branded ALS120 | ALS | Avance's A4SOUND.INF lists the same logical devices in the same order as ALS0120; not testable in 86Box |
 | DXP3201 | MED3210 (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
 | CDC1111 | Dynasonic Pro (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
+| ESS1878, ESS1879 | ESS ES1878 / ES1879 | ES1869 | ESS's data sheets give them the ES1869's layout and bypass key; 86Box ES1869 with each chip's internal PnP ROM from its data sheet |
 
 ### Held back: need a PnP dump first
 
 | Card ID | Card | Would be set up as | What we need to know |
 |---|---|---|---|
 | MIR0924 | miro PCM12 / PCM20 (OPTi 82C924) in PnP mode | OPTi 924 | Whether the logical devices sit where OPTi's OPT0924 has them (Linux lists MIR0000/0002/0005 like OPT0000/0002/0005) |
-| ESS1878, ESS1879 | ESS ES1878 / ES1879 | ES1869 | The logical device layout (Linux: ESS1878 + ESS0004, ESS1879 + ESS0009), and whether they appear as ISA PnP cards at all; most are on laptops and motherboards |
 | BVJ0440 | Turtle Beach Multisound Pinnacle (rev F?) | Pinnacle | Where the joystick and IDE devices are; UNISOUND's Pinnacle code expects the joystick on logical device 2, Linux's non-PnP setup has IDE there |
-| ESS0100, ESS0102 | ESS cards | A new ESS type (written, not merged) | A dump from a real card; 86Box's ROMs for them are reconstructions |
 
 ### Options not yet tried on real hardware
 
@@ -128,9 +127,10 @@ a real machine yet. Please include `UNISOUND /LOG` output with the option.
 | `/XSLAM` | Crystal CS423x chips whose PnP key is disabled, so they take no part in isolation | Laptops and boards whose BIOS or CWDINIT sets up the chip, where UNISOUND says "No PnP card detected." |
 | `/XESSB` | ES1868/ES1869 chips that isolation doesn't find | On-board ES1868/ES1869, or chipsets that don't pass A79h on to the chip; 86Box always passes it on, so only a real machine can test this |
 
-Also wanted: Dell and Compaq laptops whose ESS chip has a PnP ID from `ESS0100` to `ESS0116`
-(mostly ES688, ES1688, ES1788, ES1887 and ES1888 chips). UNISOUND doesn't recognise these IDs, but
-`/NOPNP` may find the chip once the BIOS has enabled it.
+Also wanted: Dell, Compaq and other laptops whose ESS chip has a PnP BIOS ID from `ESS0100` to
+`ESS0119` (ES688, ES888, ES1688, ES1698, ES1788, ES1887, ES1888 and ES1869B chips). ESS's device list
+gives these IDs to on-board chips that the BIOS describes, not to ISA PnP cards, so UNISOUND's PnP
+scan doesn't see them; `/NOPNP` may find the chip once the BIOS has enabled it.
 
 ## Fixes & Changes after 0.82a
 

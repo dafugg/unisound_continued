@@ -16,7 +16,7 @@ on a Compaq LTE 5000 with its on-board ES1688; the README table marks them.
 | Fixed build | branch `fixes` at `17868c1` (bugs 1-10) |
 | Thread fixes build | branch `thread-fixes` at `50253a7` (bugs 11-24); each fix was tested with the build of its own commit |
 | ESS init build | branch `ess-init`: `aee160e` (B1h/B2h through 2xCh), `05aa0de` (`/LOG`), `8afa28d` (ESSINIT), `d2f397b` (OPTi 82C924/925 probe), `4197954` (82C928 probe), `f91b9bc` (ESSINIT OPTi probe) |
-| Card ID build | branch `id-table`: `481f5c0` (CS4235), `b4c0948` (card ID table), `2046077` (AZT1021), `92b2a8c` (AZT1022), `d5f8c0a` (RTL3000), `01b22e6` (DXP3201, CDC1111) |
+| Card ID build | branch `id-table`: `481f5c0` (CS4235), `b4c0948` (card ID table), `2046077` (AZT1021), `92b2a8c` (AZT1022), `d5f8c0a` (RTL3000), `01b22e6` (DXP3201, CDC1111); branch `ess1878-1879`: `5318fc2` (ESS1878, ESS1879) |
 
 Platforms, all a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -313,11 +313,41 @@ unless noted.
 | AZT1022, AD1816A card | `ad1816` ROM as AZT1022, first logical device AZT1018 | AD1816 | the same output |
 | RTL3000 | none: 86Box has no ALS1x0 | | not tested; Avance's A4SOUND.INF gives it the same logical devices, in the same order, as ALS0120 |
 | DXP3201, CDC1111 | `guspnp` ROM as DXP3201 (first logical device DXP0010) and as CDC1111 (CDC1112) | "Unknown, skipped." | the same output as the unpatched `guspnp`, apart from the ID |
-| ESS1878, ESS1879 (not added) | `ess_es1869` ROM as ESS1878 (ESS0004, ESS1878) and ESS1879 (ESS0009, ESS1879), test build | "Unknown, skipped." | the same output as the unpatched `ess_es1869`; left out because the real layout is unknown |
+| ESS1878, ESS1879 | `ess_es1869` with the ES1878's or ES1879's internal PnP ROM, assembled from its data sheet (see below) | "Unknown, skipped." | set up exactly like the unpatched `ess_es1869`; `/R` shows no `IDE:` field, since neither ROM has an IDE device |
 
 The unpatched `azt2320`, `ad1816`, `sb16_pnp`, `ess_es1868`, `guspnp` and `ess_es1869` gave the
 same output before and after each change. The GUS PnP ROMs' checksum byte doesn't match their
 serial identifier in the original files either; 86Box doesn't check it.
+
+### ESS PnP ROMs from the data sheets
+
+ESS's data sheets print PnP ROM data as assembler listings in Appendix A: an "ES1869 PnP ROM data
+example" (DS1869, SAM0023-121997) and the "ES1878 internal PnP resource ROM" (DS1878A, v001) and
+"ES1879 internal PnP resource ROM" (DS1879A). The data sheets come from ESS's documentation as
+mirrored by the ALSA project (sunsite.icm.edu.pl/Linux/alsa/manuals/ess/). Each listing starts
+with an 8-byte ESS header (the IRQ and DRQ pin maps loaded into vendor registers 20h-25h), then
+the serial identifier and the resource data. A script took every byte and string from the
+listing's text, dropped the 8-byte header (86Box's ROM files start at the serial identifier),
+and checked each resource tag's length.
+
+The ES1869 example assembles to 397 bytes, the size of 86Box's `roms/sound/ess/ESS1869.BIN`, and
+differs from it in four bytes:
+
+| Offset | Data sheet | 86Box | What it is |
+|---|---|---|---|
+| 08h | 00h | BEh | Serial identifier checksum: a placeholder in the data sheet, computed in 86Box |
+| 36h | 00h | 06h | First logical device: ESS0000 in the data sheet, ESS0006 in 86Box. ESS's device node list (DEVNODES.DOC v2.05, 1997) gives ESS0000 to the ES1868's control interface and ESS0006 to the ES1869's |
+| B1h | 02h | 2Ah | First DMA descriptor of the audio device's dependent function 0003: the data sheet prints `002H`, which isn't a valid tag (the next line has `02AH`); 86Box has the DMA tag |
+| 18Ch | 00h | C2h | End tag checksum: a placeholder in the data sheet, computed in 86Box |
+
+So 86Box's ES1869 ROM is the data sheet's example with those three corrections, not a dump from a
+chip. The ES1878 and ES1879 listings assemble to 252 and 280 bytes with no tag errors. Each has
+three logical devices, the ES1869's first three: configuration (ESS0004 or ESS0009, 800h-FF8h),
+audio with FM and MPU-401 (ESS1878 or ESS1879), and joystick (ESS0005 or ESS0001, compatible ID
+PNPB02F); no IDE device. Their checksums were computed, and the files padded with zeros to the
+397 bytes 86Box reads for `ESS1869.BIN`, in copies of the ROM set used only for those runs. 86Box
+still emulates an ES1869 behind them, so the runs test the PnP side and UNISOUND's ES1869 path,
+not the chips themselves.
 
 ## Regression check
 
