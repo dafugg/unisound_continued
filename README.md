@@ -60,6 +60,17 @@ sound cards, with no regressions; the changes in output it found are the intende
 | [539e5ce](https://github.com/dafugg/unisound_decomp/commit/539e5cee87c15adb00855fe0af16082a263259eb) | Aztech and Rockwell: SB Pro mixer 0Eh is left at 20h (mono), not 22h (stereo) | — | ✅ `azt2320`: mono playback L/R correlation 0.80 before, 1.00 after. 86Box has no Rockwell card | ❌ |
 | [b69c04b](https://github.com/dafugg/unisound_decomp/commit/b69c04bbe6f95f182467ab715904cfcfd1a4579b) | Creative: a BLASTER `F` that isn't a multiple of 4 is rounded down, with a message; the FM/CQM decodes four ports | Vogons: [Mr.Hunt](https://www.vogons.org/viewtopic.php?p=1393624#p1393624) | ✅ `sbawe64_gold` with F389: PnP 64h = 0389 and no AdLib at 388 before, 0388 after | ❌ |
 | [1cebfd6](https://github.com/dafugg/unisound_decomp/commit/1cebfd67d7c66143eb96b1a5a6a3ffd37e42adc4) | Yamaha OPL3-SAx: BLASTER `K` sets the WSS DMA (the second DMA, PnP 75h) when it differs from D, and the WSS DMA is shown | Vogons: [TgamesFR](https://www.vogons.org/viewtopic.php?p=1371775#p1371775) ([2](https://www.vogons.org/viewtopic.php?p=1385213#p1385213)) | ✅ `ymf719` with D1 H1 K0: WSS on DMA 3 before, DMA 0 after (UNISOUND run twice; see TESTING.md) | ❌ |
+| [d503fb5](https://github.com/dafugg/unisound_decomp/commit/d503fb567a938c2ca2b01307e945850227cd0d10) | The banner names the build "v0.82a-unofficial-fix-1", on its own line above "(c) JazeFox 2019-2025", so its output can't be mistaken for the official v0.82a | — | ✅ `sb16_pnp`: both lines fit in 80 columns, at init and on `/H` | ❌ |
+
+## Reporting problems
+
+The build from `main` is unofficial: it is not a release by JazeFox, and he doesn't support it.
+Before opening an issue here, check whether the problem also happens with the official v0.82a:
+
+- **If it does**, report it in [the UNISOUND thread on VOGONS](https://www.vogons.org/viewtopic.php?t=72553)
+  first, then open an issue here that links to your post.
+- **If it happens only with the build from `main`**, open an issue here. Include the
+  version line UNISOUND prints, your card, your BLASTER or ULTRASND setting and the command line.
 
 ## Building
 
