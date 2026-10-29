@@ -2511,6 +2511,7 @@ const struct card_id card_ids[] = {
     {"ALS0001", CARD_ALS, VAR_ALS | 3},
     {"ALS????", CARD_ALS, 0},
     {"RWB1???", CARD_ALS, VAR_ALS | 2},
+    {"RTL3000", CARD_ALS, 0}, /* ALS120; experimental, not yet tried on a real card */
     {"ESS096?", CARD_ES968, 0},
     {"ESS1868", CARD_ES1868, 0},
     {"ESS0003", CARD_ES1869, 0},
