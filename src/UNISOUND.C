@@ -2742,6 +2742,8 @@ void sb_print_dsp_ver(int port)
    - sets the MPU-401 address,
    - reports the settings and any MPU-401 or EMU8000 found (and initializes the EMU8000),
    - programs the mixer.
+   With /R it only reads back and prints the IRQ and DMA settings and the MPU-401 port; with /D
+   it leaves the card alone, since a jumpered card can't be disabled.
    Returns 1 if a card was found, else 0. */
 int init_nonpnp_sb16(void)
 {
@@ -2797,7 +2799,8 @@ int init_nonpnp_sb16(void)
         port += 0x20;
     }
     if (type > 0) {
-        blaster = parse_blaster();
+        if (opt_read == 0)
+            blaster = parse_blaster();
         if (blaster != 0) {
             irq = sb_irq;
             dma = sb_dma;
@@ -2805,25 +2808,34 @@ int init_nonpnp_sb16(void)
             awe = awe_port;
         }
         printf("\n%s detected at: [%Xh] DSP: v%d.%02d\n", name, port, maj, min);
-        sb16_set_irq_dma(port, irq, dma, hdma);
-        outportb(port + 4, 0x84);
-        delay(1);
-        mixreg = inportb(port + 5);
-        delay(1);
-        if (mixreg > 0x7f && mixreg < 0xf0) {
-            if (mpu_port == 0)
-                outportb(port + 5, 0xe2);
-            else if (mpu_port == 0x300)
-                outportb(port + 5, 0xe4);
-            else
-                outportb(port + 5, 0xe0);
+        if (opt_disable != 0 && opt_read == 0) {
+            /* /D: a jumpered card has no logical devices to deactivate */
+            puts("Non-PnP card, can't be disabled. Card left unchanged.");
+            return 1;
+        }
+        if (opt_read != 0)
+            puts("Reading card current settings...");
+        else {
+            sb16_set_irq_dma(port, irq, dma, hdma);
+            outportb(port + 4, 0x84);
+            delay(1);
+            mixreg = inportb(port + 5);
+            delay(1);
+            if (mixreg > 0x7f && mixreg < 0xf0) {
+                if (mpu_port == 0)
+                    outportb(port + 5, 0xe2);
+                else if (mpu_port == 0x300)
+                    outportb(port + 5, 0xe4);
+                else
+                    outportb(port + 5, 0xe0);
+            }
         }
         delay(20);
         irqr = sb16_get_irq(port);
         delay(20);
         dmar = sb16_get_dma(port);
         delay(1);
-        if (blaster == 0 && type < 2)
+        if (blaster == 0 && type < 2 && opt_read == 0)
             puts("Loading default values...");
         printf("Settings: ADD:%X IRQ:%X DMA:%d", port, irqr, dmar & 0xf);
         printf(" HDMA:%d", (dmar >> 4) > 0 ? dmar >> 4 : dmar & 0xf);
@@ -2835,6 +2847,11 @@ int init_nonpnp_sb16(void)
             mpu = 0;
         if (mpu > 0)
             printf(" MPU:%X", mpu);
+        if (opt_read != 0) {
+            /* /R: the AWE test and the mixer setup both write to the card */
+            printf("\n");
+            return 1;
+        }
         if (awe_detect(port)) {
             awe = port + 0x400;
             printf(" AWE:%X\n", awe);
