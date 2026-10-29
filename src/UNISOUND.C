@@ -1639,6 +1639,11 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         idx45_write(sb_port, 0, 0xee);
         idx45_write(sb_port, 0x22, 0x11);
         sbpro_mixer_set();
+        /* In the YMF71x SB Pro mixer, master and voice levels adding up to 8 or more are all 0 dB,
+           so at master DDh there is no stereo panning and /VW barely works. Set the SB Pro master
+           to level 1 (22h, as aitotat's FIXYMF does); the master volume goes to the OPL3-SA3
+           master registers 07h/08h below. */
+        idx45_write(sb_port, 0x22, 0x22);
         if (master_reg > 0)
             master_reg = (100 - master_vol) * 0xf / 0x61;
         else
