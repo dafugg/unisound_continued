@@ -61,7 +61,8 @@ card families (`CARD_*`) and the main routine's locals have names. Globals that 
 say in their comment which BLASTER letter or command-line option sets them. Some names are
 best guesses from the code and the UNISOUND manual (for example `CARD_RJA0`, `CARD_ADS7141`).
 Locals are named too, apart from loop counters and other conventional short names. Any change must keep `tools/build.sh`
-reporting IDENTICAL; a build takes about 6 seconds.
+reporting IDENTICAL; a build takes about 6 seconds. Beyond the byte-identical build, parts of
+the decompilation have been checked by hand against the original binary in Ghidra 12.1.4.
 
 ## License
 
