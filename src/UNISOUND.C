@@ -3808,7 +3808,9 @@ unsigned long emu_read32(unsigned reg, unsigned port)
    1. Initialize all 32 voices and the effects engine.
    2. Write the four init tables (emu_init1-4) twice: the second time with some entries
       changed to enable the effects.
-   3. Set reverb and chorus from the /VR and /VU amounts.
+   3. Set up voices 30 and 31 as the FM passthrough, which sends the OPL output through the
+      effects engine, with the /VR reverb amount (PTRX bits 15-8) and the /VU chorus amount
+      (CSL bits 31-24).
    4. Size the DRAM and enable the audio output.
    ver is the chip version from awe_init. Returns the DRAM size in KB. */
 int emu_init(int ver)
@@ -3821,8 +3823,8 @@ int emu_init(int ver)
     unsigned spin = 0;
     unsigned target = 0;
     int mem = 0;
-    long rev = awe_chorus * 0xff / 0x63;
-    unsigned long cho = (unsigned long)(awe_reverb * 0xff / 0x63) << 8;
+    long chorus_send = awe_chorus * 0xff / 0x63;
+    unsigned long reverb_send = (unsigned long)(awe_reverb * 0xff / 0x63) << 8;
 
     emu_write16(0x3d, awe_port + 0x400, 0x59);
     emu_write16(0x3e, awe_port + 0x400, 0x20);
@@ -4008,17 +4010,17 @@ int emu_init(int ver)
     for (i = 0; i < 0x20; i++)
         emu_write16(i + 0x60, awe_port + 0x402, emu_init4[i]);
 
-    rev = rev << 24;
+    chorus_send = chorus_send << 24;
     emu_write16(0xbe, awe_port + 0x400, 0x80);
     emu_write32(0xde, awe_port, 0xffffffe0L);
-    emu_write32(0xfe, awe_port, 0xffffe8L | rev);
-    emu_write32(0x3e, awe_port, cho);
+    emu_write32(0xfe, awe_port, 0xffffe8L | chorus_send);
+    emu_write32(0x3e, awe_port, reverb_send);
     emu_write32(0x1e, awe_port, 0L);
     emu_write32(0x1e, awe_port + 0x400, 0xffffe3L);
     emu_write16(0xbf, awe_port + 0x400, 0x80);
     emu_write32(0xdf, awe_port, 0xfffff0L);
-    emu_write32(0xff, awe_port, 0xfffff8L | rev);
-    emu_write32(0x3f, awe_port, 0xff | cho);
+    emu_write32(0xff, awe_port, 0xfffff8L | chorus_send);
+    emu_write32(0x3f, awe_port, 0xff | reverb_send);
     emu_write32(0x1f, awe_port, 0x8000L);
     emu_write32(0x1f, awe_port + 0x400, 0xfffff3L);
     emu_write32(0x3e, awe_port, (unsigned long)(ver == 1 ? 0x4828u : 0x4800u) << 16);
