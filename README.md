@@ -124,3 +124,9 @@ Tools:
 
 The analysis tools need Python with capstone. They also need the original v0.82a UNISOUND.COM,
 which this repo does not include: put it in `orig/` or set `UNISOUND_COM`.
+
+## License
+
+The tools, DOS test programs, build files and documentation are under the MIT license (see
+[LICENSE](LICENSE)). `src/UNISOUND.C` and `data/*.json` are not: they are reconstructed from, or
+derived from, UNISOUND by JazeFox, and remain his work.
