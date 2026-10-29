@@ -12,6 +12,7 @@ on real hardware.
 | 86box-mcp | github.com/dafugg/86box-mcp |
 | Original build | UNISOUND.COM v0.82a, sha256 `606f8fae…b370` |
 | Fixed build | branch `fixes` at `44bf539` (bugs 1-10) |
+| Thread fixes build | branch `thread-fixes` at `1cebfd6` (bugs 11-24); each fix was tested with the build of its own commit |
 
 Platforms, both a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -19,6 +20,15 @@ Platforms, both a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
   BIOS configures ISA PnP cards at boot.
 - **nopnp**: Olystar LIL1429 (`ali1429`), AMIBIOS 04/04/93 with no PnP support, plus an ISA IDE
   controller. PnP cards start unconfigured.
+
+For the ES1887/ES1888 (bug 20) the same DOS disk, with an MS-DOS MBR, was booted on a Compaq
+Presario 224x (`presario2240`), whose on-board ES1888 the BIOS enables and puts on IRQ 5. 86Box
+has the ES1887/ES1888 only as on-board devices.
+
+Some cases need more than one card or extra devices (a network card, the standalone PnP game
+port, a second sound card), set through extra `86box.cfg` keys; a few need a patched card
+EEPROM, such as the `cs4236b` image with the CS4237B ID (`CSCA737`, `CRD4237B-3`) used for bug
+18, since 86Box has no selectable CS4237B.
 
 `tools/cardtest.py` copies a platform's base VM (reflinked disk image and CMOS), sets `sndcard`,
 boots, and runs each command with its output redirected to a file. A command that doesn't return
@@ -61,6 +71,14 @@ which shows the BIOS's configuration on pnp and an unconfigured card on nopnp.
   Seven other PnP BIOSes in 86Box (four Award, two Intel/AMI, one Acer) boot with the
   unmodified card and configure it. The cause is this BIOS, not UNISOUND, which configures
   the card on nopnp.
+- **ESS register 28h** (bug 15): 86Box's ES1868/ES1869 have no handler for the card-level
+  vendor registers, so 28h ignores writes and reads back FFh, and `/R` shows the MPU IRQ as
+  `I15`. 86Box always gives the MPU-401 the SB IRQ.
+- **Yamaha control register 06h** (bug 24): 86Box applies 03h and 06h only when the PnP
+  configuration changes, so after the first UNISOUND the WSS DMA still follows the power-on value
+  61h. The second run gives the routing real hardware should have after the first.
+- **ES1688 on the GUS Extreme and GUS ViperMax**: 86Box keeps it disabled until the ES1688
+  enable reads, so `/NOPNP` finds it only after bug 19's fix.
 - **ES1869**: init's gameport and IDE settings don't take effect on either platform
   ([86Box#8554](https://github.com/86Box/86Box/pull/8554)). UNISOUND configures this chip
   through ESS's bypass key: the key and the address 660h go to 279h, and the PnP registers are
@@ -88,8 +106,43 @@ Each case ran with the original and the fixed build on both platforms.
 | 8 control | sbawe32_pnp, `/VR40` | `0000 67FF` | `0000 67FF` |
 | 9 ROM bank name | guspnp with IWROM.BIN's bank name set to 16 characters | `[AMDGM_1_1_FULL16INTR]` | `[AMDGM_1_1_FULL16]` |
 | 10 ESS DSP flush | ess_es1688, `/NOPNP` twice | second run: "No card detected" | detected both times |
+| 11 unknown PnP card first | sb16 + 3C509B (TCM5094), sb16 + PnP game port (BOX0002), cs4235 (CSCA725) + sb16 at 240, ess_ess0100_pnp + sbawe32_pnp | "Unknown PnP card [...] found. Aborting...", ERRORLEVEL 1; the SB16 and the AWE32 untouched | "Card #1 [...] Unknown, skipped.", then the SB16 fallback or the AWE32 configured |
+| 11 `/Cn` past the last card | the same setups, `/C3` | "No PnP card detected.", ERRORLEVEL 0 | "Card #3 not found.", ERRORLEVEL 1 |
+| 12 option names | sb16_pnp, `/DUMMY` | card disabled, ERRORLEVEL 0 | "Unknown option: /DUMMY", ERRORLEVEL 2 |
+| 12 option names | sb16_pnp, `/XAE`, `/XEM`, `/CN1`, `/C0`, `/C10`, `/FOO`, `/NOTHING`, `/HELLO`, `/RX`, `/V5`, `/VF5`, `/VF123`, `/XGC1`, `/XPW1`, `/QQQ`, `C2` | ignored or misread, ERRORLEVEL 0 | rejected, ERRORLEVEL 2 |
+| 12 control | every documented option, on sb16_pnp, guspnp, azt2320, ess_es1868, ymf719, cs4236b and sbawe32_pnp | | same output as before |
+| 13 non-PnP SB16 `/R` | sb16, sbawe32, `BLASTER=A220 I7 D0 H6`, mixer 80h/81h read with PIO | `/R` sets them from 02/22 to 04/41 | unchanged, "Reading card current settings..." |
+| 13 non-PnP SB16 `/D` | the same | the card is configured | "Non-PnP card, can't be disabled. Card left unchanged." |
+| 14 ES186x second DMA | ess_es1868, ess_es1869, PnP 75h read with PNPDUMP | H4 after H3: 75h = 03, `DMA:1`; D1 H1: 75h = 00 | 75h = 04, `DMA:1/4`, in both cases |
+| 15 ES186x MPU IRQ | ess_es1868, ess_es1869, PnP writes logged with TRACEPNP | U9, U0: no write to 28h | 28h = 09, 00; 00 for P0 and `/D`; nothing written under `/R` |
+| 16 names | ess_es688, `/NOPNP` | "ES668" | "ES688" |
+| 17 AWE RAM | sbawe32_pnp, sbawe64_gold, sbawe32 with 28672 KB | `[28671K]` | `[28672K]` |
+| 17 control | sbawe32_pnp 8192 KB, sbawe64_value 512 KB | `[8192K]`, `[512K]` | the same |
+| 18 Crystal MODE 3 | cs4236b with the CS4237B-ID EEPROM, `BLASTER=A220 I5 D0 T4 W530`, then Tyrian 2.1 SETUP with WSS sound effects | I12 = EAh, "ERROR 142: Sound Effects disabled", silent | I12 = 8Ah, WSS accepted, effects play |
+| 18 control | the same, extended registers read back in MODE 3 after `/XOFE /V40` and `/XOFI` | X4 = 84h/94h, XE/XF = 26h/09h | the same |
+| 19 ES1688 enable reads | ess_es1788 (86Box keeps it disabled until the enable reads), `/NOPNP` | "No card detected" | found, DMAPLAY plays on IRQ 7, DMA 3 |
+| 19 control | ess_es688, ess_es1688, sb16, sbprov2, `/NOPNP` | | same output as before |
+| 20 ES1888 IRQ pin | Presario 224x, mixer 7Fh = 05h (BIOS), `BLASTER=A220 I7 D3 P330` | `IRQ:7` printed, the chip interrupts on 5 | "IRQ 7 ignored: the BIOS has set this chip to IRQ 5.", `IRQ:5` |
+| 20 control | the same with 7Fh cleared first | | `IRQ:7`, interrupts on 7 |
+| 21 AZT2320 DMA | azt2320, PnP 74h/75h | D3 H3: 01/03; D1 H5: 01/05; D0 H2: 00/02 | 03/01; 01/03; 00/03 |
+| 22 Aztech stereo bit | azt2320, mixer 0Eh, mono DMA playback without touching 0Eh | 0Eh = 22h, L/R correlation 0.80 | 0Eh = 20h, correlation 1.00 |
+| 23 Creative FM address | sbawe64_gold, F389, AdLib timer test | 64h = 0389, no AdLib at 388 | "FM address 389 is not a multiple of 4, using 388.", 64h = 0388, AdLib at 388 |
+| 24 Yamaha WSS DMA | ymf719, ymf718, `D1 H1 K0`, UNISOUND run twice, then WSSPLAY and DMAPLAY | WSS on DMA 3 | WSS on DMA 0, SB still on DMA 1, `WSS-DMA:0` |
 
 The patched ROMs lived in a separate copy of the ROM set used only for those runs.
+
+Test tools used from bug 11 on, besides PIO and PNPDUMP:
+
+- **TRACEPNP** runs UNISOUND.COM with the trap flag set and logs every `OUT DX,AL` to the PnP
+  ports (279h, A79h) and to the ESS configuration ports (660h/661h, 800h/801h). Because DOS can
+  return from INT 21h with `RETF 2` and lose the trap flag, it puts an `INT 3` after each `INT`
+  instruction to resume tracing. A short script turns the log into the PnP register writes.
+  86Box's ESS cards have no handler for register 28h, so this is how bug 15 was checked.
+- **DMAPLAY** and **WSSPLAY** play one DMA block through the SB DSP or the WSS codec, with
+  handlers on several IRQs and several DMA channels programmed, and report which ones the card
+  used. **OPLDET** runs the AdLib timer test at a list of bases. **SBST** plays SB Pro stereo or
+  mono and the captured audio is split into L and R.
+- Tyrian 2.1 (freeware) for the Crystal WSS case.
 
 Not reproducible in 86Box:
 
@@ -105,3 +158,11 @@ The fixed build ran the full baseline matrix again. 171 of the 175 runs gave ide
 The other four are bug 10's fix: `/NOPNP` now finds the non-PnP ES688 and ES1688 (on both
 platforms), where the original found nothing because earlier commands had left bytes in the DSP
 read buffer.
+
+The `thread-fixes` build ran the matrix twice more, after bug 17 and after bug 24, compared with
+the `main` build. 155 of the 175 runs were identical after bug 17. The other 20 differ only as the
+fixes intend: the unknown cards cs4235, ess_ess0100_pnp and ess_ess0102_pnp are skipped (11),
+`/R` on the non-PnP sb16, sbawe32 and sb_vibra16s only reads (13), the ES1868/ES1869 show
+`DMA:1/4` and `MPU:330/In` (14, 15), and the ES688 name (16). After bug 24 the further changes
+were `/NOPNP` now finding the ess_es1788 and the ES1688 on gusextreme and gusvipermax (19; the ES1788 is also named, 20)
+and the `WSS-DMA` field on ymf718 and ymf719 (24). azt2320 on pnp doesn't boot (see above).

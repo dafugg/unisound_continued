@@ -358,6 +358,7 @@ int ide_irq = 0;  /* IDE IRQ (Y) */
 int sb_dma = 1;  /* DMA (D) */
 int sb_hdma = 1;  /* high DMA (H) */
 int wss_dma = 0;  /* WSS DMA (K) */
+char wss_dma_set = 0;  /* 1 when BLASTER has K */
 int aux_ctl_port = 0x0250;  /* control port for Rockwell / GUS PnP / Ensoniq (R); TEA6330T port on GUS */
 int gus_port = 0x0240;  /* GUS port (ULTRASND) */
 int gus_dma = 3;  /* GUS DMA 1 */
@@ -487,13 +488,20 @@ void probe_opti_ctl(void);
 int init_opti930(void);
 int init_es688(void);
 void sb_dsp_flush(int port);
+int opt_2digits(char *s);
+void es_enable_reads(int port);
+int sb_dsp_reset(int port);
+void sb_dsp_write(int port, unsigned char val);
+unsigned char sb_dsp_read(int port);
+int ess_mixer_writable(int port, unsigned char reg, unsigned char mask);
+unsigned char ess_ext_read(int port, unsigned char reg);
 
 /* Entry point. Uppercases every argument and parses the options into the global settings:
    /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
    scan), /R (read only), /D (disable), the /Xxxx extended options and /NOPNP. /H or /? prints the
-   help and exits. Then calls configure_pnp and returns its result as the exit code
-   (0 = success, 1 = no card configured).
-   Note: the loop runs to i <= argc, one past the last argument, so argv[argc] (NULL) is read too. */
+   help and exits. Options start with / or - and must match a whole option name; anything else
+   prints "Unknown option" and exits with 2. Then calls configure_pnp and returns its result as
+   the exit code (0 = success, 1 = no card configured). */
 int main(int argc, char *argv[])
 {
     int full_scan = 0;
@@ -505,136 +513,135 @@ int main(int argc, char *argv[])
 
     if (argc > 1) {
         for (i = 1; i < argc; i++) {
+            char *opt = argv[i] + 1;    /* option name, without the / or - */
+            int n = 0;
             for (j = 1; j <= strlen(argv[i]); j++)
                 argv[i][j] = toupper(argv[i][j]);
-            if (argv[i][0] == '/' || argv[i][0] == '-') {
-                if (argv[i][1] == 'C') {
-                    if (argv[i][2] == 'L') {
-                        card = 10;
-                        list = 1;
-                    } else if (list < 1) {
-                        if (argv[i][2] == 'S')
-                            opt_cs = 1;
-                        if (isdigit(argv[i][2]))
-                            card = argv[i][2] - '0';
-                    }
+            if (argv[i][0] != '/' && argv[i][0] != '-')
+                opt = "";
+            if (opt[0] == 'C' && opt[1] >= '1' && opt[1] <= '9' && opt[2] == 0) {
+                if (list < 1)
+                    card = opt[1] - '0';
+            } else if (strcmp(opt, "CL") == 0) {
+                card = 10;
+                list = 1;
+            } else if (strcmp(opt, "CS") == 0) {
+                if (list < 1)
+                    opt_cs = 1;
+            } else if (opt[0] == 'V' && (n = opt_2digits(opt + 1)) >= 0) {
+                master_vol = n;
+                master_reg = master_vol * 15 / 95 * 17;
+            } else if (opt[0] == 'V' && opt[1] != 0 && strchr("FWLCMPTBUR", opt[1]) &&
+                       (n = opt_2digits(opt + 2)) >= 0) {
+                switch (opt[1]) {
+                case 'F':
+                    fm_vol = n;
+                    fm_reg = fm_vol * 15 / 95 * 17;
+                    break;
+                case 'W':
+                    wave_vol = n;
+                    wave_reg = wave_vol * 15 / 95 * 17;
+                    break;
+                case 'L':
+                    line_vol = n;
+                    line_reg = line_vol * 15 / 95 * 17;
+                    break;
+                case 'C':
+                    cd_vol = n;
+                    cd_reg = cd_vol * 15 / 95 * 17;
+                    break;
+                case 'M':
+                    mic_vol = n;
+                    mic_reg = mic_vol * 15 / 95 * 17;
+                    break;
+                case 'P':
+                    pcspk_vol = n;
+                    pcspk_reg = pcspk_vol * 7 / 95 << 5;
+                    break;
+                case 'T':
+                    treble_lvl = n;
+                    treble_reg = treble_lvl * 15 / 93 << 4;
+                    break;
+                case 'B':
+                    bass_lvl = n;
+                    bass_reg = bass_lvl * 15 / 93 << 4;
+                    break;
+                case 'U':
+                    awe_chorus = n;
+                    break;
+                case 'R':
+                    awe_reverb = n;
+                    break;
                 }
-                if (argv[i][1] == 'V') {
-                    if (isdigit(argv[i][2]) && isdigit(argv[i][3])) {
-                        master_vol = argv[i][3] + (argv[i][2] - '0') * 10 - '0';
-                        master_reg = master_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'F' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        fm_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        fm_reg = fm_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'W' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        wave_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        wave_reg = wave_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'L' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        line_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        line_reg = line_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'C' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        cd_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        cd_reg = cd_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'M' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        mic_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        mic_reg = mic_vol * 15 / 95 * 17;
-                    }
-                    if (argv[i][2] == 'P' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        pcspk_vol = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        pcspk_reg = pcspk_vol * 7 / 95 << 5;
-                    }
-                    if (argv[i][2] == 'T' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        treble_lvl = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        treble_reg = treble_lvl * 15 / 93 << 4;
-                    }
-                    if (argv[i][2] == 'B' && isdigit(argv[i][3]) && isdigit(argv[i][4])) {
-                        bass_lvl = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                        bass_reg = bass_lvl * 15 / 93 << 4;
-                    }
-                    if (argv[i][2] == 'U' && isdigit(argv[i][3]) && isdigit(argv[i][4]))
-                        awe_chorus = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
-                    if (argv[i][2] == 'R' && isdigit(argv[i][3]) && isdigit(argv[i][4]))
-                        awe_reverb = argv[i][4] + (argv[i][3] - '0') * 10 - '0';
+            } else if (strcmp(opt, "F") == 0)
+                full_scan = 1;
+            else if (strcmp(opt, "FS") == 0) {
+                full_scan = 1;
+                scan_port = 0x20b;
+                isolate_limit = 0x50;
+            } else if (strcmp(opt, "R") == 0)
+                opt_read = 1;
+            else if (strcmp(opt, "D") == 0)
+                opt_disable = 1;
+            else if (strcmp(opt, "XOFI") == 0)
+                opt_xof = 1;
+            else if (strcmp(opt, "XOFE") == 0)
+                opt_xof = 0;
+            else if (strcmp(opt, "XOS1") == 0)
+                opt_xos = 1;
+            else if (strcmp(opt, "XOS0") == 0)
+                opt_xos = 0;
+            else if (strcmp(opt, "XOM1") == 0)
+                opt_xom = 1;
+            else if (strcmp(opt, "XOM0") == 0)
+                opt_xom = 0;
+            else if (strncmp(opt, "XGC", 3) == 0 && opt[3] >= '2' && opt[3] <= '5' && opt[4] == 0) {
+                switch (opt[3]) {
+                case '2': opt_xgc = 0x170; break;
+                case '3': opt_xgc = 0x1e8; break;
+                case '4': opt_xgc = 0x168; break;
+                case '5': opt_xgc = 0; break;
                 }
-                if (argv[i][1] == 'F') {
-                    full_scan = 1;
-                    if (argv[i][2] == 'S') {
-                        scan_port = 0x20b;
-                        isolate_limit = 0x50;
-                    }
-                }
-                if (argv[i][1] == 'R')
-                    opt_read = 1;
-                if (argv[i][1] == 'D')
-                    opt_disable = 1;
-                if (argv[i][1] == 'X') {
-                    if (argv[i][2] == 'O') {
-                        if (argv[i][3] == 'F') {
-                            if (argv[i][4] == 'I')
-                                opt_xof = 1;
-                            else if (argv[i][4] == 'E')
-                                opt_xof = 0;
-                        }
-                        if (argv[i][3] == 'S' && argv[i][4] == '1')
-                            opt_xos = 1;
-                        if (argv[i][3] == 'M') {
-                            if (argv[i][4] == '1')
-                                opt_xom = 1;
-                            else if (argv[i][4] == '0')
-                                opt_xom = 0;
-                        }
-                    }
-                    if (argv[i][2] == 'G') {
-                        if (argv[i][3] == 'C') {
-                            int gc_sel = argv[i][4] - '0';
-                            if (gc_sel > 1 && gc_sel < 6) {
-                                switch (gc_sel) {
-                                case 2: opt_xgc = 0x170; break;
-                                case 3: opt_xgc = 0x1e8; break;
-                                case 4: opt_xgc = 0x168; break;
-                                case 5: opt_xgc = 0; break;
-                                }
-                            }
-                        }
-                        if (argv[i][3] == 'L')
-                            opt_xgl = 1;
-                        if (argv[i][3] == 'J')
-                            opt_xgj = 1;
-                    }
-                    if (argv[i][2] == 'W' && argv[i][3] == 'S')
-                        opt_xwss = 1;
-                    if (argv[i][2] == 'E' && argv[i][3] == 'A')
-                        opt_xea = 1;
-                    if (argv[i][2] == 'X') {
-                        if (argv[i][3] == 'F')
-                            opt_xxf = 1;
-                        if (argv[i][3] == 'G' && isdigit(argv[i][4]))
-                            opt_xxg = argv[i][4] - '0';
-                    }
-                    if (argv[i][2] == 'N' && argv[i][3] == 'E')
-                        opt_xnet = 1;
-                    if (argv[i][2] == '3' && isdigit(argv[i][4]))
-                        opt_x3d = argv[i][4] - '0';
-                    if (argv[i][2] == 'R' && argv[i][3] == 'U')
-                        opt_xof = 8;
-                }
-                if (argv[i][1] == 'N' && argv[i][2] == 'O') {
-                    nopnp_mode = 1;
-                    probe_opti_ctl();
-                }
-                if (argv[i][1] == 'H' || argv[i][1] == '?') {
-                    print_help();
-                    return 0;
-                }
+            } else if (strcmp(opt, "XGL") == 0)
+                opt_xgl = 1;
+            else if (strcmp(opt, "XGJ") == 0)
+                opt_xgj = 1;
+            else if (strcmp(opt, "XWSS") == 0)
+                opt_xwss = 1;
+            else if (strcmp(opt, "XEA") == 0)
+                opt_xea = 1;
+            else if (strcmp(opt, "XXF") == 0)
+                opt_xxf = 1;
+            else if (strncmp(opt, "XXG", 3) == 0 && isdigit(opt[3]) && opt[4] == 0)
+                opt_xxg = opt[3] - '0';
+            else if (strcmp(opt, "XNET") == 0)
+                opt_xnet = 1;
+            else if (strncmp(opt, "X3D", 3) == 0 && isdigit(opt[3]) && opt[4] == 0)
+                opt_x3d = opt[3] - '0';
+            else if (strcmp(opt, "XRU") == 0)
+                opt_xof = 8;
+            else if (strcmp(opt, "NOPNP") == 0) {
+                nopnp_mode = 1;
+                probe_opti_ctl();
+            } else if (strcmp(opt, "H") == 0 || strcmp(opt, "?") == 0) {
+                print_help();
+                return 0;
+            } else {
+                print_banner();
+                printf("Unknown option: %s\nUse /H for the list of options.\n", argv[i]);
+                return 2;
             }
         }
     }
     return configure_pnp(card, list, full_scan, scan_port);
+}
+
+/* Return the value of a two-digit option value s ("00" to "99"), or -1 if s is anything else. */
+int opt_2digits(char *s)
+{
+    if (isdigit(s[0]) && isdigit(s[1]) && s[2] == 0)
+        return (s[0] - '0') * 10 + s[1] - '0';
+    return -1;
 }
 
 /* Print the program name and version line, then a 73-character rule of box-drawing characters
@@ -688,15 +695,17 @@ void print_help(void)
    2. Send the initiation key and isolate cards, scanning read-data ports from `port` upward
       until one answers. Each isolated card gets the next CSN.
    3. Identify each card by its vendor id (CTL, ALS, ESS..., see the CARD_* list). Cards before
-      number `card` are listed and skipped. Stop at card `card` if it is supported, and abort if
-      it isn't. With /CL (card = 10) every card is listed.
+      number `card` are listed and skipped. With /Cn (n > 1), stop at card n if it is supported,
+      and abort if it isn't. Otherwise skip unknown cards and stop at the first supported one.
+      With /CL (card = 10) every card is listed.
    4. Read the card's ANSI name and map its logical devices to functions (pnp_map_devices).
    5. Load settings from BLASTER, or ULTRASND for GUS PnP. /D zeroes them to disable the
       card. Then write, or with /R read back, each logical device's ports, IRQs and DMAs. The PnP
       register numbers differ per family (the reg_* locals), and so do a lot of special cases.
    6. Leave the PnP configuration state and set up the card's mixer, firmware and extras
       (AWE, SAM9407, CS4232 firmware, InterWave, TEA6330T tone control).
-   If no supported PnP card is found, it falls back to init_nonpnp_sb16.
+   If no supported PnP card is found, it falls back to init_nonpnp_sb16, except with /Cn (n > 1)
+   when there is no card n.
    Returns 0 on success, 1 on failure. */
 int configure_pnp(int card, int list, int pass, unsigned port)
 {
@@ -713,6 +722,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     unsigned char cmi_variant = 0;      /* CMI: 1 = AD- name; RSS: 8 = RSS58 */
     int ctl_state = 0;                /* Creative: CQM/AWE state */
     unsigned char nlisted = 0;      /* cards listed */
+    unsigned char nunknown = 0;     /* unknown cards skipped */
+    int asked = card;               /* card number given with /Cn (1 without it, 10 with /CL) */
+    char k_ignored = 0;             /* Yamaha: BLASTER K couldn't be used as the WSS DMA */
     unsigned char reg_sb = 0x60;   /* PnP config registers used for each resource; vary by card */
     unsigned char reg_mpu = 0x62;
     unsigned char reg_opl = 0x64;
@@ -893,12 +905,15 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
         if (card > 1)
             card--;
-        else {
+        else if (asked > 1) {
             printf("Unknown PnP card [%s] found. \nAborting...\n", id);
             pnp_write(3, 0);
             delay(1);
             pnp_write(2, 2);
             return 1;
+        } else {
+            printf("Card #%d [%s] Unknown, skipped.\n", cardno, id);
+            nunknown++;
         }
         pnp_write(3, 0);
         delay(1);
@@ -962,6 +977,12 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             if (type == CARD_CREATIVE) {
                 reg_mpu = 0x62;
                 reg_opl = 0x64;
+                /* The FM (or CQM) decoder takes 4 ports at a 4-aligned base (the AWE64 Gold's
+                   resource data allows 388h-394h in steps of 4), so F389 can't work. */
+                if (opl_port & 3) {
+                    printf("FM address %X is not a multiple of 4, using %X.\n", opl_port, opl_port & ~3);
+                    opl_port &= ~3;
+                }
             }
             if (type == CARD_ALS) {
                 reg_mpu = 0x60;
@@ -1138,6 +1159,19 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                                 mpu_port = 0x330;
                         }
                         printf(" MPU:%X", mpu_port);
+                        if (type == CARD_ES1868 || type == CARD_ES1869) {
+                            /* The MPU-401 of the audio device takes its IRQ from the card-level
+                               register 0x28, not from the device's 0x72 (that is the Audio 2 IRQ).
+                               Registers below 0x30 are written even with /R, hence the test. */
+                            unsigned char mirq = mpu_irq < 0 ? sb_irq : mpu_irq;
+                            if (mpu_port == 0)
+                                mirq = 0;
+                            if (opt_read != 0)
+                                mirq = pnp_read(0x28) & 0xf;
+                            else
+                                pnp_write(0x28, mirq);
+                            printf("/I%d", mirq);
+                        }
                     }
                 }
                 if (type == CARD_YAMAHA) {
@@ -1176,17 +1210,28 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 printf(" IRQ:%d", sb_irq);
                 if ((type == CARD_YAMAHA && irq2 != 0) || (type == CARD_YAMAHA && opt_read != 0))
                     printf("/%d", irq2);
+                /* Yamaha: control register 0x06 = 0x34 (set below) puts WSS playback and capture
+                   on the second DMA, so K goes there when it can. */
+                if (type == CARD_YAMAHA && wss_dma_set && opt_disable == 0) {
+                    if (wss_dma != sb_dma && (wss_dma == 0 || wss_dma == 1 || wss_dma == 3))
+                        sb_hdma = wss_dma;
+                    else
+                        k_ignored = 1;
+                }
+                /* The AZT2320's second DMA can only be 0, 1 or 3: anything else (an SB16-style
+                   H5, for one) is treated like H = D below. */
+                if (type == CARD_AZTECH && opt_disable == 0 && sb_hdma != 0 && sb_hdma != 1 && sb_hdma != 3)
+                    sb_hdma = sb_dma;
                 if (sb_dma == sb_hdma && opt_disable == 0) {
-                    if (type == CARD_YAMAHA || type == CARD_AZTECH) {
-                        sb_dma = 1;
-                        sb_hdma = 3;
-                    }
+                    /* keep D and put the second DMA on another 8-bit channel */
+                    if (type == CARD_YAMAHA || type == CARD_AZTECH)
+                        sb_hdma = sb_dma != 3 ? 3 : 1;
                     if (type == CARD_CMI)
                         sb_hdma = 5;
                     if (type == CARD_ALS && als_variant == 3)
                         sb_hdma = 5;
                     if (type == CARD_ES1868 || type == CARD_ES1869)
-                        sb_hdma = 0;
+                        sb_hdma = 4;    /* no second DMA */
                 }
                 if (type == CARD_CRYSTAL && sb_hdma > 3)
                     sb_hdma = 4;
@@ -1202,12 +1247,15 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     sb_dma = pnp_read(reg_dma) & 7;
                 printf(" DMA:%d", sb_dma);
                 if (type != CARD_ES968 && type != CARD_ES968B && als_variant != 1 && als_variant != 2 &&
-                    (sb_hdma != 4 || (opt_disable != 0 && sb_hdma == 4) || (type == CARD_CMI && sb_hdma == 4))) {
+                    (sb_hdma != 4 || (opt_disable != 0 && sb_hdma == 4) || (type == CARD_CMI && sb_hdma == 4) ||
+                     ((type == CARD_ES1868 || type == CARD_ES1869) && sb_hdma == 4))) {
                     pnp_write(reg_dma2, sb_hdma);
                     if (opt_read != 0)
                         sb_hdma = pnp_read(reg_dma2) & 7;
                     printf("/%d", sb_hdma);
                 }
+                if (type == CARD_YAMAHA && opt_disable == 0)
+                    printf(" WSS-DMA:%d", sb_hdma);
                 pnp_write(0x30, opt_disable != 0 ? 0 : 1);
             }
             if (ld.ld[1] >= 0) {
@@ -1505,6 +1553,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 pnp_write(0x30, 1);
             }
             printf("\n");
+            if (k_ignored)
+                printf("K%d ignored: the WSS DMA is the second DMA, which must be 0, 1 or 3 and differ from D.\n", wss_dma);
             if (type == CARD_ADS7141) {
                 if (opt_xwss != 0) {
                     pnp_write(0x20, 8);
@@ -1541,10 +1591,13 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
     } else {
         type = 0;
-        if (list != 1)
-            printf("No PnP card detected.");
-        if (nlisted < 1 && list != 1)
+        if (list != 1 && asked > 1) {
+            printf("Card #%d not found.", asked);
+            ret = 1;
+        } else if (list != 1) {
+            printf(nunknown > 0 ? "No supported PnP card detected." : "No PnP card detected.");
             ret = !init_nonpnp_sb16();
+        }
     }
     pnp_write(2, 2);
     delay(1);
@@ -1723,7 +1776,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             delay(200);
             idx45_write(sb_port, 0x28, fm_reg);
         }
-        idx45_write(sb_port, 0xe, 0x22);
+        idx45_write(sb_port, 0xe, 0x20);    /* output filter off, mono: games set stereo themselves */
         fm_level = fm_level << 6;
         outpw(aux_ctl_port, 0x32);
         inportb(aux_ctl_port + 5);
@@ -1811,7 +1864,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     }
     if (type == CARD_AZTECH) {
         sbpro_mixer_set();
-        idx45_write(sb_port, 0xe, 0x22);
+        idx45_write(sb_port, 0xe, 0x20);    /* output filter off, mono: games set stereo themselves */
         print_mixer("Aztech", -1, -1);
         printf("Card mode: ");
         if (opt_xwss > 0) {
@@ -1882,6 +1935,16 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             else
                 for (i = 0; i < 2; i++)
                     cs_xreg_write(i, 0xff);
+        }
+        if (cs_variant == 2 || cs_variant == 3 || cs_variant == 7) {
+            /* crystal_ext_init and the S/PDIF FM volume above put the codec in MODE 3 (I12 =
+               0xEA) to reach the extended registers. Go back to MODE 1 (I12 bits 6-5 = 0): the
+               extended registers keep their values, and WSS drivers that test whether I12 is
+               read-only, as on an AD1848, reject a codec left in MODE 3 (Tyrian: ERROR 142). */
+            unsigned char i12;
+            outportb(wss_port, 0x0c);
+            i12 = inportb(wss_port + 1);
+            idx01_write(wss_port, 0x0c, i12 & 0x9f);
         }
         if (cs_variant != 4)
             print_mixer("Crystal", shown_3d, -1);
@@ -2301,6 +2364,7 @@ int parse_blaster(void)
             case 'K':
                 if (hex >= 0 && hex <= 7) {
                     wss_dma = hex;
+                    wss_dma_set = 1;
                     break;
                 }
                 break;
@@ -2732,6 +2796,8 @@ void sb_print_dsp_ver(int port)
    - sets the MPU-401 address,
    - reports the settings and any MPU-401 or EMU8000 found (and initializes the EMU8000),
    - programs the mixer.
+   With /R it only reads back and prints the IRQ and DMA settings and the MPU-401 port; with /D
+   it leaves the card alone, since a jumpered card can't be disabled.
    Returns 1 if a card was found, else 0. */
 int init_nonpnp_sb16(void)
 {
@@ -2787,7 +2853,8 @@ int init_nonpnp_sb16(void)
         port += 0x20;
     }
     if (type > 0) {
-        blaster = parse_blaster();
+        if (opt_read == 0)
+            blaster = parse_blaster();
         if (blaster != 0) {
             irq = sb_irq;
             dma = sb_dma;
@@ -2795,25 +2862,34 @@ int init_nonpnp_sb16(void)
             awe = awe_port;
         }
         printf("\n%s detected at: [%Xh] DSP: v%d.%02d\n", name, port, maj, min);
-        sb16_set_irq_dma(port, irq, dma, hdma);
-        outportb(port + 4, 0x84);
-        delay(1);
-        mixreg = inportb(port + 5);
-        delay(1);
-        if (mixreg > 0x7f && mixreg < 0xf0) {
-            if (mpu_port == 0)
-                outportb(port + 5, 0xe2);
-            else if (mpu_port == 0x300)
-                outportb(port + 5, 0xe4);
-            else
-                outportb(port + 5, 0xe0);
+        if (opt_disable != 0 && opt_read == 0) {
+            /* /D: a jumpered card has no logical devices to deactivate */
+            puts("Non-PnP card, can't be disabled. Card left unchanged.");
+            return 1;
+        }
+        if (opt_read != 0)
+            puts("Reading card current settings...");
+        else {
+            sb16_set_irq_dma(port, irq, dma, hdma);
+            outportb(port + 4, 0x84);
+            delay(1);
+            mixreg = inportb(port + 5);
+            delay(1);
+            if (mixreg > 0x7f && mixreg < 0xf0) {
+                if (mpu_port == 0)
+                    outportb(port + 5, 0xe2);
+                else if (mpu_port == 0x300)
+                    outportb(port + 5, 0xe4);
+                else
+                    outportb(port + 5, 0xe0);
+            }
         }
         delay(20);
         irqr = sb16_get_irq(port);
         delay(20);
         dmar = sb16_get_dma(port);
         delay(1);
-        if (blaster == 0 && type < 2)
+        if (blaster == 0 && type < 2 && opt_read == 0)
             puts("Loading default values...");
         printf("Settings: ADD:%X IRQ:%X DMA:%d", port, irqr, dmar & 0xf);
         printf(" HDMA:%d", (dmar >> 4) > 0 ? dmar >> 4 : dmar & 0xf);
@@ -2825,6 +2901,11 @@ int init_nonpnp_sb16(void)
             mpu = 0;
         if (mpu > 0)
             printf(" MPU:%X", mpu);
+        if (opt_read != 0) {
+            /* /R: the AWE test and the mixer setup both write to the card */
+            printf("\n");
+            return 1;
+        }
         if (awe_detect(port)) {
             awe = port + 0x400;
             printf(" AWE:%X\n", awe);
@@ -3731,8 +3812,6 @@ int emu_detect_dram(void)
         size += 0x20;
     }
     emu_dma_close();
-    if (size == 0x7000)
-        size--;
     if (size == 0x20)
         size = 0;
     return size;
@@ -4521,7 +4600,7 @@ int init_opti930(void)
     opti_ctl_port = 0xe0c;
     opti93x_pwd_port = 0xf8f;
     if (opti93x_read(0xe0e, 1) < 0xff && opti93x_read(0xe0e, 3) < 0xff && opti93x_read(0xe0e, 0x12) < 8) {
-        puts("Card detected: OPTi 83C930");
+        puts("Card detected: OPTi 82C930");
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         if (sb_port == 0x240)
             cfg1 |= 0x80;
@@ -4611,10 +4690,79 @@ void sb_dsp_flush(int port)
         inportb(port + 0xa);
 }
 
-/* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. Probes 0x220-0x260 for the ESS
-   identify command (0xE7 answering 0x68 and a version byte), then sets the IRQ and DMA through
-   extended registers 0xB1/0xB2. On the ES1688 it also sets the MPU-401 and gameport (register
-   0x40), then sets up the SB Pro mixer.
+/* The read sequence that enables an ES1688-family chip at port (2x9 three times, 2xB, 2x9, 2xB,
+   2x9, 2x9, 2xB, 2x9, 2x0), as Linux snd_es1688_probe sends it: chips such as the ES1788 and
+   ES1888 start disabled until they see it. Reads only, so harmless for other cards. */
+void es_enable_reads(int port)
+{
+    static unsigned char seq[11] = { 9, 9, 9, 0xb, 9, 0xb, 9, 9, 0xb, 9, 0 };
+    int i;
+    for (i = 0; i < 11; i++)
+        inportb(port + seq[i]);
+}
+
+/* Reset the SB DSP at port (3 to the reset port, as ESS chips need) and wait up to 100 ms for
+   its 0xAA. Returns 1 if it answered. */
+int sb_dsp_reset(int port)
+{
+    int i;
+    outportb(port + 6, 3);
+    delay(1);
+    outportb(port + 6, 0);
+    for (i = 0; i < 100 && !(inportb(port + 0xe) & 0x80); i++)
+        delay(1);
+    return inportb(port + 0xa) == 0xaa;
+}
+
+/* Write a command or data byte to the SB DSP at port once its write buffer is free (bit 7 of
+   port + 0x0C clear), waiting up to 100 ms. */
+void sb_dsp_write(int port, unsigned char val)
+{
+    int i;
+    for (i = 0; i < 100 && (inportb(port + 0xc) & 0x80); i++)
+        delay(1);
+    outportb(port + 0xc, val);
+}
+
+/* Read a byte from the SB DSP at port once one is available (bit 7 of port + 0x0E set), waiting
+   up to 100 ms. */
+unsigned char sb_dsp_read(int port)
+{
+    int i;
+    for (i = 0; i < 100 && !(inportb(port + 0xe) & 0x80); i++)
+        delay(1);
+    return inportb(port + 0xa);
+}
+
+/* Return 1 if the bits in mask of ESS mixer register reg at port can be changed (the register
+   is restored afterwards). */
+int ess_mixer_writable(int port, unsigned char reg, unsigned char mask)
+{
+    unsigned char old;
+    unsigned char now;
+    outportb(port + 4, reg);
+    old = inportb(port + 5);
+    outportb(port + 5, old ^ mask);
+    now = inportb(port + 5);
+    outportb(port + 5, old);
+    return now == (old ^ mask);
+}
+
+/* Read ESS extended register reg (0xA0-0xBF) of the DSP at port with command 0xC0. */
+unsigned char ess_ext_read(int port, unsigned char reg)
+{
+    sb_dsp_flush(port);
+    sb_dsp_write(port, 0xc0);
+    sb_dsp_write(port, reg);
+    return sb_dsp_read(port);
+}
+
+/* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. For each base from 0x220 to 0x260 it
+   sends the enable reads, resets the DSP and asks for the ESS identify command
+   (0xE7 answering 0x68 and a version byte), then sets the IRQ and DMA through
+   extended registers 0xB1/0xB2 and reads them back. On the ES1688 and later it also sets the
+   MPU-401 and gameport (register 0x40), then sets up the SB Pro mixer. An ES1788 or ES1887/ES1888
+   is named as such; on the ES1887/ES1888, an IRQ pin chosen by the BIOS in mixer 0x7F is kept.
    Returns 1 if a card was found, else 0. */
 int init_es688(void)
 {
@@ -4624,12 +4772,13 @@ int init_es688(void)
     int mpu = 0;
     unsigned char ver = 0;
     for (port = 0x220; port <= 0x260; port += 0x10) {
+        es_enable_reads(port);
+        if (!sb_dsp_reset(port))
+            continue;
         sb_dsp_flush(port);
-        outportb(port + 0xc, 0xe7);
-        delay(10);
-        if (inportb(port + 0xa) == 0x68) {
-            delay(10);
-            ver = inportb(port + 0xa);
+        sb_dsp_write(port, 0xe7);
+        if (sb_dsp_read(port) == 0x68) {
+            ver = sb_dsp_read(port);
             break;
         }
     }
@@ -4642,9 +4791,23 @@ int init_es688(void)
         outportb(port + 0xc, 0xc6);
         outportb(port + 4, 0x40);
         if (inportb(port + 5) != 0x18 || inportb(port + 5) < 0x68) {
-            printf("Card detected: ES");
-            printf(ver < 0x88 ? "668" : "1688");
-            printf(" at [%xh] \n", port);
+            char *name = ver < 0x88 ? "688" : "1688";
+            unsigned char pin = 0;      /* ES1887/ES1888: IRQ pin selected in mixer 0x7F, 0 = none */
+            unsigned char b;
+            int want = 0;               /* IRQ asked for (BLASTER I or the default) */
+            /* Tell the later chips from the ES1688 as Linux es18xx does: mixer 0x64 bit 2 is
+               writable from the ES1788 on, and 0x70 only on the ES1887/ES1888. */
+            if (ver >= 0x88 && ess_mixer_writable(port, 0x64, 0x04)) {
+                name = "1788";
+                if (ess_mixer_writable(port, 0x70, 0x7f)) {
+                    name = "1887/ES1888";
+                    outportb(port + 4, 0x7f);
+                    pin = (inportb(port + 5) >> 1) & 7;
+                    if (pin > 5)
+                        pin = 0;
+                }
+            }
+            printf("Card detected: ES%s at [%xh] \n", name, port);
             puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
             sb_port = port;
             delay(50);
@@ -4655,12 +4818,30 @@ int init_es688(void)
             default: sb_irq = 5;
             }
             idx45_write_slow(sb_port + 8, 0xb1, irqv);
+            want = sb_irq;
             switch (sb_dma) {
             case 0: dmav -= 4; break;
             case 3: dmav += 4; break;
             default: sb_dma = 1;
             }
             idx45_write_slow(sb_port + 8, 0xb2, dmav);
+            /* Show what the chip took: read B1h and B2h back (bits 3-2 select IRQ 2/9, 5, 7, 10
+               and DMA -, 0, 1, 3). */
+            b = (ess_ext_read(sb_port, 0xb1) >> 2) & 3;
+            if (b != 0 || (sb_irq != 2 && sb_irq != 9))
+                sb_irq = b == 0 ? 9 : b == 1 ? 5 : b == 2 ? 7 : 10;
+            b = (ess_ext_read(sb_port, 0xb2) >> 2) & 3;
+            if (b != 0)
+                sb_dma = b == 1 ? 0 : b == 2 ? 1 : 3;
+            if (pin > 0) {
+                /* The ES1887/ES1888 ignore B1h when mixer 0x7F (bits 3-1) routes the interrupt
+                   to one of their IRQ pins A-E (IRQ 9, 5, 7, 10, 11), which a notebook BIOS
+                   sets to match the board's wiring. Leave the BIOS's choice alone. */
+                unsigned char bios_irq = pin == 1 ? 9 : pin == 2 ? 5 : pin == 3 ? 7 : pin == 4 ? 10 : 11;
+                if (bios_irq != want)
+                    printf("IRQ %d ignored: the BIOS has set this chip to IRQ %d.\n", want, bios_irq);
+                sb_irq = bios_irq;
+            }
             if (ver >= 0x88) {
                 switch (mpu_irq) {
                 case 2: case 9: mpu |= 0x80; break;
