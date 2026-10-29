@@ -266,6 +266,7 @@ binary, use `tools/build.sh --no-hash`; the hash check is for the `0.82a` branch
 | `data/syms.json` | Addresses of the runtime-library symbols inside UNISOUND.COM |
 | `docs/NOTES.md` | How the toolchain and layout were identified |
 | `docs/TESTING.md` | Results of testing in 86Box |
+| `docs/datasheets/` | Vendor data sheets used for the work, with their sources (see its README) |
 
 Tools:
 - `build.sh [--no-hash]`: builds in the VM and verifies the hash, unless `--no-hash` is given.

@@ -323,8 +323,8 @@ serial identifier in the original files either; 86Box doesn't check it.
 
 ESS's data sheets print PnP ROM data as assembler listings in Appendix A: an "ES1869 PnP ROM data
 example" (DS1869, SAM0023-121997) and the "ES1878 internal PnP resource ROM" (DS1878A, v001) and
-"ES1879 internal PnP resource ROM" (DS1879A). The data sheets come from ESS's documentation as
-mirrored by the ALSA project (sunsite.icm.edu.pl/Linux/alsa/manuals/ess/). Each listing starts
+"ES1879 internal PnP resource ROM" (DS1879A), all in [datasheets/ess](datasheets/README.md),
+with ESS's device node list (DEVNODES.DOC). Each listing starts
 with an 8-byte ESS header (the IRQ and DRQ pin maps loaded into vendor registers 20h-25h), then
 the serial identifier and the resource data. A script took every byte and string from the
 listing's text, dropped the 8-byte header (86Box's ROM files start at the serial identifier),
