@@ -17,6 +17,7 @@ on a Compaq LTE 5000 with its on-board ES1688; the README table marks them.
 | Thread fixes build | branch `thread-fixes` at `50253a7` (bugs 11-24); each fix was tested with the build of its own commit |
 | ESS init build | branch `ess-init`: `aee160e` (B1h/B2h through 2xCh), `05aa0de` (`/LOG`), `8afa28d` (ESSINIT), `d2f397b` (OPTi 82C924/925 probe), `4197954` (82C928 probe), `f91b9bc` (ESSINIT OPTi probe) |
 | Card ID build | branch `id-table`: `481f5c0` (CS4235), `b4c0948` (card ID table), `2046077` (AZT1021), `92b2a8c` (AZT1022), `d5f8c0a` (RTL3000), `01b22e6` (DXP3201, CDC1111); branch `ess1878-1879`: `5318fc2` (ESS1878, ESS1879) |
+| 82C929 build | branch `opti929`: `ab0d87b` (OPTi 82C929 under `/NOPNP`) |
 
 Platforms, all a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -350,6 +351,54 @@ PNPB02F); no IDE device. Their checksums were computed, and the files padded wit
 still emulates an ES1869 behind them, so the runs test the PnP side and UNISOUND's ES1869 path,
 not the chips themselves.
 
+## `/NOPNP` and the OPTi 82C929
+
+v0.82a's `/NOPNP` probe for the OPTi 82C928 and OAK OTI601 (`init_opti928`) unlocks the
+configuration registers with the password E2h. The 82C929 (MAD16 Pro) uses E3h, as OSS's mad16
+also tries, so an 82C929 never answered. 86Box has two: `acermagic_s20` (82C929 with a CS4231)
+and `mirosound_pcm10` (with an AD1848 and an OPL4). With the `main` build `/NOPNP` printed "No
+card detected" on both, on pnp2 and nopnp.
+
+The register definitions are in the 82C929 data sheet ([datasheets/opti](datasheets/README.md);
+a scan, pages 6-10). Where the 82C929 differs from what the 82C928 code wrote:
+
+- MC1 bits 3:1 select the CD-ROM interface and are set by jumpers; the 82C928 code wrote 0 there.
+- MC3: the SB base is bit 2 (220h or 240h), not tied to the WSS base, and IRQ code 01b is IRQ 10
+  instead of 11. MC3 bits 1:0 read the chip ID, 10b.
+- MC4: bits 7 and 5 must be 1 (normal setting A2h; the 82C928 code wrote 02h).
+- MC5: bits 7, 2 and 0 must be 1 (normal setting 2Fh for a CS4231, 25h for an AD1848; the
+  82C928 code wrote 2Ah or 20h).
+- MC6 (F92h, write-only) is new: MPU-401 enable, base (330h, 320h, 310h, 300h) and IRQ (9, 10, 5,
+  7); bits 2:0 must be 011b, normal setting 83h.
+
+As a reference, OPTi's SNDINIT 2.50 from the Boca Research driver package
+(`opti-82c929a-mad16pro-drivers.zip`, the driver for the Sound Expression 4294 and SE1440) ran as
+`SNDINIT /b` on nopnp. It needs `SET SOUND16=` set to its directory, and SOUND16.CFG, CDROM.CFG,
+CSETUP.INF, INSTALL.DAT and LOGO.BMP from the package next to it. With SOUND16.CFG's settings (SB
+Pro mode, 220h, IRQ 5, DMA 1, MPU-401 at 330h on IRQ 9, gameport on), MC1-MC5 read back with PIO
+(E3h to F8Fh before each read; MC6 can't be read):
+
+| | MC1 | MC2 | MC3 | MC4 | MC5 |
+|---|---|---|---|---|---|
+| `acermagic_s20` at power-on | 00 | 03 | 02 | 00 | 3F |
+| `acermagic_s20` after SNDINIT | 00 | 03 | 82 | A2 | AF |
+| `mirosound_pcm10` after SNDINIT | 00 | 23 | 82 | A2 | A5 |
+
+SNDINIT also sets MC2 bit 5 (OPL4) on the miro card. The fixed build keeps MC2 as it finds it.
+
+`UNISOUND /NOPNP`, then the same readback, the MPU-401 status port, and DMAPLAY, on pnp2 and
+nopnp (the same results on both):
+
+| Build, BLASTER | `acermagic_s20` | `mirosound_pcm10` |
+|---|---|---|
+| `main`, not set | "No card detected" | the same |
+| fix, not set | "Card detected: OPTi 82C929", `ADD:220 IRQ:5 DMA:1 JOY:200 MPU:330/I9`; MC1-MC5 00 03 82 A2 AF, as SNDINIT; 331h reads BFh; DMAPLAY plays on IRQ 5, DMA 1 | the same, MC5 A5 as SNDINIT |
+| fix, `A240 I10 D3 P300 U7 T4` | `ADD:240 IRQ:10 DMA:3 JOY:200 MPU:300/I7`; MC3 66h; 301h reads BFh and 331h FFh; DMAPLAY at 240h plays on IRQ 10, DMA 3 | the same, MC5 A5 |
+
+Not tested: the MPU-401's IRQ; WSS mode (`/XWSS`, which doesn't write the WSS IRQ and DMA
+configuration register, as on the 82C928); and the 82C928 path, since 86Box has no 82C928. Its
+writes are unchanged: E2h is tried first, and E3h only if that finds nothing.
+
 ## Regression check
 
 The fixed build ran the full baseline matrix again. 171 of the 175 runs gave identical output.
@@ -376,7 +425,11 @@ matrix against `f2b97f7`: the only differences were the two new lines after "No 
 detected." or "No card detected" (495 outputs on the runs where no card is found); everything
 else was byte-identical (azt2320 on pnp doesn't boot with either).
 
-The card ID table (`b4c0948`, with the CS4235 fix) ran every 86Box ISA sound card (83 entries,
+The card ID table (`b4c0948`, with the CS4235 fix) ran every 86Box ISA sound card (84 entries,
 including "none") on pnp and nopnp, and again on pnp2, against the `main` build: the only
 difference was `cs4235`, now configured instead of skipped (azt2320 on pnp doesn't boot with
 either; on pnp2 it is configured by both).
+
+The 82C929 build (`ab0d87b`) ran the same 84 entries on pnp2 and nopnp against `main` (`ca6c682`):
+the only differences were `/NOPNP` on `acermagic_s20` and `mirosound_pcm10`, now set up instead of
+"No card detected".
