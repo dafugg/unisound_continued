@@ -44,11 +44,12 @@ which shows the BIOS's configuration on pnp and an unconfigured card on nopnp.
 
 ### Emulation notes
 
-- **OPTi 82C930** is not found by `/NOPNP`. 86Box treats a second write of the password 0xE4 to
-  0xF8F while the registers are unlocked as relocating the register base. UNISOUND writes the
-  password before each index and data access, as the 930 datasheet describes, so its data read
-  goes to a register block that has just moved. This looks like an 86Box difference, not a
-  UNISOUND bug.
+- **OPTi 82C930** is not found by `/NOPNP`. UNISOUND identifies the chip by reading control
+  registers 1, 3 and 0x12 (index 0x12 must be below 8). 86Box implements only MC1-MC12 for the
+  930 and returns FF for index 0x12, so the check fails. Registers 1 and 3 read correctly with
+  UNISOUND's password sequence (E4 to 0xF8F before the index write and again before the data
+  access). The 82C930 datasheet (912-3000-022) also documents only MC1-MC12, so what a real
+  930 returns at 0x12 is unknown, and neither side can be called wrong without real hardware.
 - **EMU8000**: 86Box turns byte writes to the pointer register into word writes, and returns
   odd-address byte reads shifted right by 1 instead of 8. Use word I/O (`PIO O`, `PIO w`).
 - **ES1869**: init prints `CTR:660`, which is the alternate PnP configuration port it switches to,
