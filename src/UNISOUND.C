@@ -4562,7 +4562,7 @@ int init_opti930(void)
     opti_ctl_port = 0xe0c;
     opti93x_pwd_port = 0xf8f;
     if (opti93x_read(0xe0e, 1) < 0xff && opti93x_read(0xe0e, 3) < 0xff && opti93x_read(0xe0e, 0x12) < 8) {
-        puts("Card detected: OPTi 83C930");
+        puts("Card detected: OPTi 82C930");
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         if (sb_port == 0x240)
             cfg1 |= 0x80;
@@ -4684,7 +4684,7 @@ int init_es688(void)
         outportb(port + 4, 0x40);
         if (inportb(port + 5) != 0x18 || inportb(port + 5) < 0x68) {
             printf("Card detected: ES");
-            printf(ver < 0x88 ? "668" : "1688");
+            printf(ver < 0x88 ? "688" : "1688");
             printf(" at [%xh] \n", port);
             puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
             sb_port = port;
