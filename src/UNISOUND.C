@@ -408,6 +408,8 @@ int opt_x3d = 0;  /* /X3Dn: 3D level */
 int opt_xxg = 0;  /* /XXGn: SB16 gain */
 int nopnp_mode = 0;  /* /NOPNP = 1; 2 = OPTi control chip found */
 char opt_log = 0;  /* /LOG: print diagnostic lines */
+unsigned char opti_probe[5];  /* probe_opti_ctl's reads, for /LOG: F8Dh and F8Fh without the
+                                 password, register 1, F8Dh again, register 3 */
 
 /* ---- functions ---- */
 void print_banner(void);
@@ -489,6 +491,7 @@ int init_opti928(void);
 void probe_opti_ctl(void);
 int init_opti930(void);
 int init_es688(void);
+int init_nonpnp_fallback(void);
 void sb_dsp_flush(int port);
 int opt_2digits(char *s);
 void es_enable_reads(int port);
@@ -714,8 +717,9 @@ void print_help(void)
       register numbers differ per family (the reg_* locals), and so do a lot of special cases.
    6. Leave the PnP configuration state and set up the card's mixer, firmware and extras
       (AWE, SAM9407, CS4232 firmware, InterWave, TEA6330T tone control).
-   If no supported PnP card is found, it falls back to init_nonpnp_sb16, except with /Cn (n > 1)
-   when there is no card n.
+   If no supported PnP card is found, it falls back to init_nonpnp_fallback, except with /Cn
+   (n > 1) when there is no card n. With /NOPNP, an OPTi 82C924/925 found by probe_opti_ctl
+   (nopnp_mode 2) skips step 1 and is configured through the PnP scan.
    Returns 0 on success, 1 on failure. */
 int configure_pnp(int card, int list, int pass, unsigned port)
 {
@@ -746,6 +750,11 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     int ret = 0;                /* return value */
 
     print_banner();
+    if (nopnp_mode != 0)
+        dlog("OPTi probe: F8Dh/F8Fh %02X %02X without password; with E5h: reg 1 %02X, "
+             "then F8Dh %02X, reg 3 %02X: %s", opti_probe[0], opti_probe[1], opti_probe[2],
+             opti_probe[3], opti_probe[4],
+             nopnp_mode == 2 ? "OPTi 82C924/925, using the PnP scan" : "no OPTi 82C924/925");
     if (opt_cs == 1) {
         if (init_nonpnp_sb16() == 0)
             return 1;
@@ -1599,10 +1608,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         } else {
             type = 0;
             printf("No supported PnP card detected.");
-            if (opt_log != 0)
-                puts("");    /* end the line before the fallback's LOG lines */
+            if (opt_log != 0 || nopnp_mode == 2)
+                puts("");    /* end the line before the fallback's output */
             if (nlisted < 1)
-                ret = !init_nonpnp_sb16();
+                ret = !init_nonpnp_fallback();
         }
     } else {
         type = 0;
@@ -1611,9 +1620,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             ret = 1;
         } else if (list != 1) {
             printf(nunknown > 0 ? "No supported PnP card detected." : "No PnP card detected.");
-            if (opt_log != 0)
+            if (opt_log != 0 || nopnp_mode == 2)
                 puts("");
-            ret = !init_nonpnp_sb16();
+            ret = !init_nonpnp_fallback();
         }
     }
     pnp_write(2, 2);
@@ -4603,14 +4612,38 @@ int init_opti928(void)
     return 0;
 }
 
-/* /NOPNP: if an OPTi 82C92x control chip answers at 0xF8C, enable its configuration through
-   register 7 and set nopnp_mode to 2. configure_pnp then moves opti_ctl_port by 0x80. */
+/* /NOPNP: if an OPTi 82C924/925 control chip answers at 0xF8C, enable its configuration through
+   register 7 and set nopnp_mode to 2. configure_pnp then runs the PnP scan, and moves
+   opti_ctl_port by 0x80 for the chip it finds.
+   Registers 1 and 3 must read below 0xFF after the password, and F8Dh read again right after
+   register 1 must not give the same value: the chip closes its gate after one access, which
+   Linux's opti9xx and OSS's mad16 check the same way. A card that decodes only 10 address bits
+   sees F8Dh-F8Fh as 38Dh-38Fh, next to the FM ports, and answers the same with or without the
+   password (an ES1688 did, and /NOPNP skipped it). The reads are kept in opti_probe for /LOG. */
 void probe_opti_ctl(void)
 {
-    if (opti92x_read(0xf8c, 1) < 0xff && opti92x_read(0xf8c, 3) < 0xff) {
+    opti_probe[0] = inportb(0xf8d);
+    opti_probe[1] = inportb(0xf8f);
+    opti_probe[2] = opti92x_read(0xf8c, 1);
+    opti_probe[3] = inportb(0xf8d);
+    opti_probe[4] = opti92x_read(0xf8c, 3);
+    if (opti_probe[2] < 0xff && opti_probe[4] < 0xff && opti_probe[3] != opti_probe[2]) {
         opti92x_write(0xf8c, 7, 0x40);
         nopnp_mode = 2;
     }
+}
+
+/* configure_pnp found no supported PnP card: try a non-PnP SB16 or AWE32. With /NOPNP after an
+   OPTi match (nopnp_mode 2), first try the other /NOPNP cards as nopnp_mode 1 does, in case the
+   match was wrong. Returns 1 if a card was found, else 0. */
+int init_nonpnp_fallback(void)
+{
+    if (nopnp_mode == 2) {
+        dlog("no OPTi 82C924/925 configured: trying the other /NOPNP cards");
+        if (init_es688() || init_opti930() || init_opti928())
+            return 1;
+    }
+    return init_nonpnp_sb16();
 }
 
 /* /NOPNP: detect and configure a non-PnP OPTi 82C930 (control registers at 0xE0E). Applies the
