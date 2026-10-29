@@ -1348,21 +1348,21 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     if (opt_read != 0)
                         wss_port = pnp_read16(0x62);
                     if (opt_read != 0)
-                        sb_irq = pnp_read16(0x70) & 0xf;
+                        sb_irq = pnp_read(0x70) & 0xf;
                     printf(" WSS:%X/I%d", wss_port, sb_irq);
                     if (mpu_irq < 0)
                         mpu_irq = sb_irq;
                     if (opt_read != 0)
                         mpu_port = pnp_read16(0x60);
                     if (opt_read != 0)
-                        mpu_irq = pnp_read16(0x72) & 0xf;
+                        mpu_irq = pnp_read(0x72) & 0xf;
                     printf(" MPU:%X/I%d", mpu_port, mpu_irq);
                     pnp_write(0x74, sb_dma);
                     pnp_write(0x75, sb_hdma);
                     if (opt_read != 0)
-                        sb_dma = pnp_read16(0x74) & 7;
+                        sb_dma = pnp_read(0x74) & 7;
                     if (opt_read != 0)
-                        sb_hdma = pnp_read16(0x75) & 7;
+                        sb_hdma = pnp_read(0x75) & 7;
                     printf(" DMA:%d/%d", sb_dma, sb_hdma);
                     pnp_write16(0x64, ctl);
                     if (opt_read != 0)
