@@ -1,0 +1,27 @@
+name: Set up 86Box and FreeDOS
+description: >
+  Install 86Box's packages and fetch or build 86Box, its ROMs, 86box-mcp and the FreeDOS 1.4 image
+  into /opt/86box (tools/86box-deps.sh), cached between runs. For jobs in a debian:trixie container.
+
+runs:
+  using: composite
+  steps:
+    - name: Install packages
+      shell: sh
+      run: |
+        apt-get update -qq
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+          build-essential cmake ninja-build pkg-config git ca-certificates curl unzip zstd \
+          python3-venv mtools \
+          qt6-base-dev qt6-base-private-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools \
+          libqt6opengl6-dev libvulkan-dev libgl-dev \
+          libsdl3-dev libpng-dev libfreetype-dev libopenal-dev librtmidi-dev libfluidsynth-dev \
+          libsndfile1-dev libslirp-dev libserialport-dev libevdev-dev libxkbcommon-x11-dev \
+          libx11-dev libwayland-dev libzstd-dev libedit-dev qt6-qpa-plugins libxcb-cursor0
+    - uses: actions/cache@v4
+      with:
+        path: /opt/86box
+        key: 86box-deps-${{ hashFiles('tools/86box-deps.sh') }}
+    - name: Fetch and build 86Box, ROMs, 86box-mcp, FreeDOS
+      shell: sh
+      run: sh tools/86box-deps.sh /opt/86box

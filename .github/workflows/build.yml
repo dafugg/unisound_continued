@@ -1,5 +1,6 @@
-name: MS-DOS build
+name: FreeDOS build
 
+# Builds UNISOUND.COM with Turbo C++ 3.0 (tools/build.sh) in 86Box under FreeDOS 1.4.
 on:
   push:
   pull_request:
@@ -31,8 +32,10 @@ jobs:
   build:
     name: UNISOUND.COM
     runs-on: ubuntu-24.04
+    container: debian:trixie
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-86box
       # Turbo C++ 3.00 from joncloud/dos-build-action; its files are byte-identical to the TC 3.0
       # the original UNISOUND.COM was matched with.
       - uses: actions/checkout@v4
@@ -41,18 +44,20 @@ jobs:
           ref: 76b53e600a47530c209e5de8344cef9a94c43515
           path: dos-build-action
           sparse-checkout: programs/turbo-c++/3.00
-      - name: Install DOSBox-X
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq dosbox-x
-      # The 0.82a branch (and PRs into it) must rebuild the original byte for byte.
       - name: Build
+        env:
+          QT_QPA_PLATFORM: offscreen
+          BOX86_BINARY: /opt/86box/bin/86Box
+          BOX86_ROMS: /opt/86box/roms
+          BOXPY: /opt/86box/venv/bin/python
+          BOX86MCP: unused
+          UNIVM: vm
         run: |
-          if [ "${{ github.base_ref || github.ref_name }}" = 0.82a ]; then
-            sh tools/dosbox-build.sh "dos-build-action/programs/turbo-c++/3.00"
-          else
-            sh tools/dosbox-build.sh "dos-build-action/programs/turbo-c++/3.00" --no-hash
-          fi
-          sha256sum build/c/WORK/UNISOUND.COM
+          /opt/86box/venv/bin/python -I tools/freedos-vm.py /opt/86box/FD14LITE.img vm \
+            "dos-build-action/programs/turbo-c++/3.00"
+          sh tools/build.sh --no-hash
+          sha256sum build/out/UNISOUND.COM
       - uses: actions/upload-artifact@v4
         with:
           name: UNISOUND.COM
-          path: build/c/WORK/UNISOUND.COM
+          path: build/out/UNISOUND.COM

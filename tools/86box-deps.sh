@@ -1,10 +1,10 @@
 #!/bin/sh
-# Fetch and build what tools/smoke.sh needs into DEST: 86Box with the automation socket
-# (DEST/bin/86Box), its ROM set (DEST/roms), a Python with 86box-mcp's box86mcp (DEST/venv) and the
-# FreeDOS 1.4 LiteUSB image (DEST/FD14LITE.img). Parts already in DEST are kept, so CI caches DEST
-# under a key made from this file. Needs git, curl, unzip, python3-venv and 86Box's build packages
-# (see the smoke job in .github/workflows/ci.yml).
-# Usage: tools/smoke-deps.sh DEST
+# Fetch and build what CI's FreeDOS build and smoke test need into DEST: 86Box with the automation
+# socket (DEST/bin/86Box), its ROM set (DEST/roms), a Python with 86box-mcp's box86mcp (DEST/venv)
+# and the FreeDOS 1.4 LiteUSB image (DEST/FD14LITE.img). Parts already in DEST are kept, so CI
+# caches DEST under a key made from this file. Needs git, curl, unzip, python3-venv and 86Box's
+# build packages (see .github/actions/setup-86box/action.yml).
+# Usage: tools/86box-deps.sh DEST
 set -eu
 BOX86_SHA=8215e486ca6b93a71040a0a28a6c94fd3be1daae   # 86Box/86Box master, 2026-10-29
 ROMS_SHA=6122ea433b5d69726844d5748ef930cdf6ad8f48    # 86Box/roms master, 2026-10-29

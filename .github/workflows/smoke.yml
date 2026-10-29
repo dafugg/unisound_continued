@@ -1,8 +1,7 @@
 name: FreeDOS smoke test
 
-# Builds UNISOUND.COM (build.yml), then runs it in 86Box under FreeDOS on a few emulated sound
-# cards and checks the output (tools/smoke.py). It checks the fixes' behaviour, so it only runs on
-# main; the 0.82a branch is covered by its byte-identical build.
+# Builds UNISOUND.COM (build.yml), then runs it in 86Box under FreeDOS 1.4 on a few emulated sound
+# cards and checks the output (tools/smoke.py).
 on:
   push:
     branches: [main]
@@ -15,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    name: MS-DOS build
+    name: FreeDOS build
     uses: ./.github/workflows/build.yml
     with:
       skip_format: true
@@ -26,24 +25,8 @@ jobs:
     runs-on: ubuntu-24.04
     container: debian:trixie
     steps:
-      - name: Install packages
-        run: |
-          apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-            build-essential cmake ninja-build pkg-config git ca-certificates curl unzip zstd \
-            python3-venv mtools \
-            qt6-base-dev qt6-base-private-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools \
-            libqt6opengl6-dev libvulkan-dev libgl-dev \
-            libsdl3-dev libpng-dev libfreetype-dev libopenal-dev librtmidi-dev libfluidsynth-dev \
-            libsndfile1-dev libslirp-dev libserialport-dev libevdev-dev libxkbcommon-x11-dev \
-            libx11-dev libwayland-dev libzstd-dev libedit-dev qt6-qpa-plugins libxcb-cursor0
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: /opt/smoke
-          key: smoke-deps-${{ hashFiles('tools/smoke-deps.sh') }}
-      - name: Fetch and build 86Box, ROMs, 86box-mcp, FreeDOS
-        run: sh tools/smoke-deps.sh /opt/smoke
+      - uses: ./.github/actions/setup-86box
       - uses: actions/download-artifact@v4
         with:
           name: UNISOUND.COM
@@ -51,11 +34,11 @@ jobs:
       - name: Smoke test
         env:
           QT_QPA_PLATFORM: offscreen
-          BOX86_BINARY: /opt/smoke/bin/86Box
-          BOX86_ROMS: /opt/smoke/roms
+          BOX86_BINARY: /opt/86box/bin/86Box
+          BOX86_ROMS: /opt/86box/roms
         run: |
-          /opt/smoke/venv/bin/python -I tools/freedos-vm.py /opt/smoke/FD14LITE.img vm
-          /opt/smoke/venv/bin/python -I tools/smoke.py com/UNISOUND.COM vm smoke-out
+          /opt/86box/venv/bin/python -I tools/freedos-vm.py /opt/86box/FD14LITE.img vm
+          /opt/86box/venv/bin/python -I tools/smoke.py com/UNISOUND.COM vm smoke-out
       - uses: actions/upload-artifact@v4
         if: always()
         with:

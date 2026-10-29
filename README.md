@@ -2,7 +2,7 @@
 
 [![Download Latest Release](https://img.shields.io/github/v/release/dafugg/unisound_continued?display_name=tag&label=Download%20Latest%20Release&style=for-the-badge)](https://github.com/dafugg/unisound_continued/releases/latest)
 
-[![MS-DOS Build](https://img.shields.io/github/actions/workflow/status/dafugg/unisound_continued/build.yml?branch=main&label=MS-DOS%20Build&style=flat-square)](https://github.com/dafugg/unisound_continued/actions/workflows/build.yml)
+[![FreeDOS Build](https://img.shields.io/github/actions/workflow/status/dafugg/unisound_continued/build.yml?branch=main&label=FreeDOS%20Build&style=flat-square)](https://github.com/dafugg/unisound_continued/actions/workflows/build.yml)
 [![FreeDOS Smoke Test](https://img.shields.io/github/actions/workflow/status/dafugg/unisound_continued/smoke.yml?branch=main&label=FreeDOS%20Smoke%20Test&style=flat-square)](https://github.com/dafugg/unisound_continued/actions/workflows/smoke.yml)
 
 C source for **UNISOUND.COM v0.82a**, the "Universal ISA PnP Sound Card Driver for DOS" by
