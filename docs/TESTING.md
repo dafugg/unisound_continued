@@ -37,7 +37,7 @@ codecs can't be fitted to these machines.
 | "Unknown PnP card", aborts | cs4235, ess_ess0100_pnp, ess_ess0102_pnp (ids UNISOUND doesn't support) |
 | Non-PnP SB16 fallback | sb16, sbawe32, sb_vibra16s |
 | Not detected | the other ISA cards (none of them supported) and all PCI cards |
-| Did not boot | azt2320 on pnp: the Award BIOS hangs at "Initialize Plug and Play Cards" |
+| Did not boot | azt2320 on pnp: the Award BIOS hangs at "Initialize Plug and Play Cards" (see the emulation notes) |
 
 No UNISOUND run hung. The results were the same on both platforms apart from the first `/R`,
 which shows the BIOS's configuration on pnp and an unconfigured card on nopnp.
@@ -52,6 +52,15 @@ which shows the BIOS's configuration on pnp and an unconfigured card on nopnp.
   930 returns at 0x12 is unknown, and neither side can be called wrong without real hardware.
 - **EMU8000**: 86Box turns byte writes to the pointer register into word writes, and returns
   odd-address byte reads shifted right by 1 instead of 8. Use word I/O (`PIO O`, `PIO w`).
+- **AZT2320** hangs the pnp board's BIOS before DOS starts
+  ([86Box#8552](https://github.com/86Box/86Box/issues/8552)). The card's PnP data has a
+  logical device "IDE CDROM DISABLED" with two I/O descriptors of base 0 and length 0. When
+  this Award BIOS looks for a free range, it tries base 0, finds port 0 in use, and works out
+  the next base as (0 + length + alignment - 1) rounded down to the alignment, which is 0
+  again, so it loops forever. Changing the two lengths to 1 in a copy of the ROM lets it boot.
+  Seven other PnP BIOSes in 86Box (four Award, two Intel/AMI, one Acer) boot with the
+  unmodified card and configure it. The cause is this BIOS, not UNISOUND, which configures
+  the card on nopnp.
 - **ES1869**: init prints `CTR:660`, which is the alternate PnP configuration port it switches to,
   not a value written to the card. On nopnp the gameport reads back as 0 after init although
   init reported 201. Cause not determined.
