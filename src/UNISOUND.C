@@ -1907,6 +1907,16 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 for (i = 0; i < 2; i++)
                     cs_xreg_write(i, 0xff);
         }
+        if (cs_variant == 2 || cs_variant == 3 || cs_variant == 7) {
+            /* crystal_ext_init and the S/PDIF FM volume above put the codec in MODE 3 (I12 =
+               0xEA) to reach the extended registers. Go back to MODE 1 (I12 bits 6-5 = 0): the
+               extended registers keep their values, and WSS drivers that test whether I12 is
+               read-only, as on an AD1848, reject a codec left in MODE 3 (Tyrian: ERROR 142). */
+            unsigned char i12;
+            outportb(wss_port, 0x0c);
+            i12 = inportb(wss_port + 1);
+            idx01_write(wss_port, 0x0c, i12 & 0x9f);
+        }
         if (cs_variant != 4)
             print_mixer("Crystal", shown_3d, -1);
     }
