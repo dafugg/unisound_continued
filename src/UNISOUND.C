@@ -1202,11 +1202,14 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 printf(" IRQ:%d", sb_irq);
                 if ((type == CARD_YAMAHA && irq2 != 0) || (type == CARD_YAMAHA && opt_read != 0))
                     printf("/%d", irq2);
+                /* The AZT2320's second DMA can only be 0, 1 or 3: anything else (an SB16-style
+                   H5, for one) is treated like H = D below. */
+                if (type == CARD_AZTECH && opt_disable == 0 && sb_hdma != 0 && sb_hdma != 1 && sb_hdma != 3)
+                    sb_hdma = sb_dma;
                 if (sb_dma == sb_hdma && opt_disable == 0) {
-                    if (type == CARD_YAMAHA || type == CARD_AZTECH) {
-                        sb_dma = 1;
-                        sb_hdma = 3;
-                    }
+                    /* keep D and put the second DMA on another 8-bit channel */
+                    if (type == CARD_YAMAHA || type == CARD_AZTECH)
+                        sb_hdma = sb_dma != 3 ? 3 : 1;
                     if (type == CARD_CMI)
                         sb_hdma = 5;
                     if (type == CARD_ALS && als_variant == 3)
