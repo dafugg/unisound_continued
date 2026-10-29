@@ -205,8 +205,31 @@ Before opening an issue here, check whether the problem also happens with the of
 - **If it happens only with the build from `main`**, open an issue here. Include the
   version line UNISOUND prints, your card, your BLASTER or ULTRASND setting and the command line.
 
-Whatever the problem, run UNISOUND again with the same options plus `/LOG`, redirected to a file,
-and attach the file: for example `UNISOUND /LOG > LOG.TXT`, or `UNISOUND /NOPNP /LOG > LOG.TXT`.
+### What to run
+
+Start each step from a cold boot (power off, not a reset) with no other sound drivers loaded,
+and say in the issue what each one printed:
+
+1. **The official v0.82a**, with the options you normally use.
+2. **This build, with the same options plus `/LOG`**, redirected to a file you attach:
+   `UNISOUND /LOG > LOG.TXT`, or `UNISOUND /NOPNP /LOG > LOG.TXT`.
+3. **If no card is found**, also `/XSLAM` (a Crystal chip set up by the BIOS) and `/XESSB`
+   (an ES1868/ES1869 that the PnP scan misses), each with `/LOG`.
+4. **The card maker's own DOS setup program**, and whether it finds the card: ESSCFG for ESS
+   chips, SNDINIT for OPTi, CTCM for Creative, CWDINIT for Crystal. Many different programs
+   share each of these names, so tell us which one you ran: the version it prints, its size and
+   date (`DIR`), its SHA-256 if you can work it out on another machine (`sha256sum ESSCFG.EXE`,
+   or `certutil -hashfile ESSCFG.EXE SHA256` on Windows), and where the file came from (the
+   card's driver disk, a download link, the name of the package).
+5. **Your machine**: the board or model, the CPU, whether its BIOS is PnP, and the other cards
+   in it with their ports.
+
+`/XESSB` and `/XSLAM` skip the PnP scan, so they never read the card's ID and print a fixed
+name for the chip instead. The same card can show up under different names: an ES1869F card is
+`ESS0003` normally and `[ESS1869] (ESS bypass key)` with `/XESSB`.
+
+### What `/LOG` shows
+
 `/LOG` adds lines starting with `LOG: ` that show what UNISOUND found and wrote:
 
 - the DOS version and the command line; BLASTER as given and every field as parsed, and ULTRASND;
@@ -222,8 +245,7 @@ and attach the file: for example `UNISOUND /LOG > LOG.TXT`, or `UNISOUND /NOPNP 
   hooks IRQ 3, 5, 7, 9 and 10 for a moment and restores them);
 - with `/XESSB`: the E7h reply and the four mixer 40h reads after the bypass key.
 
-If UNISOUND finds no card, also try `/XSLAM` (a Crystal chip set up by the BIOS) and `/XESSB`
-(an on-board ES1868/ES1869), with `/LOG`.
+### ESSINIT
 
 For an ES688/ES1688-family chip that doesn't work, `tools/dos/ESSINIT.C` sets the chip up the
 way ESSCFG does, from BLASTER's A, I and D, and prints each step: the enable reads if needed,
