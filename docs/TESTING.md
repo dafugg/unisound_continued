@@ -61,9 +61,19 @@ which shows the BIOS's configuration on pnp and an unconfigured card on nopnp.
   Seven other PnP BIOSes in 86Box (four Award, two Intel/AMI, one Acer) boot with the
   unmodified card and configure it. The cause is this BIOS, not UNISOUND, which configures
   the card on nopnp.
-- **ES1869**: init prints `CTR:660`, which is the alternate PnP configuration port it switches to,
-  not a value written to the card. On nopnp the gameport reads back as 0 after init although
-  init reported 201. Cause not determined.
+- **ES1869**: init's gameport and IDE settings don't take effect on either platform
+  ([86Box#8554](https://github.com/86Box/86Box/pull/8554)). UNISOUND configures this chip
+  through ESS's bypass key: the key and the address 660h go to 279h, and the PnP registers are
+  then reached through 660h/661h. `CTR:660` is that address. The ES1869 data sheet (Bypass Key,
+  page 28) says the key sets the configuration device's (logical device 0) address register
+  and activates it. 86Box moves the ports to 660h but leaves logical device 0's registers at
+  their old values: 0 on nopnp, the BIOS's 800h on pnp. When UNISOUND then activates logical
+  device 0, 86Box moves the ports to that stale address, so the gameport and IDE writes that
+  follow are lost. `/R` then shows `CTR:0 JOY:0` on nopnp. On pnp it shows the BIOS's
+  `CTR:800 JOY:201 IDE:168/I11`, so the gameport only looks right. A test program that follows
+  the data sheet, without UNISOUND, shows the same thing. With the fix in #8554, `/R` after init
+  shows `CTR:660 JOY:201 IDE:0/I0` on both platforms, and nothing else in the ES1868 and ES1869
+  results changes.
 
 ## Bugs reproduced and fixed
 
