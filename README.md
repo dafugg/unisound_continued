@@ -6,9 +6,9 @@ and discussed in [its thread on the VOGONS forum](https://www.vogons.org/viewtop
 
     606f8faec686d56468bb53eecdf1e28e4d6cda7a8a2051c36b7bcec16c37b370  UNISOUND.COM
 
-The branch `0.82a` is the byte-identical source. It still gets naming and comment improvements,
-and every commit on it must keep the build identical. The branch has rebuilt the binary byte
-for byte from its first commit, 4a9c4af. `main` adds bug fixes on top, so its build no longer
+The branch `0.82a` is the byte-identical source: its head always rebuilds the binary byte for
+byte. Renames, comments and other changes that don't affect the code go there too, and must
+keep `tools/build.sh` reporting IDENTICAL. `main` adds bug fixes on top, so its build no longer
 has that hash. All of this applies only to version 0.82a; other releases will differ.
 
 ## Decompilation status
