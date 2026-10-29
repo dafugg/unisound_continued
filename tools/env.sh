@@ -6,4 +6,4 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 : "${UNIVM:?set UNIVM to the DOS VM directory (see local.env.example)}"
 BOXPY=${BOXPY:-$BOX86MCP/server/.venv/bin/python}
 PYTHON=${PYTHON:-python3}
-export UNIVM BOX86MCP MTOOLS_DIR UNISOUND_COM
+export UNIVM BOX86MCP MTOOLS_DIR UNISOUND_COM BOX86_ROMS
