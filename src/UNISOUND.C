@@ -4559,6 +4559,10 @@ int init_opti928(void)
         if (opt_xwss == 0)
             opti928_write(0xf8d, opti928_read(0xf8d) & 0x7f);
         delay(50);
+        /* MC5 (F91h). Bug, not fixed: the test is never true, since & 0xfd clears bit 1, so 20h is
+           always written. MC5 bit 1 (CFIX, 82C929 data sheet) must be 1 for a CS4231/CS4248 codec,
+           which reads I12 bit 7 as 1, and bit 3 enables the SB-mode command FIFO; the intended test
+           was probably (codec_st & 0x80) ? 0x2a : 0x20. Needs testing on real hardware. */
         opti928_write(0xf91, (codec_st & 0xfd) == 2 ? 0x2a : 0x20);
         printf("Settings: ADD:%X IRQ:%d DMA:%d JOY:%X", sb_port, sb_irq, sb_dma, joy_port);
         if (opt_xwss > 0)

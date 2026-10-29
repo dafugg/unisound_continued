@@ -64,6 +64,30 @@ so its output can't be mistaken for JazeFox's release.
 | [0b8ded6](https://github.com/dafugg/unisound_decomp/commit/0b8ded635a05c977f601b5d1dfe9f5bbe566951e) | SB AWE32/AWE64 with 28 MB of RAM: reported as 28672K instead of 28671K | — | ✅ `sbawe32_pnp`, `sbawe64_gold`, `sbawe32` with 28672 KB | ❌ |
 | [ad1c498](https://github.com/dafugg/unisound_decomp/commit/ad1c498519ea68d5e863a457d714bde041b406bc) | AZT2320 and Yamaha OPL3-SAx: D = H keeps D and moves only the second DMA (it was forced to 1/3). The AZT2320's second DMA is limited to 0, 1 and 3 | — | ✅ `azt2320`: D3 H3 gave 1/3, now 3/1; D1 H5 gave 1/5, now 1/3 | ❌ |
 | [53c3685](https://github.com/dafugg/unisound_decomp/commit/53c368554d58b81cdc8add08ddd201405a56e2d7) | Aztech and Rockwell: SB Pro mixer 0Eh is left at 20h (mono), not 22h (stereo) | — | ✅ `azt2320`: mono playback L/R correlation 0.80 before, 1.00 after. 86Box has no Rockwell card | ❌ |
+| Not fixed | ES688/ES1688 (`/NOPNP`): extended registers B1h (IRQ) and B2h (DMA) are set by writing the register number to 2xCh and the value to 2xDh, without waiting for the write buffer. ESS documents 2xCh for both bytes (ES1868 data sheet; the Linux es1688 and NetBSD ess drivers do the same). A chip that doesn't treat 2xDh like 2xCh would get B2h's value in B1h, i.e. IRQ 2/9. Suggested fix: write both bytes to 2xCh, polling 2xCh bit 7 before each | Vogons: [vico](https://www.vogons.org/viewtopic.php?p=1297347#p1297347), [p1348419](https://www.vogons.org/viewtopic.php?p=1348419#p1348419), [analog_programmer](https://www.vogons.org/viewtopic.php?p=1450935#p1450935) (possibly) | ❌ 86Box treats 2xDh like 2xCh, so it can't show the problem | ❌ |
+| Not fixed | Yamaha OPL3-SA3 (YMF71x): in the YMF715's SB Pro mixer table, the effective voice level depends on master (22h) and voice (04h) together, and any sum of 8 or more is 0 dB. At UNISOUND's master DDh, voice levels 2–7 are all 0 dB, so SB Pro stereo panning is lost (Wolf3D) and `/VW` has almost no effect on SB-mode audio. Suggested fix: SB Pro master 33h, with the overall volume set through the OPL3-SA3 master registers 07h/08h | Vogons: [badmojo](https://www.vogons.org/viewtopic.php?p=1276551#p1276551) ([2](https://www.vogons.org/viewtopic.php?p=1373824#p1373824)), [--Freeman--](https://www.vogons.org/viewtopic.php?p=1452979#p1452979) | ❌ 86Box doesn't model the master × voice table | ❌ |
+| Not fixed | OPTi 82C931: F (388h by default) is written to the FM base register (LD1 62h), which the card's resource data gives as 16-byte aligned. In 86Box that moves AdLib to 390h; real cards evidently still answer at 388h, so this is probably harmless. Writing 380h, as the BIOS and the Windows driver do, would match the resource data | — | ❌ 86Box moves AdLib to 390h, which real cards apparently don't | ❌ |
+| Not fixed | OAK OTI601 / OPTi 82C928 (`/NOPNP`): the test that picks the MC5 (F91h) value, `(codec_st & 0xfd) == 2`, is never true, so 20h is always written. With a CS4231/CS4248 codec, MC5 bit 1 (CFIX, the fix for that codec's synchronisation delays) and bit 3 (SB-mode command FIFO) stay off. The intended test was probably `(codec_st & 0x80)`, I12 bit 7, which is 1 on those codecs. Found by cppcheck; the bits are from the 82C929 data sheet, since no 82C928 or OTI601 data sheet was found | — | ❌ 86Box doesn't emulate the 82C928 or the OTI601 | ❌ |
+
+## Feature prototypes
+
+Two features that some reports need, prototyped as separate DOS programs in `tools/dos/` and
+tested in 86Box. They are not in UNISOUND.
+
+- **Crystal chips configured by the BIOS** (CSLAM). With the CS423x "PnP key disable" EEPROM
+  bit set, as on some laptops and OEM boards, the chip doesn't take part in ISA PnP isolation
+  and UNISOUND finds nothing. The chip can still be configured through the Crystal key and SLAM
+  writes to 279h: for each logical device, `15h` device, `47h`/`48h`/`42h` I/O, `22h` IRQ,
+  `2Ah`/`25h` DMA, `33h` activate, then `79h`. A Crystal chip with no resource data (the
+  Gateway E-1000's on-board CS4236B) could use the fixed layout instead. It is unknown whether
+  real laptops also disable the Crystal key. Reports: Vogons: [Pickle](https://www.vogons.org/viewtopic.php?p=916242#p916242),
+  [MartinausWien](https://www.vogons.org/viewtopic.php?p=1386273#p1386273), [AliceImagina](https://www.vogons.org/viewtopic.php?p=1396090#p1396090).
+- **ESS bypass-key detection** (ESSBYP). For boards whose chipset doesn't forward A79h, or
+  on-board ES1869s that don't take part in normal isolation: send the ESS key with a control
+  port (such as 800h) to 279h, set up and activate logical device 1 through the control port,
+  and accept the chip only if mixer 40h reads `18 68` or `18 69` followed by the control port
+  address. Works for the ES1868 and ES1869 in 86Box, with and without a PnP BIOS. Reports:
+  Vogons: [vsharun](https://www.vogons.org/viewtopic.php?p=1357653#p1357653), [Oetker](https://www.vogons.org/viewtopic.php?p=869608#p869608).
 
 ## Reporting problems
 
