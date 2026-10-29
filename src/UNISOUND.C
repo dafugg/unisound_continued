@@ -1300,7 +1300,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     pnp_write(0x71, 2);
                 }
                 if (opt_read != 0)
-                    mpu_port = pnp_read16(reg_mpu);
+                    mpu_port = pnp_read16(0x60);
                 if (opt_read != 0)
                     irq = pnp_read(0x70) & 0xf;
                 pnp_write(0x30, (!enable || opt_disable != 0) ? 0 : 1);
