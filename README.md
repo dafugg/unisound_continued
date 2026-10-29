@@ -10,6 +10,16 @@ The byte-identical source is the tag `v0.82a` and the branch `0.82a`. `main` add
 top of it, so its build no longer has that hash. All of this applies only to version 0.82a;
 other releases will differ.
 
+## Decompilation status
+
+The source compiles without warnings. On the `0.82a` branch the output is byte-identical; on
+`main` it differs only by the fixes below. Functions, globals, the card families (`CARD_*`) and
+the main routine's locals have names. Globals that hold settings say in their comment which
+BLASTER letter or command-line option sets them. Some names are best guesses from the code and
+the UNISOUND manual (for example `CARD_RJA0`, `CARD_ADS7141`). Locals are named too, apart from
+loop counters and other conventional short names. On the `0.82a` branch, any change must keep
+`tools/build.sh` reporting IDENTICAL; a build takes about 6 seconds.
+
 ## Fixes & Changes after 0.82a
 
 All of these except the ESS DSP flush were found by reading the decompiled source. The 86Box
@@ -80,13 +90,3 @@ Tools:
 
 The analysis tools need Python with capstone. They also need the original v0.82a UNISOUND.COM,
 which this repo does not include: put it in `orig/` or set `UNISOUND_COM`.
-
-## Status
-
-The source compiles without warnings. On the `0.82a` branch the output is byte-identical; on
-`main` it differs only by the fixes above. Functions, globals, the card families (`CARD_*`) and
-the main routine's locals have names. Globals that hold settings say in their comment which
-BLASTER letter or command-line option sets them. Some names are best guesses from the code and
-the UNISOUND manual (for example `CARD_RJA0`, `CARD_ADS7141`). Locals are named too, apart from
-loop counters and other conventional short names. On the `0.82a` branch, any change must keep
-`tools/build.sh` reporting IDENTICAL; a build takes about 6 seconds.
