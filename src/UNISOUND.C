@@ -11,6 +11,13 @@
 #undef outp
 #undef outpw
 
+/* Result of pnp_map_devices: for each function, the number of the card's logical device that
+   provides it, or -1 if there is none.
+   ld[0] SB / main audio     ld[3] gameport            ld[6] control port
+   ld[1] second audio (OPL,  ld[4] wavetable (AWE)     ld[7] device that gets disabled
+         WSS, or SB on GUS)  ld[5] IDE                       (Yamaha, Aztech)
+   ld[2] MPU-401                                       ld[8] extra (MPU2 on EWS64, OPL on ADS7141)
+   x[3] is byte 3 of the first logical device id; 'h' (0x68) marks CARD_ES968B. */
 struct ldinfo {
     int ld[9];
     char x[7];
