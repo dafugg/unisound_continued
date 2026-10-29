@@ -37,7 +37,9 @@ sound cards, with no regressions; the changes in output it found are the intende
 
 Apart from the fixes, the `main` build prints its own version, "v0.82a-unofficial-fix-1"
 ([3245b96](https://github.com/dafugg/unisound_decomp/commit/3245b964ecfa7e1c0c371e1880ed84f8fb6e60cb)),
-so its output can't be mistaken for JazeFox's release.
+so its output can't be mistaken for JazeFox's release, and has a `/LOG` option
+([fde5b60](https://github.com/dafugg/unisound_decomp/commit/fde5b603ddab9a934871e3470df7ac7f7ba66578))
+that prints diagnostic lines (see [Reporting problems](#reporting-problems)).
 
 | Commit | Description | Reports | Tested on 86Box | Tested on real hardware |
 |---|---|---|---|---|
@@ -45,6 +47,7 @@ so its output can't be mistaken for JazeFox's release.
 | [b2bea62](https://github.com/dafugg/unisound_decomp/commit/b2bea620ae5b4cde994b1ded36d4f561ce469bf2) | `/NOPNP` sends the ES1688 enable reads and resets the DSP before the ESS probe, so chips that start disabled (ES1788, ES1888) are found | Vogons: [analog_programmer](https://www.vogons.org/viewtopic.php?p=1450935#p1450935), [0xDEADBEEF](https://www.vogons.org/viewtopic.php?p=1338132#p1338132) | ✅ `ess_es1788`: "No card detected" before, found and playing after. It also finds the ES1688 on `gusextreme` and `gusvipermax` now. Compaq Presario 7100 (`pl4600c`) with the on-board ES1688 disabled in Setup: "No card detected" before, found and playing after | ✅ Compaq LTE 5000 (on-board ES1688) |
 | [f049bb7](https://github.com/dafugg/unisound_decomp/commit/f049bb72777d9a1d718a522d2ac5a3a541082ca3) | An unknown PnP card (a network card, a PnP game port, an unsupported sound card) no longer stops the scan with "Aborting": it is skipped, the first supported card is configured, and if there is none the non-PnP SB16 fallback runs. `/Cn` with no card n now exits with ERRORLEVEL 1 | Vogons: [ajacocks](https://www.vogons.org/viewtopic.php?p=1204736#p1204736), [Retromachines](https://www.vogons.org/viewtopic.php?p=1286710#p1286710), [NightSprinter](https://www.vogons.org/viewtopic.php?p=1315676#p1315676), [AncapDude](https://www.vogons.org/viewtopic.php?p=1378838#p1378838) | ✅ `sb16` behind a 3C509B: "Unknown PnP card [TCM5094] found. Aborting..." before, the SB16 configured after; `ess_ess0100_pnp` + `sbawe32_pnp`: the AWE32 configured after; `/C3` past the last card: ERRORLEVEL 0 before, 1 after | ✅ |
 | [33f2334](https://github.com/dafugg/unisound_decomp/commit/33f23346bf074d540b99470ecf758c8d77db25dd) | Options must match a whole option name; anything else prints "Unknown option" and exits with ERRORLEVEL 2. Before, `/DUMMY` disabled the card, `/NOTHING` ran `/NOPNP`, `/C10` meant card 1, and typos such as `/XAE` were ignored with ERRORLEVEL 0 | Vogons: [yeokm1](https://www.vogons.org/viewtopic.php?p=849250#p849250), [AndalusianRG](https://www.vogons.org/viewtopic.php?p=1004655#p1004655), [Cryptus](https://www.vogons.org/viewtopic.php?p=1245058#p1245058), [analog_programmer](https://www.vogons.org/viewtopic.php?p=1450935#p1450935) | ✅ `sb16_pnp`: 17 bad options rejected with ERRORLEVEL 2; every documented option gives the same output as before on seven cards | ✅ Compaq LTE 5000 |
+| [4c4cba6](https://github.com/dafugg/unisound_decomp/commit/4c4cba6e7e6be3254f2de9631ec56bf1c4fa9177) | ES688/ES1688 (`/NOPNP`): extended registers B1h (IRQ) and B2h (DMA) are written the way ESS's ESSCFG writes them: the register number and the value both go to 2xCh, each after waiting for 2xCh bit 7, and the value is the old one (read with C0h) with bits 3-2 set to the IRQ or DMA and bits 6 and 4 set, as the ESS data sheets ask. Before, the value went to 2xDh with no wait and without bit 6; ESS documents 2xCh for both bytes (ES1868 data sheet; the Linux es1688 and NetBSD ess drivers do the same), and a chip that doesn't treat 2xDh like 2xCh would get B2h's value in B1h, i.e. IRQ 2/9 | Vogons: [vico](https://www.vogons.org/viewtopic.php?p=1297347#p1297347), [p1348419](https://www.vogons.org/viewtopic.php?p=1348419#p1348419), [analog_programmer](https://www.vogons.org/viewtopic.php?p=1450935#p1450935) (possibly) | ❌ Only shown not to break anything: 86Box treats 2xDh like 2xCh (checked with PIO), so the old write works there too. With the fix, `ess_es688`, `ess_es1688`, `ess_es1788` and the Compaq Presario 7100 and 224x on-board chips read B1h/B2h back as set, DMAPLAY plays on the BLASTER IRQ and DMA, and an F2h interrupt arrives on it (`/LOG`, ESSINIT) | ❌ |
 | [a45a2be](https://github.com/dafugg/unisound_decomp/commit/a45a2be9d76e208577d71a52fce300bad20bc7ad) | Non-PnP SB16/AWE32 (`/CS`, `/NOPNP` and the fallback): `/R` only reads the settings back, `/D` leaves the card alone. Before, both reprogrammed the card | — | ✅ `sb16`, `sbawe32` with `BLASTER=A220 I7 D0 H6`: `/R` changed mixer 80h/81h from 02/22 to 04/41 before, leaves them after | ❌ |
 | [809361d](https://github.com/dafugg/unisound_decomp/commit/809361da10ed4e0f36cd52c0755ed70d689b4a19) | Crystal CS4237B-class cards (Orpheus, Turtle Beach, other CS4237B/CS4238B): the codec is put back in MODE 1 after the extended-register setup. WSS drivers that check I12, such as Tyrian's ("ERROR 142"), rejected it | Vogons: [vanfanel](https://www.vogons.org/viewtopic.php?p=1350792#p1350792) | ✅ `cs4236b` with its EEPROM changed to the CS4237B ID: I12 EAh before, 8Ah after; Tyrian WSS effects silent before, play after | ❌ |
 | [758bfd8](https://github.com/dafugg/unisound_decomp/commit/758bfd8abd3bd90d2b0afcd35efa9604734c10a9) | ES1868/ES1869: BLASTER `U` sets the MPU-401 IRQ, in card-level PnP register 28h (0 for U0, P0 and `/D`), shown as `MPU:330/I9`. Before, U had no effect | Vogons: [crvs](https://www.vogons.org/viewtopic.php?p=908134#p908134) | ✅ register writes only: a trace of UNISOUND's PnP port writes shows 28h = 09 for U9, 00 for U0, P0 and `/D`. 86Box doesn't implement 28h, so the effect needs real hardware | ❌ |
@@ -66,7 +69,6 @@ so its output can't be mistaken for JazeFox's release.
 | [0b8ded6](https://github.com/dafugg/unisound_decomp/commit/0b8ded635a05c977f601b5d1dfe9f5bbe566951e) | SB AWE32/AWE64 with 28 MB of RAM: reported as 28672K instead of 28671K | — | ✅ `sbawe32_pnp`, `sbawe64_gold`, `sbawe32` with 28672 KB | ❌ |
 | [ad1c498](https://github.com/dafugg/unisound_decomp/commit/ad1c498519ea68d5e863a457d714bde041b406bc) | AZT2320 and Yamaha OPL3-SAx: D = H keeps D and moves only the second DMA (it was forced to 1/3). The AZT2320's second DMA is limited to 0, 1 and 3 | — | ✅ `azt2320`: D3 H3 gave 1/3, now 3/1; D1 H5 gave 1/5, now 1/3 | ❌ |
 | [53c3685](https://github.com/dafugg/unisound_decomp/commit/53c368554d58b81cdc8add08ddd201405a56e2d7) | Aztech and Rockwell: SB Pro mixer 0Eh is left at 20h (mono), not 22h (stereo) | — | ✅ `azt2320`: mono playback L/R correlation 0.80 before, 1.00 after. 86Box has no Rockwell card | ❌ |
-| Not fixed | ES688/ES1688 (`/NOPNP`): extended registers B1h (IRQ) and B2h (DMA) are set by writing the register number to 2xCh and the value to 2xDh, without waiting for the write buffer. ESS documents 2xCh for both bytes (ES1868 data sheet; the Linux es1688 and NetBSD ess drivers do the same). A chip that doesn't treat 2xDh like 2xCh would get B2h's value in B1h, i.e. IRQ 2/9. Suggested fix: write both bytes to 2xCh, polling 2xCh bit 7 before each | Vogons: [vico](https://www.vogons.org/viewtopic.php?p=1297347#p1297347), [p1348419](https://www.vogons.org/viewtopic.php?p=1348419#p1348419), [analog_programmer](https://www.vogons.org/viewtopic.php?p=1450935#p1450935) (possibly) | ❌ 86Box treats 2xDh like 2xCh, so it can't show the problem | ❌ |
 | Not fixed | OPTi 82C931: F (388h by default) is written to the FM base register (LD1 62h), which the card's resource data gives as 16-byte aligned. In 86Box that moves AdLib to 390h; real cards evidently still answer at 388h, so this is probably harmless. Writing 380h, as the BIOS and the Windows driver do, would match the resource data | — | ❌ 86Box moves AdLib to 390h, which real cards apparently don't | ❌ |
 | Not fixed | OAK OTI601 / OPTi 82C928 (`/NOPNP`): the test that picks the MC5 (F91h) value, `(codec_st & 0xfd) == 2`, is never true, so 20h is always written. With a CS4231/CS4248 codec, MC5 bit 1 (CFIX, the fix for that codec's synchronisation delays) and bit 3 (SB-mode command FIFO) stay off. The intended test was probably `(codec_st & 0x80)`, I12 bit 7, which is 1 on those codecs. Found by cppcheck; the bits are from the 82C929 data sheet, since no 82C928 or OTI601 data sheet was found | — | ❌ 86Box doesn't emulate the 82C928 or the OTI601 | ❌ |
 
@@ -99,6 +101,21 @@ Before opening an issue here, check whether the problem also happens with the of
   first, then open an issue here that links to your post.
 - **If it happens only with the build from `main`**, open an issue here. Include the
   version line UNISOUND prints, your card, your BLASTER or ULTRASND setting and the command line.
+
+The `main` build's `/LOG` option adds lines starting with `LOG: ` that show what UNISOUND found
+and wrote, so redirect the output to a file and attach it, for example
+`UNISOUND /NOPNP /LOG > LOG.TXT`. They show the BLASTER variable as given and as parsed; on the PnP path, the read data
+port and each card's vendor ID, serial number and card type; and on the ESS `/NOPNP` path, for
+each base tried, 2xEh/2xAh before anything, the reset byte and how long it took, the bytes flushed
+and the E7h reply, then B1h/B2h before and after, the bytes written, mixer 40h before and after,
+and which IRQ an F2h interrupt arrived on (the test hooks IRQ 3, 5, 7, 9 and 10 for a moment and
+restores them).
+
+For an ES688/ES1688-family chip that doesn't work, `tools/dos/ESSINIT.C` sets the chip up the
+way ESSCFG does, from BLASTER's A, I and D, and prints each step: the enable reads if needed,
+reset, E7h, B1h/B2h before, written and read back, and an F2h interrupt test. `ESSINIT /OLD`
+writes B1h/B2h as v0.82a does, for comparison. It exits with 0 when the chip took the IRQ and DMA
+and interrupted on that IRQ.
 
 ## Building
 
@@ -145,7 +162,7 @@ Tools:
 - `funcmap.py` and `libsyms.py`: regenerate `data/*.json`.
 - `libmatch.py`, `disasm.py`, `cmpcom.py`, `omf.py`: helpers.
 - `cardtest.py`, `cardreport.py` and `dos/PIO.C`: the 86Box sound card tests described in `docs/TESTING.md`.
-- `dos/`: the DOS test programs used for the fixes (PNPDUMP, ESSREG, DMAPLAY, WSSPLAY, OPLDET, SBST, TRACEPNP) and two feature prototypes (ESSBYP, CSLAM); `pnpdecode.py` decodes TRACEPNP logs. See `docs/TESTING.md`.
+- `dos/`: the DOS test programs used for the fixes (PNPDUMP, ESSREG, DMAPLAY, WSSPLAY, OPLDET, SBST, TRACEPNP), ESSINIT (ES688/ES1688 setup test) and two feature prototypes (ESSBYP, CSLAM); `pnpdecode.py` decodes TRACEPNP logs. See `docs/TESTING.md`.
 
 The analysis tools need Python with capstone. They also need the original v0.82a UNISOUND.COM,
 which this repo does not include: put it in `orig/` or set `UNISOUND_COM`.

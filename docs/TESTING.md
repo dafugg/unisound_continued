@@ -15,6 +15,7 @@ on a Compaq LTE 5000 with its on-board ES1688; the README table marks them.
 | Original build | UNISOUND.COM v0.82a, sha256 `606f8fae…b370` |
 | Fixed build | branch `fixes` at `44bf539` (bugs 1-10) |
 | Thread fixes build | branch `thread-fixes` at `65240e2` (bugs 11-24); each fix was tested with the build of its own commit |
+| ESS init build | branch `ess-init`: `4c4cba6` (B1h/B2h through 2xCh), `fde5b60` (`/LOG`), `d63339e` (ESSINIT) |
 
 Platforms, both a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -163,6 +164,9 @@ in the VM; TRACEPNP with TASM and `TLINK /t`):
   used. **OPLDET** runs the AdLib timer test at a list of bases. **SBST** plays SB Pro stereo or
   mono and the captured audio is split into L and R.
 - Tyrian 2.1 (freeware) for the Crystal WSS case. It isn't in the repo.
+- **ESSINIT** sets up an ES688/ES1688-family chip as ESSCFG does and checks the IRQ with an F2h
+  interrupt; `/OLD` writes B1h/B2h the v0.82a way (see below). Build it with
+  `tcc -mt -lt -f- ESSINIT.C`.
 - Two prototypes for the suggested features, not used by any fix: **ESSBYP** finds and sets up
   an ES1868/ES1869 through the ESS bypass key alone, and **CSLAM** configures a CS423x whose PnP
   key is disabled through the Crystal key and SLAM writes.
@@ -174,6 +178,35 @@ Not reproducible in 86Box:
 - **4 BLASTER past the last field** and **5 argv[argc]**: they read or rewrite bytes of the PSP
   and change no output. A run with `BLASTER=A220 I5 D1 H5 P330 T6` gave the same results with
   both builds.
+
+## ES688/ES1688 B1h/B2h writes and `/LOG`
+
+v0.82a writes the B1h/B2h register number to 2xCh and the value to 2xDh, without waiting for the
+write buffer. 86Box's DSP treats 2xDh like 2xCh on everything older than the SB16 (`sb_write`
+masks bit 0 of the port), so the old writes work there and the fix can only be shown not to
+break anything. PIO confirms it on `ess_es1688`: C0h then B1h to 22Ch reads back D8h, and C0h to
+22Ch then B1h to 22Dh reads back D8h too. The fixed build writes both bytes to 2xCh after a busy
+poll, with the old value's bits 3-2 replaced and bits 6 and 4 set, as ESSCFG v1.9 does.
+
+`/NOPNP` from a cold boot, then ESSREG, DMAPLAY and ESSINIT. "F2h" is the IRQ that `/LOG`'s
+interrupt test saw.
+
+| Machine | BLASTER | B1h/B2h before, after | F2h | DMAPLAY | ESSINIT |
+|---|---|---|---|---|---|
+| nopnp `ess_es688`, `ess_es1688`, `ess_es1788` | `I7 D3` | 94/88 (80/80 on the ES1788), D8/DC | 7 | IRQ 7, DMA 3 | OK |
+| the same | `I5 D1`, `I10 D0`, `I9 D1` | | 5, 10, 9 | IRQ 5 DMA 1, IRQ 10 DMA 0, IRQ 9 DMA 1 | OK |
+| Presario 7100 `pl4600c`, ESS1688 enabled | `I7 D3` | 14/18 (set by the BIOS), 58/5C | 7 | IRQ 7, DMA 3 | OK |
+| Presario 7100 `pl4600c`, ESS1688 disabled | `I7 D3` | 80/80, D8/DC | 7 | IRQ 7, DMA 3 | `I5 D1`, first after boot: enable reads sent, OK, DMAPLAY IRQ 5 DMA 1 |
+| Presario 224x (ES1888, BIOS pin IRQ 5) | `I7 D3` | 94/88, D4/DC; "IRQ 7 ignored" as before | 5 | IRQ 5, DMA 3 | `I7`: interrupt on 5, FAILED (expected: the 7Fh pin wins); `I5 D1`: OK |
+
+`ESSINIT /OLD` (2xDh, 12h/16h + select) also works in 86Box, as expected. The Compaq BIOS itself
+writes 14h/18h, without bit 6, so bit 6 is not required for SB-compatible playback, at least in
+86Box. The PIC masks read the same with PIO before and after `/NOPNP /LOG` and ESSINIT.
+
+`/LOG` was also run on the PnP path (`sbawe32_pnp`, `ess_es1868`, `ymf719`, `sb16` behind a
+3C509B): it prints the read data port and each card's ID, serial and type. Where UNISOUND prints
+"No supported PnP card detected." without a newline before the SB16 fallback, the BLASTER line
+follows on the same line.
 
 ## Regression check
 
@@ -189,3 +222,6 @@ fixes intend: the unknown cards cs4235, ess_ess0100_pnp and ess_ess0102_pnp are 
 `DMA:1/4` and `MPU:330/In` (14, 15), and the ES688 name (16). After bug 24 the further changes
 were `/NOPNP` now finding the ess_es1788 and the ES1688 on gusextreme and gusvipermax (19; the ES1788 is also named, 20)
 and the `WSS-DMA` field on ymf718 and ymf719 (24). azt2320 on pnp doesn't boot (see above).
+
+The `ess-init` build (`fde5b60`, with `/LOG`) ran the full matrix against the `main` build: all 175
+runs gave identical output (azt2320 on pnp doesn't boot with either).
