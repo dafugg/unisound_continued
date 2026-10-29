@@ -495,6 +495,7 @@ void sb_dsp_write(int port, unsigned char val);
 unsigned char sb_dsp_read(int port);
 int ess_mixer_writable(int port, unsigned char reg, unsigned char mask);
 unsigned char ess_ext_read(int port, unsigned char reg);
+void ess_ext_set(int port, unsigned char reg, unsigned char sel);
 
 /* Entry point. Uppercases every argument and parses the options into the global settings:
    /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
@@ -4768,6 +4769,19 @@ unsigned char ess_ext_read(int port, unsigned char reg)
     return sb_dsp_read(port);
 }
 
+/* Set ESS extended register reg (0xB1 IRQ or 0xB2 DMA) of the DSP at port to select sel (bits
+   3-2) as ESS's ESSCFG does: read the register with 0xC0 and write (old & 0xF3) | 0x50 | sel,
+   with bit 4 (IRQ/DRQ enable) and bit 6 (extended-mode interrupt / DRQ enable) set, as the ESS
+   data sheets ask. The register number and the value both go to the command port 2xCh, each
+   once its busy bit is clear; extended mode (0xC6) must be on. */
+void ess_ext_set(int port, unsigned char reg, unsigned char sel)
+{
+    unsigned char old = ess_ext_read(port, reg);
+    unsigned char val = (old & 0xf3) | 0x50 | sel;
+    sb_dsp_write(port, reg);
+    sb_dsp_write(port, val);
+}
+
 /* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. For each base from 0x220 to 0x260 it
    sends the enable reads, resets the DSP and asks for the ESS identify command
    (0xE7 answering 0x68 and a version byte), then sets the IRQ and DMA through
@@ -4778,8 +4792,8 @@ unsigned char ess_ext_read(int port, unsigned char reg)
 int init_es688(void)
 {
     int port = 0x220;
-    int irqv = 0x16;
-    int dmav = 0x1a;
+    int irqv = 4;       /* B1h bits 3-2: IRQ 2/9, 5, 7, 10 = 0, 4, 8, 0xC */
+    int dmav = 8;       /* B2h bits 3-2: DMA 0, 1, 3 = 4, 8, 0xC */
     int mpu = 0;
     unsigned char ver = 0;
     for (port = 0x220; port <= 0x260; port += 0x10) {
@@ -4799,7 +4813,7 @@ int init_es688(void)
         outportb(port + 6, 0);
         delay(80);
         sb_dsp_flush(port);
-        outportb(port + 0xc, 0xc6);
+        sb_dsp_write(port, 0xc6);
         outportb(port + 4, 0x40);
         if (inportb(port + 5) != 0x18 || inportb(port + 5) < 0x68) {
             char *name = ver < 0x88 ? "688" : "1688";
@@ -4828,14 +4842,14 @@ int init_es688(void)
             case 10: irqv += 8; break;
             default: sb_irq = 5;
             }
-            idx45_write_slow(sb_port + 8, 0xb1, irqv);
+            ess_ext_set(sb_port, 0xb1, irqv);
             want = sb_irq;
             switch (sb_dma) {
             case 0: dmav -= 4; break;
             case 3: dmav += 4; break;
             default: sb_dma = 1;
             }
-            idx45_write_slow(sb_port + 8, 0xb2, dmav);
+            ess_ext_set(sb_port, 0xb2, dmav);
             /* Show what the chip took: read B1h and B2h back (bits 3-2 select IRQ 2/9, 5, 7, 10
                and DMA -, 0, 1, 3). */
             b = (ess_ext_read(sb_port, 0xb1) >> 2) & 3;
