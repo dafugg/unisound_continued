@@ -62,3 +62,9 @@ say in their comment which BLASTER letter or command-line option sets them. Some
 best guesses from the code and the UNISOUND manual (for example `CARD_RJA0`, `CARD_ADS7141`).
 Locals are named too, apart from loop counters and other conventional short names. Any change must keep `tools/build.sh`
 reporting IDENTICAL; a build takes about 6 seconds.
+
+## License
+
+The tools, build files and documentation are under the MIT license (see [LICENSE](LICENSE)).
+`src/UNISOUND.C` and `data/*.json` are not: they are reconstructed from, or derived from,
+UNISOUND by JazeFox, and remain his work.
