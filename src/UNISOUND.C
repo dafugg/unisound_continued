@@ -488,6 +488,10 @@ int init_opti930(void);
 int init_es688(void);
 void sb_dsp_flush(int port);
 int opt_2digits(char *s);
+void es_enable_reads(int port);
+int sb_dsp_reset(int port);
+void sb_dsp_write(int port, unsigned char val);
+unsigned char sb_dsp_read(int port);
 
 /* Entry point. Uppercases every argument and parses the options into the global settings:
    /Cn /CL /CS (card selection), /Vxnn (volumes and AWE effects), /F and /FS (wider isolation
@@ -4660,8 +4664,53 @@ void sb_dsp_flush(int port)
         inportb(port + 0xa);
 }
 
-/* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. Probes 0x220-0x260 for the ESS
-   identify command (0xE7 answering 0x68 and a version byte), then sets the IRQ and DMA through
+/* The read sequence that enables an ES1688-family chip at port (2x9 three times, 2xB, 2x9, 2xB,
+   2x9, 2x9, 2xB, 2x9, 2x0), as Linux snd_es1688_probe sends it: chips such as the ES1788 and
+   ES1888 start disabled until they see it. Reads only, so harmless for other cards. */
+void es_enable_reads(int port)
+{
+    static unsigned char seq[11] = { 9, 9, 9, 0xb, 9, 0xb, 9, 9, 0xb, 9, 0 };
+    int i;
+    for (i = 0; i < 11; i++)
+        inportb(port + seq[i]);
+}
+
+/* Reset the SB DSP at port (3 to the reset port, as ESS chips need) and wait up to 100 ms for
+   its 0xAA. Returns 1 if it answered. */
+int sb_dsp_reset(int port)
+{
+    int i;
+    outportb(port + 6, 3);
+    delay(1);
+    outportb(port + 6, 0);
+    for (i = 0; i < 100 && !(inportb(port + 0xe) & 0x80); i++)
+        delay(1);
+    return inportb(port + 0xa) == 0xaa;
+}
+
+/* Write a command or data byte to the SB DSP at port once its write buffer is free (bit 7 of
+   port + 0x0C clear), waiting up to 100 ms. */
+void sb_dsp_write(int port, unsigned char val)
+{
+    int i;
+    for (i = 0; i < 100 && (inportb(port + 0xc) & 0x80); i++)
+        delay(1);
+    outportb(port + 0xc, val);
+}
+
+/* Read a byte from the SB DSP at port once one is available (bit 7 of port + 0x0E set), waiting
+   up to 100 ms. */
+unsigned char sb_dsp_read(int port)
+{
+    int i;
+    for (i = 0; i < 100 && !(inportb(port + 0xe) & 0x80); i++)
+        delay(1);
+    return inportb(port + 0xa);
+}
+
+/* /NOPNP: detect and configure a non-PnP ESS ES688/ES1688. For each base from 0x220 to 0x260 it
+   sends the enable reads, resets the DSP and asks for the ESS identify command
+   (0xE7 answering 0x68 and a version byte), then sets the IRQ and DMA through
    extended registers 0xB1/0xB2. On the ES1688 it also sets the MPU-401 and gameport (register
    0x40), then sets up the SB Pro mixer.
    Returns 1 if a card was found, else 0. */
@@ -4673,12 +4722,13 @@ int init_es688(void)
     int mpu = 0;
     unsigned char ver = 0;
     for (port = 0x220; port <= 0x260; port += 0x10) {
+        es_enable_reads(port);
+        if (!sb_dsp_reset(port))
+            continue;
         sb_dsp_flush(port);
-        outportb(port + 0xc, 0xe7);
-        delay(10);
-        if (inportb(port + 0xa) == 0x68) {
-            delay(10);
-            ver = inportb(port + 0xa);
+        sb_dsp_write(port, 0xe7);
+        if (sb_dsp_read(port) == 0x68) {
+            ver = sb_dsp_read(port);
             break;
         }
     }
