@@ -11,6 +11,14 @@ on:
         description: Skip the clang-format check
         type: boolean
         default: false
+      ref:
+        description: Build this branch or commit with its own tools/build.sh (CI tools come from main)
+        type: string
+        default: ''
+      check_hash:
+        description: Fail unless the build matches UNISOUND.SHA256 (the original v0.82a)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -34,7 +42,11 @@ jobs:
     runs-on: ubuntu-24.04
     container: debian:trixie
     steps:
+      # The CI tools come from main when another branch is built (0.82a calls this workflow from
+      # its own commits, which don't have them).
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref && 'main' || '' }}
       - uses: ./.github/actions/setup-86box
       # Turbo C++ 3.00 from joncloud/dos-build-action; its files are byte-identical to the TC 3.0
       # the original UNISOUND.COM was matched with.
@@ -44,6 +56,13 @@ jobs:
           ref: 76b53e600a47530c209e5de8344cef9a94c43515
           path: dos-build-action
           sparse-checkout: programs/turbo-c++/3.00
+      # With inputs.ref, that branch's source is built by its own tools/build.sh; the FreeDOS VM
+      # still comes from this commit's tools.
+      - if: inputs.ref
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          path: target
       - name: Build
         env:
           QT_QPA_PLATFORM: offscreen
@@ -51,13 +70,15 @@ jobs:
           BOX86_ROMS: /opt/86box/roms
           BOXPY: /opt/86box/venv/bin/python
           BOX86MCP: unused
-          UNIVM: vm
+          UNIVM: ${{ github.workspace }}/vm
+          SRC: ${{ inputs.ref && 'target' || '.' }}
+          FLAG: ${{ !inputs.check_hash && '--no-hash' || '' }}
         run: |
           /opt/86box/venv/bin/python -I tools/freedos-vm.py /opt/86box/FD14LITE.img vm \
             "dos-build-action/programs/turbo-c++/3.00"
-          sh tools/build.sh --no-hash
-          sha256sum build/out/UNISOUND.COM
+          sh "$SRC/tools/build.sh" ${FLAG:+"$FLAG"}
+          sha256sum "$SRC/build/out/UNISOUND.COM"
       - uses: actions/upload-artifact@v7
         with:
           name: UNISOUND.COM
-          path: build/out/UNISOUND.COM
+          path: ${{ inputs.ref && 'target/' || '' }}build/out/UNISOUND.COM

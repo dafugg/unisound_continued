@@ -4,6 +4,7 @@
 
 [![FreeDOS Build](https://img.shields.io/github/actions/workflow/status/dafugg/unisound_continued/build.yml?branch=main&label=FreeDOS%20Build&style=flat-square)](https://github.com/dafugg/unisound_continued/actions/workflows/build.yml)
 [![FreeDOS Smoke Test](https://img.shields.io/github/actions/workflow/status/dafugg/unisound_continued/smoke.yml?branch=main&label=FreeDOS%20Smoke%20Test&style=flat-square)](https://github.com/dafugg/unisound_continued/actions/workflows/smoke.yml)
+[![0.82a Byte-identical](https://img.shields.io/github/actions/workflow/status/dafugg/unisound_continued/0.82a.yml?branch=main&label=0.82a%20Byte-identical&style=flat-square)](https://github.com/dafugg/unisound_continued/actions/workflows/0.82a.yml)
 
 C source for **UNISOUND.COM v0.82a**, the "Universal ISA PnP Sound Card Driver for DOS" by
 JazeFox, decompiled so that it rebuilds the released binary byte for byte. UNISOUND is released
