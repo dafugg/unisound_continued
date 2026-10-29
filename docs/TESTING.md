@@ -16,13 +16,18 @@ on a Compaq LTE 5000 with its on-board ES1688; the README table marks them.
 | Fixed build | branch `fixes` at `17868c1` (bugs 1-10) |
 | Thread fixes build | branch `thread-fixes` at `50253a7` (bugs 11-24); each fix was tested with the build of its own commit |
 | ESS init build | branch `ess-init`: `aee160e` (B1h/B2h through 2xCh), `05aa0de` (`/LOG`), `8afa28d` (ESSINIT), `d2f397b` (OPTi 82C924/925 probe), `4197954` (82C928 probe), `f91b9bc` (ESSINIT OPTi probe) |
+| Card ID build | branch `id-table`: `481f5c0` (CS4235), `b4c0948` (card ID table), `2046077` (AZT1021), `92b2a8c` (AZT1022), `d5f8c0a` (RTL3000), `01b22e6` (DXP3201, CDC1111) |
 
-Platforms, both a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
+Platforms, all a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
 - **pnp**: ASUS PVI-486SP3C (`486sp3c`), Award 4.51PG BIOS with the Plug and Play extension. The
   BIOS configures ISA PnP cards at boot.
 - **nopnp**: Olystar LIL1429 (`ali1429`), AMIBIOS 04/04/93 with no PnP support, plus an ISA IDE
   controller. PnP cards start unconfigured.
+- **pnp2**: FIC 486-VIP-IO2 (`486vipio2`, VIA VT82C496G), Award BIOS with Plug and Play, added
+  for the card ID work because the pnp board's BIOS hangs on the AZT2320 (see the emulation
+  notes). Its CMOS, saved after a first boot, is `tools/nvr/486vipio2.nvr`, so the BIOS doesn't
+  stop for F1.
 
 For the ES1887/ES1888 (bug 20) the same DOS disk, with an MS-DOS MBR, was booted on a Compaq
 Presario 224x (`presario2240`), whose on-board ES1888 the BIOS enables and puts on IRQ 5. 86Box
@@ -84,7 +89,8 @@ which shows the BIOS's configuration on pnp and an unconfigured card on nopnp.
   again, so it loops forever. Changing the two lengths to 1 in a copy of the ROM lets it boot.
   Seven other PnP BIOSes in 86Box (four Award, two Intel/AMI, one Acer) boot with the
   unmodified card and configure it. The cause is this BIOS, not UNISOUND, which configures
-  the card on nopnp.
+  the card on nopnp. The pnp2 board (486-VIP-IO2) boots with it, so the AZT2320 is tested
+  there, and CI's smoke test runs it on that board.
 - **ESS register 28h** (bug 15): 86Box's ES1868/ES1869 have no handler for the card-level
   vendor registers, so 28h ignores writes and reads back FFh, and `/R` shows the MPU IRQ as
   `I15`. 86Box always gives the MPU-401 the SB IRQ.
@@ -284,6 +290,35 @@ there: warning; with the second SB16 at 240h: nothing), and H5 on the ES1688 (wa
 startup adds `_stklen` (the library's 4K) to the end of the BSS and stops when that passes 64K.
 `_stklen` is now 900h, which leaves 280h of room; the stack in use is about 1K.
 
+## Card IDs: CS4235, AZT1022 and the card ID table
+
+v0.82a decides a card's type with a chain of tests on characters of its ID. The `id-table`
+branch replaces the chain with a table of ID patterns (`card_ids`, `?` matches any character,
+first match wins). Before any ID was added, a Python copy of the old chain and the table were
+compared on 1.9 million IDs (every product code 0000-FFFF for each vendor prefix in the table and
+for two that aren't, PNP and XYZ, plus the IDs collected from drivers, Linux and the web): the
+only difference was the CS4235 fix. With all of the IDs below added, the only differences are those IDs.
+
+New IDs were tested by giving one of 86Box's PnP ROMs the new card ID (and, where Linux names
+them, the new logical device IDs), with the serial identifier's checksum recomputed, in a copy
+of the ROM set used only for those runs. Commands per run as in the baseline; pnp2 and nopnp
+unless noted.
+
+| Change | Card and ROM | Before | After |
+|---|---|---|---|
+| CS4235 IDs ending in 25 | `cs4235` (CSCA725), unpatched; pnp and nopnp | "Unknown, skipped." | configured: WSS 534, OPL 388, IRQ 5, DMA 1/1, MPU 330/I9, JOY 200; `/R` reads the same |
+| CS4235 control | `cs4232`, `cs4236b` | | same output as before |
+| AZT1021 | `azt2320` ROM as AZT1021 | "Unknown, skipped." | configured exactly like the AZT1008 |
+| AZT1022, AZT2320 card | `azt2320` ROM as AZT1022 | set up as AD1816: WSS 530, DMA 1/1, AD1816 mixer, no SB Pro mode | set up exactly like the AZT1008: WSS 534, DMA 1/3, Aztech mixer, SB Pro mode |
+| AZT1022, AD1816A card | `ad1816` ROM as AZT1022, first logical device AZT1018 | AD1816 | the same output |
+| RTL3000 | none: 86Box has no ALS1x0 | | not tested; Avance's A4SOUND.INF gives it the same logical devices, in the same order, as ALS0120 |
+| DXP3201, CDC1111 | `guspnp` ROM as DXP3201 (first logical device DXP0010) and as CDC1111 (CDC1112) | "Unknown, skipped." | the same output as the unpatched `guspnp`, apart from the ID |
+| ESS1878, ESS1879 (not added) | `ess_es1869` ROM as ESS1878 (ESS0004, ESS1878) and ESS1879 (ESS0009, ESS1879), test build | "Unknown, skipped." | the same output as the unpatched `ess_es1869`; left out because the real layout is unknown |
+
+The unpatched `azt2320`, `ad1816`, `sb16_pnp`, `ess_es1868`, `guspnp` and `ess_es1869` gave the
+same output before and after each change. The GUS PnP ROMs' checksum byte doesn't match their
+serial identifier in the original files either; 86Box doesn't check it.
+
 ## Regression check
 
 The fixed build ran the full baseline matrix again. 171 of the 175 runs gave identical output.
@@ -309,3 +344,8 @@ The build with `/XSLAM`, `/XESSB`, the no-card lines and the longer `/LOG` (`29c
 matrix against `f2b97f7`: the only differences were the two new lines after "No PnP card
 detected." or "No card detected" (495 outputs on the runs where no card is found); everything
 else was byte-identical (azt2320 on pnp doesn't boot with either).
+
+The card ID table (`b4c0948`, with the CS4235 fix) ran every 86Box ISA sound card (83 entries,
+including "none") on pnp and nopnp, and again on pnp2, against the `main` build: the only
+difference was `cs4235`, now configured instead of skipped (azt2320 on pnp doesn't boot with
+either; on pnp2 it is configured by both).
