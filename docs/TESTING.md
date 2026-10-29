@@ -123,8 +123,9 @@ Each case ran with the original and the fixed build on both platforms.
 | 11 unknown PnP card first | sb16 + 3C509B (TCM5094), sb16 + PnP game port (BOX0002), cs4235 (CSCA725) + sb16 at 240, ess_ess0100_pnp + sbawe32_pnp | "Unknown PnP card [...] found. Aborting...", ERRORLEVEL 1; the SB16 and the AWE32 untouched | "Card #1 [...] Unknown, skipped.", then the SB16 fallback or the AWE32 configured |
 | 11 `/Cn` past the last card | the same setups, `/C3` | "No PnP card detected.", ERRORLEVEL 0 | "Card #3 not found.", ERRORLEVEL 1 |
 | 12 option names | sb16_pnp, `/DUMMY` | card disabled, ERRORLEVEL 0 | "Unknown option: /DUMMY", ERRORLEVEL 2 |
-| 12 option names | sb16_pnp, `/XAE`, `/XEM`, `/CN1`, `/C0`, `/C10`, `/FOO`, `/NOTHING`, `/HELLO`, `/RX`, `/V5`, `/VF5`, `/VF123`, `/XGC1`, `/XPW1`, `/QQQ`, `C2` | ignored or misread, ERRORLEVEL 0 | rejected, ERRORLEVEL 2 |
+| 12 option names | sb16_pnp, `/XAE`, `/XEM`, `/CN1`, `/C0`, `/C10`, `/FOO`, `/NOTHING`, `/HELLO`, `/RX`, `/VF123`, `/XGC1`, `/XPW1`, `/QQQ`, `C2` | ignored or misread, ERRORLEVEL 0 | rejected, ERRORLEVEL 2 |
 | 12 control | every documented option, on sb16_pnp, guspnp, azt2320, ess_es1868, ymf719, cs4236b and sbawe32_pnp | | same output as before |
+| 12 one-digit volumes | sb16_pnp, `/VL0 /V5 /VW99 /VT99 /VB7`; then `/VW100`, `/VL123`, `/VLX`, `/V`, `/VX` | `/VL0` and `/V5` ignored (v0.82a), or "Unknown option" (33f2334) | `VOL:5 LIN:0 TRB:99 BAS:7`; "Invalid value: /VW100 (0-99)" etc., ERRORLEVEL 2; `/VX` "Unknown option" |
 | 13 non-PnP SB16 `/R` | sb16, sbawe32, `BLASTER=A220 I7 D0 H6`, mixer 80h/81h read with PIO | `/R` sets them from 02/22 to 04/41 | unchanged, "Reading card current settings..." |
 | 13 non-PnP SB16 `/D` | the same | the card is configured | "Non-PnP card, can't be disabled. Card left unchanged." |
 | 14 ES186x second DMA | ess_es1868, ess_es1869, PnP 75h read with PNPDUMP | H4 after H3: 75h = 03, `DMA:1`; D1 H1: 75h = 00 | 75h = 04, `DMA:1/4`, in both cases |
