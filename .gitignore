@@ -1,0 +1,8 @@
+build/
+orig/
+toolchain/
+local.env
+__pycache__/
+*.COM
+*.OBJ
+*.MAP
