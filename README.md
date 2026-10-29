@@ -56,8 +56,9 @@ which this repo does not include: put it in `orig/` or set `UNISOUND_COM`.
 
 ## Status
 
-The source compiles without warnings and the output is byte-identical. Functions and globals are
-named after what they do. Globals that hold settings say in their comment which BLASTER letter or
-command-line option sets them. Local variables in the large `configure_pnp` routine still have
-partly generic names (`f12`, `r1a`...). Card families are still plain numbers in `type`.
-Any change must keep `tools/build.sh` reporting IDENTICAL.
+The source compiles without warnings and the output is byte-identical. Functions, globals, the
+card families (`CARD_*`) and the main routine's locals have names. Globals that hold settings
+say in their comment which BLASTER letter or command-line option sets them. Some names are
+best guesses from the code and the UNISOUND manual (for example `CARD_RJA0`, `CARD_ADS7141`).
+Smaller locals inside long functions are still terse. Any change must keep `tools/build.sh`
+reporting IDENTICAL; a build takes about 6 seconds.
