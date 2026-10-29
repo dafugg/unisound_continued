@@ -409,6 +409,7 @@ int opt_xxg = 0;  /* /XXGn: SB16 gain */
 int nopnp_mode = 0;  /* /NOPNP = 1; 2 = OPTi control chip found */
 char opt_log = 0;  /* /LOG: print diagnostic lines */
 char opt_slam = 0;  /* /XSLAM: Crystal chip set up through SLAM; 2 while SLAM is open */
+char opt_essb = 0;  /* /XESSB: ES1868/ES1869 found through the ESS bypass key alone */
 unsigned char opti_probe[5];  /* probe_opti_ctl's reads, for /LOG: F8Dh and F8Fh without the
                                  password, register 1, F8Dh again, register 3 */
 
@@ -419,6 +420,7 @@ int configure_pnp(int card, int list, int pass, unsigned port);
 void pnp_send_key(void);
 void pnp_write(unsigned char reg, unsigned char val);
 void slam_write(unsigned char reg, unsigned char val);
+int ess_bypass_id(void);
 unsigned char pnp_read(unsigned char reg);
 void pnp_write16(unsigned char reg, unsigned val);
 unsigned pnp_read16(unsigned char reg);
@@ -638,6 +640,8 @@ int main(int argc, char *argv[])
                 opt_log = 1;
             else if (strcmp(opt, "XSLAM") == 0)
                 opt_slam = 1;
+            else if (strcmp(opt, "XESSB") == 0)
+                opt_essb = 1;
             else if (strcmp(opt, "H") == 0 || strcmp(opt, "?") == 0) {
                 print_help();
                 return 0;
@@ -694,6 +698,7 @@ void print_help(void)
     puts("   /Xxxx  eXtended settings (See TXT section 5)");
     puts("   /NOPNP Detect & init some Non-PnP cards (See TXT end of section 3)");
     puts("   /XSLAM Crystal chip set up by the BIOS (no PnP): configure it through SLAM");
+    puts("   /XESSB ES1868/ES1869 not found by PnP (on-board): use the ESS bypass key, R=port");
     puts("   /LOG   Print diagnostic lines (UNISOUND /LOG > LOG.TXT)");
     puts("   /H /?  This help screen");
     puts("\nUNISOUND (w/o options) initializes 1st card found with default vols.");
@@ -802,6 +807,25 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         slam_write(6, 1);           /* CSN 1 */
         type = CARD_CRYSTAL;
         id = "SLAM";
+        csn = 1;
+        nsup = 1;
+        pass = 2;
+    }
+    if (opt_essb != 0) {
+        /* /XESSB: for an ES1868/ES1869 that isolation doesn't find (a chipset that doesn't pass
+           A79h on, an on-board chip), send the ESS bypass key with the control port (BLASTER R,
+           800h by default) and reach the PnP registers through it, with no CSN. */
+        parse_blaster();
+        send_alt_pnp_key();
+        pnp_addr_port = ess_ctl_port;
+        pnp_wdata_port = ess_ctl_port + 1;
+        pnp_rdata_port = ess_ctl_port + 1;
+        type = ess_bypass_id();
+        if (type == 0) {
+            printf("No ES1868/ES1869 answered the ESS bypass key at %X.\n", ess_ctl_port);
+            return 1;
+        }
+        id = type == CARD_ES1868 ? "ESS1868" : "ESS1869";
         csn = 1;
         nsup = 1;
         pass = 2;
@@ -1122,7 +1146,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             if (type == CARD_ES1869) {
                 reg_mpu = 0x64;
                 reg_opl = 0x62;
-                if (opt_xea < 1 && (ess_ctl_port == 0x800 || ess_ctl_port == 0))
+                if (opt_xea < 1 && opt_essb == 0 && (ess_ctl_port == 0x800 || ess_ctl_port == 0))
                     ess_ctl_port = 0x660;
             }
             if (type == CARD_GUSPNP) {
@@ -1152,7 +1176,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 cmi_variant = 1;
             if (type == CARD_ROCKWELL && cmi_variant == 8 && memcmp(name, "Zol", 3) == 0)
                 opt_xof = 8;
-            if (((type == CARD_ES1869 && opt_xea == 0) || (type == CARD_ES1868 && opt_xea == 1)) && !opt_read)
+            if (((type == CARD_ES1869 && opt_xea == 0) || (type == CARD_ES1868 && opt_xea == 1)) && !opt_read &&
+                opt_essb == 0)
                 use_alt_pnp_ports();
             pnp_write(3, lcsn);
             delay(1);
@@ -1418,7 +1443,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             if (ld.ld[6] >= 0) {
                 pnp_write(7, ld.ld[6]);
                 if (type == CARD_ES1868 || type == CARD_ES1869) {
-                    if ((type != CARD_ES1869 && opt_xea == 0) || (type == CARD_ES1869 && opt_xea == 1))
+                    if ((type != CARD_ES1869 && opt_xea == 0) || (type == CARD_ES1869 && opt_xea == 1) || opt_essb != 0)
                         pnp_write16(0x60, ess_ctl_port);
                     if (opt_read != 0)
                         ess_ctl_port = pnp_read16(0x60);
@@ -2091,6 +2116,8 @@ void pnp_write(unsigned char reg, unsigned char val)
         slam_write(reg, val);
         return;
     }
+    if (opt_essb != 0 && reg == 3)
+        return;                     /* /XESSB: no Wake[CSN], the chip may have no CSN */
     if (opt_read == 0 || reg < 0x30 || reg > 0x80) {
         outportb(pnp_addr_port, reg);
         outportb(pnp_wdata_port, val);
@@ -2612,7 +2639,7 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
     int ad_name = 0;
     int ews = 0;
     int maxi = 0;
-    if (opt_slam != 0)
+    if (opt_slam != 0 || opt_essb != 0)
         done = 1;                   /* no resource data: the fixed layout below */
     else {
         if (type == CARD_CRYSTAL) {
@@ -2820,6 +2847,14 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
         if (*name == 0)
             strcpy(name, "CS423x");
         ok = 1;
+    }
+    /* /XESSB: the ES1868/ES1869 layout, 0 control, 1 audio, 2 gameport, 3 MPU-401 or IDE */
+    if (opt_essb != 0) {
+        ld[6] = 0;
+        ld[0] = 1;
+        ld[3] = 2;
+        ld[5] = 3;
+        strcpy(name, "(ESS bypass key)");
     }
     pnp_write(3, 0);
     delay(1);
@@ -4329,6 +4364,34 @@ void send_alt_pnp_key(void)
         outportb(pnp_addr_port, ess_ctl_port & 0xff);
         outportb(pnp_addr_port, (ess_ctl_port >> 8) & 0xff);
     }
+}
+
+/* /XESSB: with the PnP registers reached through the ESS control port, put logical device 1
+   (audio) at sb_port and check the chip itself: the DSP answers E7h with 68h, and mixer register
+   40h, read four times after one index write (as Linux es18xx does), gives 18h, 68h or 69h, then
+   the control port's high and low bytes. Returns CARD_ES1868 or CARD_ES1869, or 0. */
+int ess_bypass_id(void)
+{
+    unsigned char m[4];
+    int e7;
+    int i;
+    pnp_write(7, 1);
+    pnp_write16(0x60, sb_port);
+    pnp_write(0x30, 1);
+    delay(2);
+    sb_dsp_reset(sb_port);
+    sb_dsp_write(sb_port, 0xe7);
+    e7 = sb_dsp_read(sb_port);
+    sb_dsp_read(sb_port);
+    outportb(sb_port + 4, 0x40);
+    for (i = 0; i < 4; i++)
+        m[i] = inportb(sb_port + 5);
+    dlog("bypass key at %X: E7h %02X, mixer 40h %02X %02X %02X %02X", ess_ctl_port, e7, m[0], m[1],
+         m[2], m[3]);
+    if (e7 != 0x68 || m[0] != 0x18 || (m[1] != 0x68 && m[1] != 0x69) || m[2] != ess_ctl_port >> 8 ||
+        m[3] != (ess_ctl_port & 0xff))
+        return 0;
+    return m[1] == 0x68 ? CARD_ES1868 : CARD_ES1869;
 }
 
 /* Upload the built-in CS4232 firmware patch (cs4232_fw_hdr and cs4232_fw) through the Crystal
