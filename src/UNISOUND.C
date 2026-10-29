@@ -508,13 +508,13 @@ int main(int argc, char *argv[])
     int scan_port = 0x20b;
     int card = 1;
     int list = 0;
-    int i = 0;
-    int j = 0;
+    int i = 0;    /* unread initial value */
+    int j = 0;    /* unread initial value */
 
     if (argc > 1) {
         for (i = 1; i < argc; i++) {
             char *opt = argv[i] + 1;    /* option name, without the / or - */
-            int n = 0;
+            int n = 0;    /* unread initial value */
             for (j = 1; j <= strlen(argv[i]); j++)
                 argv[i][j] = toupper(argv[i][j]);
             if (argv[i][0] != '/' && argv[i][0] != '-')
@@ -1316,7 +1316,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             }
             if (ld.ld[2] >= 0) {
                 unsigned char enable = 1;
-                unsigned char irq = sb_irq;
+                unsigned char irq = sb_irq;    /* unread initial value */
                 irq = mpu_irq < 0 ? sb_irq : mpu_irq;
                 pnp_write(7, ld.ld[2]);
                 if (type == CARD_ALS || type == CARD_ROCKWELL || type == CARD_ES968 || type == CARD_OPTI925 || type == CARD_OPTI924 ||
@@ -1694,7 +1694,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
     }
     if (type == CARD_ALS) {
-        int shown_3d = opt_x3d;
+        int shown_3d = opt_x3d;    /* unread initial value */
         if (als_variant == 1 || als_variant == 2) {
             sbpro_mixer_set();
             opt_x3d = -1;
@@ -2139,7 +2139,7 @@ unsigned char opti93x_read(unsigned port, unsigned char idx)
 int pnp_isolate(unsigned port, unsigned char *buf)
 {
     int i = 0;
-    int bit = 0;
+    int bit = 0;    /* unread initial value */
     int found = 0;
     int lfsr = 0x6a;
     if (port < 0x200 || !buf)
@@ -2200,8 +2200,8 @@ int parse_ultrasnd(void)
 {
     char *env = 0;
     char *dup = 0;
-    int dec = 0;
-    int hex = 0;
+    int dec = 0;    /* unread initial value */
+    int hex = 0;    /* unread initial value */
     char *tok;
     unsigned char field;
     env = getenv("ULTRASND");
@@ -2265,8 +2265,8 @@ int parse_blaster(void)
 {
     char *env = 0;
     char *dup = 0;
-    int dec = 0;
-    int hex = 0;
+    int dec = 0;    /* unread initial value */
+    int hex = 0;    /* unread initial value */
     char *tok;
     unsigned char field;
     char letter;
@@ -2656,8 +2656,8 @@ int pnp_read_res(unsigned char *buf, int n)
 {
     int i = 0;
     unsigned char ready = 0;
-    unsigned char data = 0;
-    unsigned char tries = 15;
+    unsigned char data = 0;    /* unread initial value */
+    unsigned char tries = 15;    /* unread initial value */
     while (i < n) {
         tries = 15;
         outportb(pnp_addr_port, 5);
@@ -2807,16 +2807,16 @@ int init_nonpnp_sb16(void)
     unsigned char irq = sb_irq;
     unsigned char dma = sb_dma;
     unsigned char hdma = sb_hdma;
-    unsigned mpu = 0;
-    int awe = awe_port;
+    unsigned mpu = 0;    /* unread initial value */
+    int awe = awe_port;    /* unread initial value */
     unsigned char i;
     unsigned char k;
     unsigned char maj = 0;
     unsigned char min = 0;
-    unsigned char resp = 0;
-    unsigned char irqr = 2;
-    unsigned char dmar = 2;
-    unsigned char mixreg = 0;
+    unsigned char resp = 0;    /* unread initial value */
+    unsigned char irqr = 2;    /* unread initial value */
+    unsigned char dmar = 2;    /* unread initial value */
+    unsigned char mixreg = 0;    /* unread initial value */
     char *name = "";
     unsigned char type = 0;
     int blaster = 0;
@@ -2861,7 +2861,7 @@ int init_nonpnp_sb16(void)
             irq = sb_irq;
             dma = sb_dma;
             hdma = sb_hdma;
-            awe = awe_port;
+            awe = awe_port;    /* unread value: set again before use */
         }
         printf("\n%s detected at: [%Xh] DSP: v%d.%02d\n", name, port, maj, min);
         if (opt_disable != 0 && opt_read == 0) {
@@ -3428,7 +3428,7 @@ int iw_list_roms(void)
     unsigned long addr = 0;
     char sig[5] = { 0 };
     char name[17] = { 0 };     /* 16 characters + NUL */
-    register int i = 0;
+    register int i = 0;    /* unread initial value */
     register int n = 0;
 
     outportb(sb_port + 0x103, 0x99);
@@ -4141,7 +4141,7 @@ void send_alt_pnp_key(void)
         0x66, 0xa1, 0xc2, 0xf1, 0xea, 0xe7, 0x71, 0xaa, 0xc7, 0x63, 0x33, 0x1b,
         0x0d, 0x96, 0xdb, 0x6d, 0xa4, 0x50, 0x28, 0x16, 0x9b, 0x4d, 0xb6, 0xc9,
         0xf4, 0x78, 0x3e, 0x8d, 0xd6, 0xfb, 0x7f, 0x3d };
-    int i = 0;
+    int i = 0;    /* unread initial value */
     int j = 0;
     for (j = 0; j < 4; j++) {
         for (i = 0; i < 32; i++)
@@ -4292,8 +4292,8 @@ void crystal_ext_init(int card)
     cs_xreg_write(0x0e, vol1);
     cs_xreg_write(0x0f, vol1);
     if ((card == 2 || card == 3) && opt_xos == 1) {
-        val = 0;
-        i = 0;
+        val = 0;    /* unread value: set again before use */
+        i = 0;    /* unread value: set again before use */
         if (line_vol > 0) {
             for (i = 2; i < 4; i++) {
                 outportb(wss_port, i);
@@ -4446,7 +4446,7 @@ void tea6330_write(unsigned char reg, unsigned char val)
 void i2c_write_byte(unsigned char v)
 {
     int i = 0;
-    unsigned char bit = 0;
+    unsigned char bit = 0;    /* unread initial value */
     for (i = 7; i >= 0; i--) {
         bit = ((v >> i) & 1) << 1;
         i2c_lines(1 | bit);
