@@ -6,9 +6,10 @@ and discussed in [its thread on the VOGONS forum](https://www.vogons.org/viewtop
 
     606f8faec686d56468bb53eecdf1e28e4d6cda7a8a2051c36b7bcec16c37b370  UNISOUND.COM
 
-The byte-identical source is the tag `v0.82a` and the branch `0.82a`. `main` adds bug fixes on
-top of it, so its build no longer has that hash. All of this applies only to version 0.82a;
-other releases will differ.
+The branch `0.82a` is the byte-identical source. It still gets naming and comment improvements,
+and every commit on it must keep the build identical. The tag `v0.82a` marks the first commit
+that rebuilt the binary byte for byte. `main` adds bug fixes on top, so its build no longer has
+that hash. All of this applies only to version 0.82a; other releases will differ.
 
 ## Decompilation status
 
