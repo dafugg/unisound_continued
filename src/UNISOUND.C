@@ -3772,8 +3772,6 @@ int emu_detect_dram(void)
         size += 0x20;
     }
     emu_dma_close();
-    if (size == 0x7000)
-        size--;
     if (size == 0x20)
         size = 0;
     return size;
