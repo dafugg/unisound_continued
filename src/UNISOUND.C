@@ -5437,8 +5437,10 @@ void opti928_write(unsigned port, unsigned char val)
    defaults, and on the 82C929 the MPU-401 (P, U), initializes the WSS codec and its volumes, and
    selects SB or WSS mode (/XWSS).
    The chip must close its gate after one access, as in probe_opti_ctl: F8Dh read again without
-   the password must not give the same value, or any device at F8Dh/F8Fh would pass. The 82C929
-   also reads its chip ID, 10b, in MC3 bits 1:0. Its settings follow the 82C929 data sheet
+   the password must not give the same value, or any device at F8Dh/F8Fh would pass. MC1 must
+   also keep a written bit: open bus can read differently each time (it did on a real machine), so
+   bit 7 is toggled, read back and restored, as Linux's mad16 does. The 82C929 also reads its chip
+   ID, 10b, in MC3 bits 1:0. Its settings follow the 82C929 data sheet
    (docs/datasheets/opti); OPTi's SNDINIT 2.50 leaves MC1-MC5 at 00 03 82 A2 AF in 86Box for SB
    Pro mode at 220, IRQ 5, DMA 1 with a CS4231, as this does.
    Returns 1 if the chip was found, else 0. */
@@ -5450,6 +5452,7 @@ int init_opti928(void)
     unsigned char cfg2 = 0;
     unsigned char codec_st = 0;
     unsigned char gate;
+    unsigned char mc1_back;
     unsigned char mc2 = 3;
     unsigned char mc5 = 0; /* 82C929: MC5 bits 7, 2 and 0, which must be 1 */
     int wss_irq = 7;       /* the WSS codec's IRQ, DMA and record DMA (ULTRA16; -1 = none) */
@@ -5466,6 +5469,13 @@ int init_opti928(void)
         id_f8f = opti928_read(0xf8f);
         dlog("82C92%d: F8D %02X, no pw %02X, F8F %02X", c929 ? 9 : 8, id_f8d, gate, id_f8f);
         found = id_f8d < 0xff && id_f8f < 0xff && gate != id_f8d && (!c929 || (id_f8f & 3) == 2);
+        if (found) {
+            opti928_write(0xf8d, id_f8d ^ 0x80);
+            mc1_back = opti928_read(0xf8d);
+            opti928_write(0xf8d, id_f8d);
+            dlog("82C92%d: MC1 %02X written, %02X read", c929 ? 9 : 8, id_f8d ^ 0x80, mc1_back);
+            found = mc1_back == (id_f8d ^ 0x80);
+        }
     }
     if (found) {
         puts(c929 ? "Card detected: OPTi 82C929" : "Card detected: OAK OTI601 / OPTi 82C928");
