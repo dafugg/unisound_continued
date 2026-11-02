@@ -3718,11 +3718,14 @@ int init_nonpnp_sb16(void)
         return 1;
     }
     if (old_port != 0 && opt_cs == 0) {
-        printf(
-            "\nSB DSP v%d.%02d at %Xh: a Creative SB or SB Pro has jumpers and needs no setup.\n",
-            old_maj, old_min, old_port);
+        printf("\nSB DSP v%d.%02d at %Xh: a Creative SB or SB Pro has jumpers and needs no setup.",
+               old_maj, old_min, old_port);
         if (nopnp_mode == 0) {
-            puts("ESS ES688/ES1688 or OPTi chip? Try /NOPNP.");
+            printf("\nESS ES688/ES1688 or OPTi chip? Try /NOPNP.");
+        }
+        /* configure_pnp ends the line itself after a plain PnP scan */
+        if (nopnp_mode != 0 || opt_log != 0) {
+            puts("");
         }
     }
     if (opt_cs == 1) {
