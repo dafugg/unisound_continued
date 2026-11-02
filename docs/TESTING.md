@@ -312,7 +312,8 @@ there: warning; with the second SB16 at 240h: nothing), and H5 on the ES1688 (wa
 `ess_es1869` and `adlib` on both platforms, each with `/LOG`, `/NOPNP /LOG` and `/R /LOG`, and for
 `/XSLAM` and `/XESSB`. The first build with the longer `/LOG` printed nothing at all: the tiny-model
 startup adds `_stklen` (the library's 4K) to the end of the BSS and stops when that passes 64K.
-`_stklen` is now 900h, which leaves 280h of room; the stack in use is about 1K.
+`_stklen` was set to 900h, which left 280h of room; the stack in use is about 1K. Since `ce71335`
+the build is a small-model EXE (see below) and `_stklen` is the library's 4K again.
 
 ## Card IDs: CS4235, AZT1022 and the card ID table
 
@@ -542,3 +543,25 @@ against the build before it (`83dd63c`): 824 of the 1008 outputs were identical,
 differ only by the new lines for an older DSP, on `UNISOUND`, `/R` and `/NOPNP` where no PnP card
 is set up and a DSP 1.xx-3.xx answers. The default commands don't include `/XESSB`, so `83dd63c`
 was tested on its own (above); `0863ab4` gave the same output as `main` on every entry.
+
+## Small-model build
+
+`ce71335` builds UNISOUND.COM as a small-model EXE (`TCC -ms`, C0S) instead of a tiny-model .COM;
+it keeps the name and DOS loads it by its `MZ` header. From the MAP: code 0C4CCh bytes (about 15K
+of its 64K segment free), data and BSS 30B0h bytes, so with the 4K stack about 48K of the data
+segment is left for the near heap. Compared with the tiny-model build of the same source
+(`0e046fa`, fix-4-rc3), on pnp2 and nopnp: every 86Box ISA sound card with the default commands (168 runs, 1008 commands), and
+`/LOG`, `/NOPNP /LOG`, `/XESSB /LOG`, `/XSLAM /LOG` and `/R /LOG` on `ess_es1688`, `ess_es1869`,
+`cs4236b`, `sb16_pnp`, `sbawe32_pnp` and `sbprov2` (60 commands). All output was identical,
+including the ES1688 interrupt test, whose handlers are hooked through `_CS`. The FreeDOS 1.4 build
+gives the same file as the MS-DOS VM, and it passes `tools/smoke.py`.
+
+On MS-DOS 3.30 and 5.00, booted from their own floppies with both builds on a 31.5 MB FAT16 disk,
+the small and tiny builds of `f84f1ea` ran `VER`, `CHKDSK` or `MEM`, `UNISOUND /LOG`, `/NOPNP /LOG`,
+`/XESSB /LOG` and `/R` on `sb16_pnp`, `ess_es1688`, `ess_es1869`, `cs4236b`, `sbprov2` and
+`sbawe32_pnp`, on pnp2 and nopnp: 48 boots, and all 144 outputs were identical between the builds.
+Apart from the "LOG: DOS 3.30"/"LOG: DOS 5.00" line, the output was the same on both versions.
+
+On real hardware, an AMD Am5x86-P75 (133 MHz) with a Sound Blaster Pro 2 under MS-DOS 6.22 ran
+the small build of fix-4-rc3: `UNISOUND /LOG` twice and `/NOPNP /LOG` printed what the tiny build
+prints for an SB Pro 2 in 86Box, with `E1 03 02` on the first run after a cold boot.
