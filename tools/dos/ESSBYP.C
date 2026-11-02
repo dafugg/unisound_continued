@@ -1,8 +1,12 @@
-/* ESSBYP CTL SB [1|4] [W]: prototype of ES1868/ES1869 detection and setup through the ESS bypass
+/* ESSBYP CTL SB [1|4] [S] [W]: prototype of ES1868/ES1869 detection and setup through the ESS bypass
    key only. Nothing is written to the PnP write-data port 0xA79 and the read-data port is never
    used, so it works where the LPC bridge does not forward 0xA79 or the chip is not on standard
    isolation.
-   1. (W only) Wait for Key through 0x279/0xA79, as UNISOUND does before the key.
+   0. (S only) Wait for Key, then the PnP initiation key, which moves the chip from Wait for Key
+      to Sleep. UNISOUND sends the initiation key before /XESSB, so with S the bypass key below
+      reaches the chip in Sleep, as it does from UNISOUND; the ES1869 data sheet says the chip
+      must be in Wait for Key.
+   1. (W only) Wait for Key through 0x279/0xA79, as ESSCFG does before the key.
    2. Bypass key to 0x279: the 32-byte ESS key, then CTL low and high byte. "1" sends one round
       (key ^ 0), "4" (default) four rounds with key ^ 0..3 as UNISOUND's send_alt_pnp_key does.
    3. Through the configuration device at CTL (index CTL+0, data CTL+1): dump LDN 0 and 1 regs,
@@ -16,6 +20,9 @@
 #include <string.h>
 #include <dos.h>
 
+static unsigned char initkey[32] = {
+    0x6a, 0xb5, 0xda, 0xed, 0xf6, 0xfb, 0x7d, 0xbe, 0xdf, 0x6f, 0x37, 0x1b, 0x0d, 0x86, 0xc3, 0x61,
+    0xb0, 0x58, 0x2c, 0x16, 0x8b, 0x45, 0xa2, 0xd1, 0xe8, 0x74, 0x3a, 0x9d, 0xce, 0xe7, 0x73, 0x39};
 static unsigned char key[32] = {0x66, 0xa1, 0xc2, 0xf1, 0xea, 0xe7, 0x71, 0xaa, 0xc7, 0x63, 0x33,
                                 0x1b, 0x0d, 0x96, 0xdb, 0x6d, 0xa4, 0x50, 0x28, 0x16, 0x9b, 0x4d,
                                 0xb6, 0xc9, 0xf4, 0x78, 0x3e, 0x8d, 0xd6, 0xfb, 0x7f, 0x3d};
@@ -61,10 +68,10 @@ void dsp_write(unsigned char v)
 
 int main(int argc, char *argv[])
 {
-    int i, j, rounds = 4, waitkey = 0, r, v1, v2;
+    int i, j, rounds = 4, waitkey = 0, sleep = 0, r, v1, v2;
     unsigned char m[4];
     if (argc < 3) {
-        puts("usage: ESSBYP CTL SB [1|4] [W]");
+        puts("usage: ESSBYP CTL SB [1|4] [S] [W]");
         return 1;
     }
     ctl = (unsigned)strtoul(argv[1], 0, 16);
@@ -76,17 +83,35 @@ int main(int argc, char *argv[])
         if (argv[i][0] == 'W' || argv[i][0] == 'w') {
             waitkey = 1;
         }
+        if (argv[i][0] == 'S' || argv[i][0] == 's') {
+            sleep = 1;
+        }
     }
     printf("before: ctl+0..7:");
     for (i = 0; i < 8; i++) {
         printf(" %02X", inportb(ctl + i));
     }
     puts("");
+    if (sleep) {
+        outportb(0x279, 2);
+        outportb(0xa79, 2);
+        delay(2);
+        outportb(0x279, 0);
+        outportb(0x279, 0);
+        for (i = 0; i < 32; i++) {
+            outportb(0x279, initkey[i]);
+        }
+        delay(1);
+        puts("initiation key sent: the chip is in Sleep");
+    }
     if (waitkey) {
         outportb(0x279, 2);
         outportb(0xa79, 2);
         delay(2);
     }
+    printf("bypass key sent from %s\n", waitkey ? "Wait for Key"
+                                        : sleep ? "Sleep"
+                                                : "the state after boot (Wait for Key)");
     for (j = 0; j < rounds; j++) {
         for (i = 0; i < 32; i++) {
             outportb(0x279, key[i] ^ j);
@@ -138,9 +163,14 @@ int main(int argc, char *argv[])
     }
     printf("DSP %X: reset=%02X E7=%02X %02X  mixer40h: %02X %02X %02X %02X\n", sb, r & 0xff,
            v1 & 0xff, v2 & 0xff, m[0], m[1], m[2], m[3]);
-    if (r == 0xaa && v1 == 0x68 && m[0] == 0x18 && (m[1] == 0x68 || m[1] == 0x69)) {
-        printf("RESULT: ES18%02X found, control port reported %X (asked %X)\n", m[1],
-               (m[2] << 8) | m[3], ctl);
+    if (r == 0xaa && v1 == 0x68 && m[0] == 0x18 && (m[1] == 0x68 || m[1] == 0x69) &&
+        ((m[2] << 8) | m[3]) != ctl) {
+        printf("RESULT: ES18%02X answers, but its control port is %X, not %X: the bypass key was\n"
+               "not taken (a PnP BIOS or a driver set the chip up)\n",
+               m[1], (m[2] << 8) | m[3], ctl);
+    } else if (r == 0xaa && v1 == 0x68 && m[0] == 0x18 && (m[1] == 0x68 || m[1] == 0x69)) {
+        printf("RESULT: ES18%02X found, control port reported %X (asked %X): the key was taken\n",
+               m[1], (m[2] << 8) | m[3], ctl);
     } else {
         printf("RESULT: no ES1868/ES1869 answered\n");
     }
