@@ -796,9 +796,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     unsigned char reg_irq2 = 0x72;
     unsigned char reg_dma = 0x74;
     unsigned char reg_dma2 = 0x75;
-    int ret = 0;  /* return value */
-    int hint = 0; /* SB device set up: check BLASTER at the end */
-    int h16 = -1; /* SB16-compatible card: the H DMA, else -1 */
+    int ret = 0;   /* return value */
+    int hint = 0;  /* SB device set up: check BLASTER at the end */
+    int h16 = -1;  /* SB16-compatible card: the H DMA, else -1 */
+    int tries = 1; /* /XESSB: control ports to try */
 
     print_banner();
     if (nopnp_mode != 0) {
@@ -857,16 +858,35 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     }
     if (opt_essb != 0) {
         /* /XESSB: for an ES1868/ES1869 that isolation doesn't find (a chipset that doesn't pass
-           A79h on, an on-board chip), send the ESS bypass key with the control port (BLASTER R,
-           800h by default) and reach the PnP registers through it, with no CSN. */
+           A79h on, an on-board chip), send the ESS bypass key with the control port and reach the
+           PnP registers through it, with no CSN. The port is BLASTER R; without it, 660h (the
+           port 0.82a's own ESS setup and ESSCFG use), then 800h. Before the second try the chip
+           is put back into Wait for Key through the first port, in case it took the key there. */
+        ess_ctl_port = 0;
         parse_blaster();
-        send_alt_pnp_key();
-        pnp_addr_port = ess_ctl_port;
-        pnp_wdata_port = ess_ctl_port + 1;
-        pnp_rdata_port = ess_ctl_port + 1;
-        type = ess_bypass_id();
+        if (ess_ctl_port == 0) {
+            ess_ctl_port = 0x660;
+            tries = 2;
+        }
+        for (;;) {
+            send_alt_pnp_key();
+            pnp_addr_port = ess_ctl_port;
+            pnp_wdata_port = ess_ctl_port + 1;
+            pnp_rdata_port = ess_ctl_port + 1;
+            type = ess_bypass_id();
+            if (type == 0) {
+                printf("No ES1868/ES1869 answered the ESS bypass key at %X.\n", ess_ctl_port);
+            }
+            if (type != 0 || --tries == 0) {
+                break;
+            }
+            pnp_write(2, 2);
+            pnp_addr_port = 0x279;
+            pnp_wdata_port = 0xa79;
+            ess_ctl_port = 0x800;
+            delay(2);
+        }
         if (type == 0) {
-            printf("No ES1868/ES1869 answered the ESS bypass key at %X.\n", ess_ctl_port);
             return 1;
         }
         id = type == CARD_ES1868 ? "ESS1868" : "ESS1869";
