@@ -3570,13 +3570,18 @@ void sb_print_dsp_ver(int port)
 
 /* Detect and configure a non-PnP (jumpered) SB16 or AWE32, used for /CS and as a fallback when
    no PnP card is found. Probes 0x220-0x280 for a DSP of version 4.xx that answers the 0xE3
-   copyright command. Then:
+   copyright command; each DSP is reset first, so a byte left in its read buffer isn't taken for
+   the version (an SB Pro 2 read AAh there after a cold boot). Then:
    - applies the IRQ and DMA (from BLASTER, or the defaults) through the SB16 mixer's interrupt/DMA setup registers,
    - sets the MPU-401 address,
    - reports the settings and any MPU-401 or EMU8000 found (and initializes the EMU8000),
    - programs the mixer.
    With /R it only reads back and prints the IRQ and DMA settings and the MPU-401 port; with /D
    it leaves the card alone, since a jumpered card can't be disabled.
+   If no SB16 answers but an older DSP (1.xx-3.xx) does, says that a Creative SB or SB Pro needs no
+   setup (except with /CS), and after a PnP scan that ES688/ES1688 and OPTi chips need /NOPNP. It
+   isn't counted as found: a Crystal or ESS chip set up by the BIOS answers the same way, so the
+   caller's hint for those still follows.
    Returns 1 if a card was found, else 0. */
 int init_nonpnp_sb16(void)
 {
@@ -3597,20 +3602,24 @@ int init_nonpnp_sb16(void)
     char *name = "";
     unsigned char type = 0;
     int blaster = 0;
+    int old_port = 0; /* first port with a DSP 1.xx-3.xx, and its version */
+    unsigned char old_maj = 0;
+    unsigned char old_min = 0;
     for (i = 0; i < 4; i++) {
-        outportb(port + 0xc, 0xe1);
-        delay(1);
-        for (k = 0; k < 20; k++) {
-            maj = inportb(port + 0xa);
-            delay(1);
-            if (maj <= 4) {
-                break;
-            }
+        maj = 0xff;
+        min = 0xff;
+        if (sb_dsp_reset(port)) {
+            sb_dsp_write(port, 0xe1);
+            maj = sb_dsp_read(port);
+            min = sb_dsp_read(port);
         }
-        dlog("SB16 %X: E1 %02X", port, maj);
+        dlog("SB16 %X: E1 %02X %02X", port, maj, min);
+        if (maj >= 1 && maj <= 3 && old_port == 0) {
+            old_port = port;
+            old_maj = maj;
+            old_min = min;
+        }
         if (maj == 4) {
-            min = inportb(port + 0xa);
-            delay(1);
             if (min < 0x20) {
                 outportb(port + 0xc, 0xe3);
                 delay(1);
@@ -3706,6 +3715,14 @@ int init_nonpnp_sb16(void)
         print_mixer("SB", -1, opt_xxg);
         print_blaster_hint(port, irqr, dmar & 0xf, (dmar >> 4) > 0 ? dmar >> 4 : dmar & 0xf);
         return 1;
+    }
+    if (old_port != 0 && opt_cs == 0) {
+        printf(
+            "\nSB DSP v%d.%02d at %Xh: a Creative SB or SB Pro has jumpers and needs no setup.\n",
+            old_maj, old_min, old_port);
+        if (nopnp_mode == 0) {
+            puts("ESS ES688/ES1688 or OPTi chip? Try /NOPNP.");
+        }
     }
     if (opt_cs == 1) {
         puts("No SB16 or AWE non-PNP card detected.");
