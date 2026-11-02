@@ -164,12 +164,12 @@ If you have one of these cards, please open a GitHub issue with:
 ### Options not yet tried on real hardware
 
 These find chips that PnP isolation misses. They work in 86Box, but no one has reported back from
-a real machine yet. Please include `UNISOUND /LOG` output with the option.
+a machine that needs them yet. Please include `UNISOUND /LOG` output with the option.
 
 | Option | For | Machines that need it |
 |---|---|---|
 | `/XSLAM` | Crystal CS423x chips whose PnP key is disabled, so they take no part in isolation | Laptops and boards whose BIOS or CWDINIT sets up the chip, where UNISOUND says "No PnP card detected." |
-| `/XESSB` | ES1868/ES1869 chips that isolation doesn't find | On-board ES1868/ES1869, or chipsets that don't pass A79h on to the chip; 86Box always passes it on, so only a real machine can test this |
+| `/XESSB` | ES1868/ES1869 chips that isolation doesn't find. Without BLASTER `R` it tries control port 660h, then 800h | On-board ES1868/ES1869, or chipsets that don't pass A79h on to the chip; 86Box always passes it on, so only a real machine can test this. On a real ES1898F card in a Gateway 2000 4DX2-66 the key was taken and the chip set up, but isolation finds that card too |
 
 ### Fixes for VOGONS reports, not yet tried on real hardware
 
@@ -247,7 +247,8 @@ itself as an ES1869.
   and how long it took, the bytes flushed and the E7h reply, then B1h/B2h before and after, the
   bytes written, mixer 40h before and after, and which IRQ an F2h interrupt arrived on (the test
   hooks IRQ 3, 5, 7, 9 and 10 for a moment and restores them);
-- with `/XESSB`: the E7h reply and the four mixer 40h reads after the bypass key.
+- with `/XESSB`: for each control port tried, the E7h reply and the four mixer 40h reads after the
+  bypass key.
 
 ### ESSINIT
 
