@@ -1,3 +1,6 @@
-REM Rebuild UNISOUND.COM with Turbo C++ 3.0 (byte-identical to v0.82a)
-TCC -c -mt -O -d UNISOUND.C
-TLINK /c /t C:\TC\LIB\C0T UNISOUND, UNISOUND, , C:\TC\LIB\CS
+REM Build UNISOUND.COM with Turbo C++ 3.0: a small-model EXE (MZ header) under the .COM name.
+REM DOS loads it by the header, so existing UNISOUND.COM command lines keep working.
+TCC -c -ms -O -d UNISOUND.C
+TLINK /c C:\TC\LIB\C0S UNISOUND, UNISOUND, , C:\TC\LIB\CS
+IF EXIST UNISOUND.COM DEL UNISOUND.COM
+REN UNISOUND.EXE UNISOUND.COM

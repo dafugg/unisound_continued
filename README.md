@@ -44,8 +44,8 @@ decompilation have been checked by hand against the original binary in Ghidra 12
 
 ## Supported sound cards
 
-One small .COM file sets up an ISA sound card in DOS: no Creative CTCM, Intel ICU or vendor
-drivers needed.
+One small program, UNISOUND.COM, sets up an ISA sound card in DOS: no Creative CTCM, Intel ICU or
+vendor drivers needed.
 
 ### PnP cards
 
@@ -262,8 +262,8 @@ runs v0.82a's `/NOPNP` OPTi probe and says whether v0.82a would take the machine
 
 ## Building
 
-You need **Turbo C++ 3.0** (TCC.EXE of February 1992, with its own C0T.OBJ and CS.LIB). Borland
-C++ 3.0 and 3.1 produce slightly different code. In DOS, with `C:\TC\BIN` on the PATH and
+You need **Turbo C++ 3.0** (TCC.EXE of February 1992, with its own C0S.OBJ, C0T.OBJ and CS.LIB).
+Borland C++ 3.0 and 3.1 produce slightly different code. In DOS, with `C:\TC\BIN` on the PATH and
 `C:\TC\BIN\TURBOC.CFG` containing `-IC:\TC\INCLUDE -LC:\TC\LIB`:
 
     copy src\UNISOUND.C .
@@ -271,8 +271,16 @@ C++ 3.0 and 3.1 produce slightly different code. In DOS, with `C:\TC\BIN` on the
 
 `BUILD.BAT` runs:
 
-    TCC -c -mt -O -d UNISOUND.C
-    TLINK /c /t C:\TC\LIB\C0T UNISOUND, UNISOUND, , C:\TC\LIB\CS
+    TCC -c -ms -O -d UNISOUND.C
+    TLINK /c C:\TC\LIB\C0S UNISOUND, UNISOUND, , C:\TC\LIB\CS
+    IF EXIST UNISOUND.COM DEL UNISOUND.COM
+    REN UNISOUND.EXE UNISOUND.COM
+
+On `main`, UNISOUND.COM is a small-model EXE: it starts with an `MZ` header, and DOS (2.0 and
+later, FreeDOS too) loads it as an EXE whatever its extension, so `UNISOUND` lines in AUTOEXEC.BAT
+keep working. The code and the data each get their own 64K segment. v0.82a was a tiny-model .COM,
+with code, data and stack in one 64K segment, and the fixes had filled it. The `0.82a` branch
+still builds the tiny-model .COM (`TCC -c -mt`, `TLINK /t` with C0T).
 
 `-d` (merge duplicate strings) matters: it lets the compiler cross-jump identical code tails and
 lays out the string pool exactly as in the original.

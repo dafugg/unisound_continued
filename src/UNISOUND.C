@@ -1,5 +1,6 @@
 /* UNISOUND v0.82a - Universal ISA PnP Sound Card Driver for DOS, (c) JazeFox 2019-2025.
-   Reconstructed source. Build: tcc -c -mt -O -d UNISOUND.C (Turbo C++ 3.0), link with C0T + CS.LIB. */
+   Reconstructed source. Build: tcc -c -ms -O -d UNISOUND.C (Turbo C++ 3.0), link with C0S + CS.LIB
+   (see BUILD.BAT). v0.82a was a tiny-model .COM; this is a small-model EXE named UNISOUND.COM. */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -365,12 +366,12 @@ char opt_log = 0;                   /* /LOG: print diagnostic lines */
 char opt_slam = 0;   /* /XSLAM: Crystal chip set up through SLAM; 2 while SLAM is open */
 char opt_essb = 0;   /* /XESSB: ES1868/ES1869 found through the ESS bypass key alone */
 int res_logged = -1; /* /LOG: resource data bytes printed so far; -1 = not printing them */
-/* Stack size for the tiny-model startup, which refuses to run (silently, with output redirected)
-   when the end of the BSS plus _stklen passes 64K. The library's 4K no longer fits. The stack
-   really gets whatever the heap leaves below 64K, about 1.9K; filling it with a pattern and
-   running every 86Box card with /LOG, /NOPNP, /R, /CL, /XSLAM, /XESSB and the AWE effects
-   showed at most 796 bytes used, interrupts included. */
-unsigned _stklen = 0x900;
+/* Stack size. The small-model startup gives the data segment the whole 64K when memory allows,
+   with the stack at the top, and refuses to run if the end of the BSS plus _stklen is past 64K.
+   Data and BSS take about 12K, so the library's default 4K fits easily. Filling the stack with
+   a pattern and running every 86Box card with /LOG, /NOPNP, /R, /CL, /XSLAM, /XESSB and the AWE
+   effects showed at most 796 bytes used, interrupts included. */
+unsigned _stklen = 0x1000;
 unsigned char opti_probe[5]; /* probe_opti_ctl's reads, for /LOG: F8Dh and F8Fh without the
                                  password, register 1, F8Dh again, register 3 */
 /* OPTi MAD16 MC register password: 0xE2 for the 82C928/OTI601, 0xE3 for the 82C929 */
@@ -6089,8 +6090,9 @@ void interrupt irq_isr10(void)
     irq_ack(10);
 }
 
-/* Point the vector of IRQ n at the handler at offset off. Taking a handler's far address
-   directly would need a segment fixup, which a .COM file can't have. */
+/* Point the vector of IRQ n at the handler at offset off in the code segment. This is v0.82a's
+   way: taking a handler's far address directly needs a segment fixup, which its tiny-model
+   .COM couldn't have. */
 void irq_hook(int n, unsigned off)
 {
     int v = n < 8 ? 8 + n : 0x70 + n - 8;
