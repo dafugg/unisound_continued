@@ -1,11 +1,12 @@
 # Testing in 86Box
 
-All results here come from emulation in 86Box. Eight fixes have since also been confirmed on
+All results here come from emulation in 86Box. Nine fixes have since also been confirmed on
 real hardware: the ULTRASND and BLASTER parsing, option names (bug 12), unknown PnP cards (bug
 11), the ESS DSP flush (bug 10) and the ES1688 enable reads (bug 19) on a Compaq LTE 5000 with its
 on-board ES1688 (all but the unknown PnP cards), and the OPTi 82C924/925 probe (d2f397b) and the
 ES688/ES1688 IRQ and DMA writes (aee160e) on analog_programmer's ES1688F with the fix-3 build,
-which also found the chip with the DSP flush and the enable reads. The table in
+which also found the chip with the DSP flush and the enable reads, and the non-PnP SB16 check's
+DSP reset (19a0fe1) on vintagefugg's Sound Blaster Pro 2. The table in
 [changes_since_official_082a.md](changes_since_official_082a.md) marks them.
 
 ## Environment
@@ -22,6 +23,7 @@ which also found the chip with the DSP flush and the enable reads. The table in
 | Card ID build | branch `id-table`: `481f5c0` (CS4235), `b4c0948` (card ID table), `2046077` (AZT1021), `92b2a8c` (AZT1022), `d5f8c0a` (RTL3000), `01b22e6` (DXP3201, CDC1111); branch `ess1878-1879`: `5318fc2` (ESS1878, ESS1879) |
 | 82C929 build | branch `opti929`: `ab0d87b` (OPTi 82C929 under `/NOPNP`), `b33b131` (82C928/82C929 WSS mode, `ULTRA16`) |
 | 82C930 build | branch `opti930`: `8b5e5f0` (82C930 WSS mode, `ULTRA16`, F40h, CD-ROM type) |
+| fix-4 build | branch `fix4-rc`: `0863ab4` (82C928/82C929 MC1 check), `83dd63c` (`/XESSB` 660h, then 800h), `19a0fe1` (non-PnP SB16 DSP reset, older DSPs) |
 
 Platforms, all a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -262,6 +264,15 @@ With the NE2000 at F80h it prints "UNISOUND /NOPNP would take this for an OPTi 8
 skip the ESS detection" and "(the fixed build wouldn't: F8Dh reads the same without the
 password)". Both then set up the chip (RESULT: OK), also with BLASTER unset (A220 I5 D1).
 
+The gate check still let one machine through: analog_programmer's `/NOPNP` log, taken while
+testing an ES1869F, showed `82C928: F8D 8D, no pw FA, F8F 8F` and "Card detected: OAK OTI601 /
+OPTi 82C928" with no OPTi chip in the machine. Open bus there read differently on each access,
+so F8Dh without the password differed from F8Dh with it. `0863ab4` also requires MC1 to keep a
+written bit: bit 7 is toggled with the password, read back and restored, as Linux's mad16 does.
+A test build that returned that machine's reads printed `MC1 0D written, FA read` and went on
+to the other probes; with a non-PnP `sb16` the fallback found it. On `acermagic_s20` and
+`mirosound_pcm10` (82C929) MC1 is written 80h and read 80h, and both are set up as before.
+
 ## `/XSLAM`, `/XESSB`, the BLASTER suggestion and `/LOG`
 
 **`/XSLAM`** was tested on `cs4236b` with the patched EEPROM that sets PnP Key Disable (RAM 4002h
@@ -284,6 +295,13 @@ DMAPLAY played on the BLASTER IRQ and DMA; the control port still answered after
 it prints "No ES1868/ES1869 answered the ESS bypass key at 800." with ERRORLEVEL 1. A first
 version also wrote and activated logical device 0 (the control port); in 86Box that moved the
 port away, so the `/LOG` readback read FFh, and `bdc7684` leaves it as the key set it.
+
+`83dd63c` makes `/XESSB` without `R` try 660h first, then 800h. On `ess_es1868` and `ess_es1869`,
+both platforms, it finds the chip at 660h (mixer 40h `18 6x 06 60`), at 800h with `R800` and at
+660h with `A240 I7 D3 R660`; `sb16` prints one "No ES1868/ES1869 answered" line per port and
+exits with ERRORLEVEL 1. 86Box takes the key at any port, so the fallback was tested with two
+test builds that made the 660h try fail, one by not sending the key and one by rejecting the
+chip after it took the key: both found the chip at 800h on both platforms.
 
 **The BLASTER suggestion** was checked on `sb16pnp+3c509b`, `sb16`, `ess_es1688` and
 `awe32pnp+sb16-240+3c509b` on both platforms, with no BLASTER, a matching one, `A220 I7 D3 P300
@@ -461,6 +479,25 @@ with that check removed. On pnp2 and nopnp (the same on both):
 The 82C929's WSS has no IRQ 5: `acermagic_s20` with `ULTRA16=530,1,5,1` gives `WSS:530 IRQ:7
 DMA:1` and the AUTOEXEC.BAT line, and WSSPLAY plays on IRQ 7, DMA 1.
 
+## The non-PnP SB16 check and older DSPs
+
+On a real Sound Blaster Pro 2, fix-3's non-PnP SB16 check logged `SB16 220: E1 AA` on the first
+run after a cold boot and `E1 03` on the second. The check sent E1h and read 22Ah without a reset
+and without waiting for the data-available bit, so a byte left in the read buffer (AAh, the reset
+reply) was taken for the version. With `19a0fe1` the check resets each DSP first; on the SB Pro 2
+the first run after a cold boot logs `220: reset AA, 1 ms` and `SB16 220: E1 03 02`. 86Box's DSP
+leaves no byte behind after boot, so it gives `E1 03` either way.
+
+fix-3 also suggested `/XSLAM` and `/XESSB` whenever no SB16 answered, which sent the SB Pro 2's
+owner to `/XSLAM`. With no BLASTER, `UNISOUND` on `sb1.5`, `sb2.0`, `sbprov1` and `sbprov2` now
+reads DSP 2.00, 2.01, 3.00 and 3.02 and prints "SB DSP v3.02 at 220h: a Creative SB or SB Pro has
+jumpers and needs no setup." and "ESS ES688/ES1688 or OPTi chip? Try /NOPNP." before the hint;
+with `/NOPNP` only the first line. `ess_es1688` gets the same lines and `/NOPNP` sets it up;
+`sb16` and `sbawe32` are set up as before; `/CS` still prints "No SB16 or AWE non-PNP card
+detected." A first version counted the old DSP as found and dropped the hint, but a PnP card
+already set up (CS4236B, ES1869, YMF719) also answers at 220h under `/NOPNP`, and so would a
+Crystal or ESS chip set up by the BIOS, so the hint and the exit code stay.
+
 ## Regression check
 
 The fixed build ran the full baseline matrix again. 171 of the 175 runs gave identical output.
@@ -499,3 +536,9 @@ the only differences were `/NOPNP` on `acermagic_s20` and `mirosound_pcm10`, now
 The WSS build (`b33b131`) ran them again: every run gave the same output as `ab0d87b`.
 
 The 82C930 build (`8b5e5f0`) ran them again: every run gave the same output as `b33b131`.
+
+The fix-4 build with the SB16 check (`19a0fe1`) ran the same 84 entries on pnp2 and nopnp
+against the build before it (`83dd63c`): 824 of the 1008 outputs were identical, and the other 184
+differ only by the new lines for an older DSP, on `UNISOUND`, `/R` and `/NOPNP` where no PnP card
+is set up and a DSP 1.xx-3.xx answers. The default commands don't include `/XESSB`, so `83dd63c`
+was tested on its own (above); `0863ab4` gave the same output as `main` on every entry.
