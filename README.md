@@ -57,8 +57,10 @@ vendor drivers needed.
   and ES1898. The ES1898 is identified as an ES1869 because it effectively is one: a minor,
   pin-compatible upgrade of the ES1869F ([dosdays](https://dosdays.co.uk/topics/Manufacturers/ess.php)).
   An ES1898F card with ID `ESS0003` works through both the PnP scan and `/XESSB`. Also ES968
-  with an ES688 or ES1688. On the Maxi Sound 64 (ES1868 + SAM9407 versions only), the SAM9407
-  firmware is uploaded, but the firmware itself isn't included.
+  with an ES688 or ES1688, and ES688/ES1688 PnP cards with ID `ESS0100` or `ESS0102`
+  (experimental, see [Wanted](#wanted-testers-and-pnp-dumps)). On the Maxi Sound 64 (ES1868 +
+  SAM9407 versions only), the SAM9407 firmware is uploaded, but the firmware itself isn't
+  included.
 - **Yamaha:** YMF715, YMF718 and YMF719 (OPL3-SAx, OPL3-SA3, AudioTrix XG-3D). ISA PnP models
   only: Yamaha chips built into laptops are usually configured through the BIOS and aren't
   supported.
@@ -152,6 +154,7 @@ If you have one of these cards, please open a GitHub issue with:
 | DXP3201 | MED3210 (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
 | CDC1111 | Dynasonic Pro (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
 | ESS1878, ESS1879 | ESS ES1878 / ES1879 | ES1869 | ESS's data sheets give them the ES1869's layout and bypass key; 86Box ES1869 with each chip's internal PnP ROM from its data sheet |
+| ESS0100, ESS0102 | ESS ES688/ES1688 PnP cards | ES968 layout (SB and FM on LD0), MPU-401 on LD1 with its own IRQ, game port LD2, IDE LD3 | only 86Box's `ess_ess0100_pnp` and `ess_ess0102_pnp`, whose PnP data is a reconstruction, not a dump from a real card. A `UNISOUND /LOG` from a real card, and whether sound, FM and MIDI work, would settle it |
 | none (`/NOPNP`) | OPTi 82C929 (MAD16 Pro): Boca Research Sound Expression 4294 and SE1440, miro PCM10, Acer Magic S20 | OPTi 82C929, SB Pro or WSS (`/XWSS`, `ULTRA16`) | its data sheet; 86Box `acermagic_s20` and `mirosound_pcm10`, where it leaves the same registers as OPTi's own SNDINIT |
 
 ### Held back: need a PnP dump first

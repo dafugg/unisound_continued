@@ -24,7 +24,7 @@ DSP reset (19a0fe1) on vintagefugg's Sound Blaster Pro 2, and the 82C928/82C929 
 | Card ID build | branch `id-table`: `481f5c0` (CS4235), `b4c0948` (card ID table), `2046077` (AZT1021), `92b2a8c` (AZT1022), `d5f8c0a` (RTL3000), `01b22e6` (DXP3201, CDC1111); branch `ess1878-1879`: `5318fc2` (ESS1878, ESS1879) |
 | 82C929 build | branch `opti929`: `ab0d87b` (OPTi 82C929 under `/NOPNP`), `b33b131` (82C928/82C929 WSS mode, `ULTRA16`) |
 | 82C930 build | branch `opti930`: `8b5e5f0` (82C930 WSS mode, `ULTRA16`, F40h, CD-ROM type) |
-| fix-4 build | branch `fix4-rc`: `0863ab4` (82C928/82C929 MC1 check), `83dd63c` (`/XESSB` 660h, then 800h), `19a0fe1` (non-PnP SB16 DSP reset, older DSPs) |
+| fix-4 build | branch `fix4-rc`: `0863ab4` (82C928/82C929 MC1 check), `83dd63c` (`/XESSB` 660h, then 800h), `19a0fe1` (non-PnP SB16 DSP reset, older DSPs), `9653b44` (no blank line before the hint), `a07c3a6` (merge of `ess0100-0102`: `2503c9a`, ESS0100 and ESS0102) |
 
 Platforms, all a 486DX2-66 with 16 MB of RAM, booting MS-DOS 6.22:
 
@@ -345,6 +345,7 @@ unless noted.
 | RTL3000 | none: 86Box has no ALS1x0 | | not tested; Avance's A4SOUND.INF gives it the same logical devices, in the same order, as ALS0120 |
 | DXP3201, CDC1111 | `guspnp` ROM as DXP3201 (first logical device DXP0010) and as CDC1111 (CDC1112) | "Unknown, skipped." | the same output as the unpatched `guspnp`, apart from the ID |
 | ESS1878, ESS1879 | `ess_es1869` with the ES1878's or ES1879's internal PnP ROM, assembled from its data sheet (see below) | "Unknown, skipped." | set up exactly like the unpatched `ess_es1869`; `/R` shows no `IDE:` field, since neither ROM has an IDE device |
+| ESS0100, ESS0102 (experimental) | `ess_ess0100_pnp`, `ess_ess0102_pnp` (86Box's PnP data for them is a reconstruction); 486SP3C and ALi 1429 | "Unknown, skipped." | configured: ADD 220, OPL 388, IRQ 5, DMA 1, MPU 330/I9 (LD1), JOY 201; `/R` reads the same, with `IDE:0/I0`. After the merge into `fix4-rc`, `ess_es1688`, `ess_es1869` and `sb16_pnp` print the same as fix-4-rc5. Not yet tried on a real card |
 
 The unpatched `azt2320`, `ad1816`, `sb16_pnp`, `ess_es1868`, `guspnp` and `ess_es1869` gave the
 same output before and after each change. The GUS PnP ROMs' checksum byte doesn't match their
