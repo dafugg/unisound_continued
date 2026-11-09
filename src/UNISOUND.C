@@ -3605,10 +3605,11 @@ void sb_print_dsp_ver(int port)
    - programs the mixer.
    With /R it only reads back and prints the IRQ and DMA settings and the MPU-401 port; with /D
    it leaves the card alone, since a jumpered card can't be disabled.
-   If no SB16 answers but an older DSP (1.xx-3.xx) does, says that a Creative SB or SB Pro needs no
-   setup (except with /CS), and after a PnP scan that ES688/ES1688 and OPTi chips need /NOPNP. It
-   isn't counted as found: a Crystal or ESS chip set up by the BIOS answers the same way, so the
-   caller's hint for those still follows.
+   If no SB16 answers but an older DSP (1.xx-3.xx) does, says that an SB-compatible card there is
+   already active and that a jumpered Creative SB or SB Pro needs no setup (except with /CS), and
+   after a PnP scan that ES688/ES1688 and OPTi chips need /NOPNP. It isn't counted as found: a
+   card set up by the BIOS, a driver or an earlier run answers the same way, so the caller's hint
+   still follows.
    Returns 1 if a card was found, else 0. */
 int init_nonpnp_sb16(void)
 {
@@ -3744,7 +3745,8 @@ int init_nonpnp_sb16(void)
         return 1;
     }
     if (old_port != 0 && opt_cs == 0) {
-        printf("\nSB DSP v%d.%02d at %Xh: a Creative SB or SB Pro has jumpers and needs no setup.",
+        printf("\nSB-compatible DSP v%d.%02d at %Xh: a card there is already active.\n"
+               "A jumpered Creative SB or SB Pro needs no setup; other cards may need options.",
                old_maj, old_min, old_port);
         if (nopnp_mode == 0) {
             printf("\nESS ES688/ES1688 or OPTi chip? Try /NOPNP.");

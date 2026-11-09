@@ -498,9 +498,13 @@ leaves no byte behind after boot, so it gives `E1 03` either way.
 
 fix-3 also suggested `/XSLAM` and `/XESSB` whenever no SB16 answered, which sent the SB Pro 2's
 owner to `/XSLAM`. With no BLASTER, `UNISOUND` on `sb1.5`, `sb2.0`, `sbprov1` and `sbprov2` now
-reads DSP 2.00, 2.01, 3.00 and 3.02 and prints "SB DSP v3.02 at 220h: a Creative SB or SB Pro has
-jumpers and needs no setup." and "ESS ES688/ES1688 or OPTi chip? Try /NOPNP." before the hint;
-with `/NOPNP` only the first line. `ess_es1688` gets the same lines and `/NOPNP` sets it up;
+reads DSP 2.00, 2.01, 3.00 and 3.02 and prints, for example, "SB-compatible DSP v3.02 at 220h: a
+card there is already active.", "A jumpered Creative SB or SB Pro needs no setup; other cards may
+need options." and "ESS ES688/ES1688 or OPTi chip? Try /NOPNP." before the hint; with `/NOPNP`
+only the first two lines. The version is the one the DSP returned. (Up to fix-4-rc6 the first
+line read "SB DSP v3.02 at 220h: a Creative SB or SB Pro has jumpers and needs no setup.", which
+was misleading for an ES1869 that an earlier run had set up and that answered v3.01 under
+`/NOPNP`: an answering DSP only shows that something SB-compatible is active there.) `ess_es1688` gets the same lines and `/NOPNP` sets it up;
 `sb16` and `sbawe32` are set up as before; `/CS` still prints "No SB16 or AWE non-PNP card
 detected." A first version counted the old DSP as found and dropped the hint, but a PnP card
 already set up (CS4236B, ES1869, YMF719) also answers at 220h under `/NOPNP`, and so would a
