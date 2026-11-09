@@ -3745,9 +3745,11 @@ int init_nonpnp_sb16(void)
         return 1;
     }
     if (old_port != 0 && opt_cs == 0) {
-        printf("\nSB-compatible DSP v%d.%02d at %Xh: a card there is already active.\n"
+        /* /NOPNP starts on a new line; otherwise end "No PnP card detected." or leave a blank line
+           after the /LOG lines */
+        printf("%sSB-compatible DSP v%d.%02d at %Xh: a card there is already active.\n"
                "A jumpered Creative SB or SB Pro needs no setup; other cards may need options.",
-               old_maj, old_min, old_port);
+               nopnp_mode == 1 ? "" : "\n", old_maj, old_min, old_port);
         if (nopnp_mode == 0) {
             printf("\nESS ES688/ES1688 or OPTi chip? Try /NOPNP.");
         }
