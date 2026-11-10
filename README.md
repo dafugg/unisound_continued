@@ -167,12 +167,21 @@ If you have one of these cards, please open a GitHub issue with:
 | BVJ0440 | Turtle Beach Multisound Pinnacle (rev F?) | Pinnacle | Where the joystick and IDE devices are; UNISOUND's Pinnacle code expects the joystick on logical device 2, Linux's non-PnP setup has IDE there |
 | ENS3081 | Ensoniq Soundscape OPUS (Gateway 2000 OEM; fix-4 skips it as unknown) | Soundscape PnP: one logical device, ENS0000, with the gate array at its port + 4, the WSS codec at port + 8, a WSS/SB IRQ, a MIDI IRQ and one DMA (Linux `snd-sscape`) | Its resource data, which `UNISOUND /LOG` prints for a skipped card from fix-4-rc11 on; a real card is being tested |
 
-The planned scope for the Soundscape OPUS is PnP setup and WSS. Its Sound Blaster emulation runs on
-the card's firmware and plays FM music on the wavetable synth, which players report sounds poor,
-and its MIDI synth needs that firmware too. Ensoniq's `SSINIT /I` can load it after UNISOUND
-(`SBEnable=false` in SNDSCAPE.INI for MIDI without SB emulation). For Sound Blaster games the
-card is better paired with a real SB-compatible card. SB emulation in UNISOUND itself could be
-looked at later if someone needs it.
+The Soundscape OPUS stays unsupported for now. What could be added later, in this order:
+
+1. PnP setup: assign ENS0000's port, IRQs and DMA, as a PnP BIOS does, so that Ensoniq's
+   `SSINIT /I` works on machines without one.
+2. WSS without Ensoniq's drivers: turn on the OPUS chip's AD1845 codec and program the gate
+   array's IRQ and DMA routing, as Linux does before its firmware load.
+3. MIDI and the synth: load Ensoniq's firmware (SCOPE.COD and SNDSCAPE.CO0-CO4, from the
+   directory in `SET SNDSCAPE=`), as UNISOUND already does with SAM9407.BIN on the Maxi Sound 64.
+   The files are Ensoniq's and would not be included.
+
+Sound Blaster emulation is left out: it runs on the card's firmware and plays FM music on the
+wavetable synth, which players report sounds poor, and it might need a TSR. SSINIT leaves 720
+bytes resident (MEM /C), and what that part does isn't known yet; UNISOUND isn't a TSR. For Sound
+Blaster games the card is better paired with a real SB-compatible card. Linux's driver needs
+nothing resident for 1-3: it loads the firmware and then uses the card's MPU-401 port directly.
 
 ### Options not yet tried on real hardware
 
