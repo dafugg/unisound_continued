@@ -109,8 +109,10 @@ use IRQ 7 instead). A missing or invalid field falls back to OPTi's default, 530
 IRQ 7, and if the port, DMA or IRQ field was missing or invalid UNISOUND prints the
 `SET ULTRA16=` line to add to AUTOEXEC.BAT (`SET ULTRA16=530,0,7,0` without the variable). The
 record DMA is optional. `SET WSS`, which some OPTi 82C930/931 drivers are said to read, is not
-used: no format for it was found. On the 82C928 and 82C929 WSS mode turns the SB part's IRQ off;
-the 82C930 keeps its SB part enabled with its own IRQ and DMA, as SNDINIT leaves it.
+used: no format for it was found. On the 82C928 and 82C929 WSS mode turns the SB part's IRQ off.
+On a real 82C930 the SB part keeps answering, but once anything sets up WSS (`/XWSS`, or a
+program's own WSS driver, which also works after a plain `/NOPNP`), it plays on the WSS DMA with
+no IRQ, so SB programs fail until `UNISOUND /NOPNP` runs again.
 
 On GUS PnP (InterWave) cards, UNISOUND reads `ULTRASND=port,dma,dma2,irq,irq2` instead of
 BLASTER. The GF1 goes at the port (220, 230, 240, 250 or 260 hex), its second range at port +
@@ -155,7 +157,7 @@ If you have one of these cards, please open a GitHub issue with:
 | CDC1111 | Dynasonic Pro (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
 | ESS1878, ESS1879 | ESS ES1878 / ES1879 | ES1869 | ESS's data sheets give them the ES1869's layout and bypass key; 86Box ES1869 with each chip's internal PnP ROM from its data sheet |
 | ESS0100, ESS0102 | ESS ES688/ES1688 PnP cards | ES968 layout (SB and FM on LD0), MPU-401 on LD1 with its own IRQ, game port LD2, IDE LD3 | only 86Box's `ess_ess0100_pnp` and `ess_ess0102_pnp`, whose PnP data is a reconstruction, not a dump from a real card. A `UNISOUND /LOG` from a real card, and whether sound, FM and MIDI work, would settle it |
-| none (`/NOPNP`) | OPTi 82C929 (MAD16 Pro): Boca Research Sound Expression 4294 and SE1440, miro PCM10, Acer Magic S20 | OPTi 82C929, SB Pro or WSS (`/XWSS`, `ULTRA16`) | its data sheet; 86Box `acermagic_s20` and `mirosound_pcm10`, where it leaves the same registers as OPTi's own SNDINIT; on real hardware a Boca Research SE1440 (82C929), a NewCom High Fidelity 16i and a Turtle Beach Monte Carlo (both 82C929A) work in SB mode. Reports from WSS mode (`/XWSS`) are still wanted |
+| none (`/NOPNP`) | OPTi 82C929 (MAD16 Pro): Boca Research Sound Expression 4294 and SE1440, miro PCM10, Acer Magic S20 | OPTi 82C929, SB Pro or WSS (`/XWSS`, `ULTRA16`) | its data sheet; 86Box `acermagic_s20` and `mirosound_pcm10`, where it leaves the same registers as OPTi's own SNDINIT; on real hardware a Boca Research SE1440 (82C929), a NewCom High Fidelity 16i and a Turtle Beach Monte Carlo (both 82C929A) work in SB mode, and the Monte Carlo also in WSS mode (`/XWSS`). WSS reports from other cards are still wanted |
 
 ### Held back: need a PnP dump first
 

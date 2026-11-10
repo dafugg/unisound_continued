@@ -1,6 +1,6 @@
 # Testing in 86Box
 
-All results here come from emulation in 86Box. Ten fixes have since also been confirmed on
+All results here come from emulation in 86Box. Thirteen fixes have since also been confirmed on
 real hardware: the ULTRASND and BLASTER parsing, option names (bug 12), unknown PnP cards (bug
 11), the ESS DSP flush (bug 10) and the ES1688 enable reads (bug 19) on a Compaq LTE 5000 with its
 on-board ES1688 (all but the unknown PnP cards), and the OPTi 82C924/925 probe (d2f397b) and the
@@ -8,7 +8,10 @@ ES688/ES1688 IRQ and DMA writes (aee160e) on analog_programmer's ES1688F with th
 which also found the chip with the DSP flush and the enable reads, and the non-PnP SB16 check's
 DSP reset (19a0fe1) on vintagefugg's Sound Blaster Pro 2, and the 82C928/82C929 MC1 check
 (0863ab4) on vintagefugg's Boca Research Sound Expression 14.4VSP (82C929), NewCom High
-Fidelity 16i (82C929A) and Turtle Beach Monte Carlo (82C929A). The table in
+Fidelity 16i (82C929A) and Turtle Beach Monte Carlo (82C929A), and the 82C928/82C929 WSS
+configuration register (b33b131) on the Monte Carlo, and the 82C930's WSS mode (8b5e5f0) and
+name (331a650) on vintagefugg's Silicom Wavemaster 32 FGS (MegaImage32, 82C930); see
+[Real hardware with fix-4](#real-hardware-with-fix-4). The table in
 [changes_since_official_082a.md](changes_since_official_082a.md) marks them.
 
 ## Environment
@@ -86,8 +89,8 @@ which shows the BIOS's configuration on pnp and an unconfigured card on nopnp.
   registers 1, 3 and 0x12 (index 0x12 must be below 8). 86Box implements only MC1-MC12 for the
   930 and returns FF for index 0x12, so the check fails. Registers 1 and 3 read correctly with
   UNISOUND's password sequence (E4 to 0xF8F before the index write and again before the data
-  access). The 82C930 datasheet (912-3000-022) also documents only MC1-MC12, so what a real
-  930 returns at 0x12 is unknown, and neither side can be called wrong without real hardware.
+  access). The 82C930 datasheet (912-3000-022) also documents only MC1-MC12. A real 82C930,
+  on a Silicom Wavemaster 32 FGS, reads 00 at 0x12, so the check passes on real hardware.
 - **EMU8000**: 86Box turns byte writes to the pointer register into word writes, and returns
   odd-address byte reads shifted right by 1 instead of 8. Use word I/O (`PIO O`, `PIO w`).
 - **AZT2320** hangs the pnp board's BIOS before DOS starts
@@ -491,6 +494,12 @@ with that check removed. On pnp2 and nopnp (the same on both):
 | `/NOPNP /XWSS`, `ULTRA16=F40,1,5,1` | WSS stays at 530h; WSSPLAY at F40h finds nothing | `WSS:F40/I5/D1`, MC1 20h; WSSPLAY at F40h: IRQ 5, DMA 1 |
 | `SNDINIT /b`, then `/NOPNP` | MC1 06h becomes 00h | MC1 stays 06h |
 
+A real 82C930 differs from 86Box here: after a WSS setup, by `/XWSS` or by a program's own WSS
+driver, its SB part still answers but plays on the WSS DMA with no IRQ, and SB programs fail
+until `/NOPNP` runs again. After Tyrian 2000's setup had used WSS, register 3 (the SB IRQ and
+DMA, 0Bh for IRQ 7, DMA 3) read 01h, DMA 0 and no IRQ. See
+[Real hardware with fix-4](#real-hardware-with-fix-4).
+
 The 82C929's WSS has no IRQ 5: `acermagic_s20` with `ULTRA16=530,1,5,1` gives `WSS:530 IRQ:7
 DMA:1` and the AUTOEXEC.BAT line, and WSSPLAY plays on IRQ 7, DMA 1.
 
@@ -594,5 +603,6 @@ already supported, such as the ES1868F, show that the fixed build still works on
 | Creative Sound Blaster Pro 2 | DSP 3.02 | AMD Am5x86-P75 (133 MHz) | rc3, rc3 small model | DSP reset gives `E1 03 02` after a cold boot; the older-DSP lines instead of a false `/XSLAM` hint |
 | Boca Research Sound Expression 14.4VSP (SE1440) | OPTi 82C929 | Intel SE440BX-2, Pentium III 450 | rc4 | `/NOPNP`: found (`F8D 81`, MC1 kept), SB mode on IRQ 5, DMA 1, works |
 | NewCom High Fidelity 16i | OPTi 82C929A | Intel SE440BX-2, Pentium III 450 | rc8 | `/NOPNP`: found as on the SE1440, SB mode on IRQ 5, DMA 1, works. `/NOPNP /XWSS` with `ULTRA16=530,0,7,0`: set up, but no WSS sound, and none with NewCom's own DOS drivers either |
-| Turtle Beach Monte Carlo | OPTi 82C929A, Crystal CS4248, Yamaha YMF262 | Intel SE440BX-2, Pentium III 450 | rc8 | `/NOPNP`: found as on the SE1440, SB mode on IRQ 7, DMA 3, works. WSS at 530h, IRQ 7, DMA 0 works with Turtle Beach's drivers (Tyrian 2000); UNISOUND's WSS mode not yet tried |
+| Turtle Beach Monte Carlo | OPTi 82C929A, Crystal CS4248, Yamaha YMF262 | Intel SE440BX-2, Pentium III 450 | rc8, rc9 | `/NOPNP`: found as on the SE1440, SB mode on IRQ 7, DMA 3, works. WSS at 530h, IRQ 7, DMA 0 works with Turtle Beach's drivers (Tyrian 2000). rc9 `/NOPNP /XWSS` with `ULTRA16=530,0,7,0` and no Turtle Beach drivers: `I12 8A, MC5 AF` (the CS4248 gets the CS42xx setting), Mpxplay and Tyrian 2000 play in WSS; WSSPLAY at 8000 Hz saw no IRQ and no DMA. After a power cycle a plain `/NOPNP` gives SB mode again |
+| Silicom Wavemaster 32 FGS 1.0 (MegaImage32) | OPTi 82C930, QS700 wavetable | Intel SE440BX-2, Pentium III 450 | rc9 | `/NOPNP`: found (`82C930: r1 06 r3 00 r12 00`), SB mode on IRQ 7, DMA 3 (DMAPLAY, Mpxplay, Tyrian 2000). `/NOPNP /XWSS` with `ULTRA16=530,0,7,0`: WSSPLAY IRQ 7, DMA 0 at 8000 and 11025 Hz, Mpxplay and Tyrian 2000 play in WSS, and Tyrian 2000's General MIDI music (MPU-401 at 330h) plays on the QS700. One mode at a time: after any WSS setup (`/XWSS`, or Tyrian's own, also after a plain `/NOPNP`) DMAPLAY plays on DMA 0 with no IRQ, so SB programs fail until `/NOPNP` runs again |
 | Compaq ES1868F card | ESS ES1868F | Intel SE440BX-2, Pentium III 450 | rc8 | PnP scan: ESS1868 set up from BLASTER (`ADD:220 OPL:388 MPU:330/I5 IRQ:5 DMA:1/4 CTR:800`), works |
