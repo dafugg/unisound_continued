@@ -4,7 +4,8 @@
    programmed with the same buffer; only the one the codec drives reaches TC. Also prints the WSS
    config byte at BASE. RATE picks the crystal: 8000, 9600, 16000, 27420, 32000 and 48000 run
    from XTAL1 (24.576 MHz), 5512, 6615, 11025, 18900, 22050, 33075, 37800 and 44100 from XTAL2
-   (16.9344 MHz), so a card missing one clock plays at the other's rates only.
+   (16.9344 MHz), so a card missing one clock plays at the other's rates only. An interrupt
+   already pending when the IRQs are unmasked is shown as "stray irq" and not counted.
    Build: tcc WSSPLAY.C */
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +52,28 @@ void interrupt isr10(void)
 void interrupt isr11(void)
 {
     ack(11);
+}
+
+/* Wait 10 ms with the IRQs unmasked, so that an interrupt already pending on one of them (from
+   another device, or from the card's IRQ line before UNISOUND moved it) fires now and isn't
+   taken for the card's; report any, then clear the counts. */
+void drain(void)
+{
+    int i, any = 0;
+    delay(10);
+    for (i = 0; i < 5; i++) {
+        any += hit[irqs[i]];
+    }
+    if (any) {
+        printf("stray irq:");
+        for (i = 0; i < 5; i++) {
+            printf(" %d=%d", irqs[i], hit[irqs[i]]);
+        }
+        puts("");
+    }
+    for (i = 0; i < 16; i++) {
+        hit[i] = 0;
+    }
 }
 
 int vec(int irq)
@@ -152,6 +175,7 @@ int main(int argc, char *argv[])
     outportb(0x21, m1 & ~((1 << 5) | (1 << 7) | (1 << 2)));
     outportb(0xa1, m2 & ~((1 << 1) | (1 << 2) | (1 << 3)));
     inportb(0x08);
+    drain();
     cw(0x48, fmt);  /* MCE + I8: RATE, 8-bit unsigned mono */
     cw(0x49, 0x04); /* MCE + I9: SDC, playback off */
     cw(0x09, 0x04); /* leave MCE */

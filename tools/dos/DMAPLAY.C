@@ -4,6 +4,8 @@
    channels 0, 1 and 3 are all programmed with the same buffer; only the channel the card
    drives reaches terminal count. With BLOCKS > 1 the found channel/IRQ is used to play that
    many more blocks (about 0.36 s each) for audio capture. Numbers: BASE hex, BLOCKS decimal.
+   An interrupt already pending when the IRQs are unmasked is shown as "stray irq" and not
+   counted.
    Build: tcc DMAPLAY.C */
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,6 +45,28 @@ void interrupt isr9(void)
 void interrupt isr10(void)
 {
     ack(10);
+}
+
+/* Wait 10 ms with the IRQs unmasked, so that an interrupt already pending on one of them (from
+   another device, or from the card's IRQ line before UNISOUND moved it) fires now and isn't
+   taken for the card's; report any, then clear the counts. */
+void drain(void)
+{
+    int i, any = 0;
+    delay(10);
+    for (i = 0; i < 4; i++) {
+        any += hit[irqs[i]];
+    }
+    if (any) {
+        printf("stray irq:");
+        for (i = 0; i < 4; i++) {
+            printf(" %d=%d", irqs[i], hit[irqs[i]]);
+        }
+        puts("");
+    }
+    for (i = 0; i < 16; i++) {
+        hit[i] = 0;
+    }
 }
 
 int vec(int irq)
@@ -156,6 +180,7 @@ int main(int argc, char *argv[])
     outportb(0x21, m1 & ~((1 << 5) | (1 << 7) | (1 << 2)));
     outportb(0xa1, m2 & ~((1 << 1) | (1 << 2)));
     inportb(0x08);
+    drain();
     for (i = 0; i < 3; i++) {
         dma_prog(chans[i]);
     }
