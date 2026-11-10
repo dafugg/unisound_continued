@@ -703,7 +703,7 @@ void print_banner(void)
 {
     char line[74];
 
-    puts("Universal ISA PnP Sound Card Driver for DOS v0.82a-unofficial-fix-4-rc10");
+    puts("Universal ISA PnP Sound Card Driver for DOS v0.82a-unofficial-fix-4-rc11");
     puts("(c) JazeFox 2019-2025");
     memset(line, 0xc4, 73);
     line[73] = 0;
