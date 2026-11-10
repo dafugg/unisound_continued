@@ -1,7 +1,10 @@
-/* WSSPLAY BASE: play one block of 8-bit mono 8 kHz audio through the AD1848-compatible codec at
-   BASE+4 (WSS base, e.g. 530) and report which IRQ (5, 7, 9, 10, 11) fired and which 8-bit DMA
-   channel (0, 1, 3) reached terminal count. All three channels are programmed with the same
-   buffer; only the one the codec drives reaches TC. Also prints the WSS config byte at BASE.
+/* WSSPLAY BASE [RATE]: play one block of 8-bit mono audio (RATE Hz, default 8000) through the
+   AD1848-compatible codec at BASE+4 (WSS base, e.g. 530) and report which IRQ (5, 7, 9, 10, 11)
+   fired and which 8-bit DMA channel (0, 1, 3) reached terminal count. All three channels are
+   programmed with the same buffer; only the one the codec drives reaches TC. Also prints the WSS
+   config byte at BASE. RATE picks the crystal: 8000, 9600, 16000, 27420, 32000 and 48000 run
+   from XTAL1 (24.576 MHz), 5512, 6615, 11025, 18900, 22050, 33075, 37800 and 44100 from XTAL2
+   (16.9344 MHz), so a card missing one clock plays at the other's rates only.
    Build: tcc WSSPLAY.C */
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,6 +18,9 @@ unsigned long phys;
 static int irqs[5] = {5, 7, 9, 10, 11};
 static int chans[3] = {0, 1, 3};
 static unsigned pagep[4] = {0x87, 0x83, 0x81, 0x82};
+/* sample rate for each I8 value 0-15 (bits 3:1 divider, bit 0 = XTAL2) */
+static unsigned rates[16] = {8000, 5512,  16000, 11025, 27420, 18900, 32000, 22050,
+                             0,    37800, 0,     44100, 48000, 33075, 9600,  6615};
 void interrupt (*old[16])(void);
 
 void ack(int irq)
@@ -98,12 +104,23 @@ unsigned dma_count(int c)
 
 int main(int argc, char *argv[])
 {
-    int i, irq = -1, dma = -1;
+    int i, irq = -1, dma = -1, fmt = -1;
+    unsigned rate = 8000;
     unsigned char m1, m2, st;
     unsigned char *p;
     unsigned long a, t0;
-    if (argc < 2) {
-        puts("usage: WSSPLAY BASE");
+    if (argc >= 3) {
+        rate = (unsigned)strtoul(argv[2], 0, 10);
+    }
+    for (i = 0; i < 16; i++) {
+        if (rates[i] != 0 && rates[i] == rate) {
+            fmt = i;
+        }
+    }
+    if (argc < 2 || fmt < 0) {
+        puts("usage: WSSPLAY BASE [RATE]\n"
+             "RATE: 8000 9600 16000 27420 32000 48000 (XTAL1 24.576 MHz)\n"
+             "      5512 6615 11025 18900 22050 33075 37800 44100 (XTAL2 16.9344 MHz)");
         return 1;
     }
     base = (unsigned)strtoul(argv[1], 0, 16);
@@ -119,6 +136,7 @@ int main(int argc, char *argv[])
         p[i] = (i / 8) & 1 ? 0xc0 : 0x40;
     }
     printf("WSS cfg[%X]=%02X codec idx=%02X I12=%02X\n", base, inportb(base), inportb(cdc), cr(12));
+    printf("rate %u Hz (I8 %02X, XTAL%d)\n", rate, fmt, (fmt & 1) + 1);
     old[5] = getvect(vec(5));
     setvect(vec(5), isr5);
     old[7] = getvect(vec(7));
@@ -134,7 +152,7 @@ int main(int argc, char *argv[])
     outportb(0x21, m1 & ~((1 << 5) | (1 << 7) | (1 << 2)));
     outportb(0xa1, m2 & ~((1 << 1) | (1 << 2) | (1 << 3)));
     inportb(0x08);
-    cw(0x48, 0x00); /* MCE + I8: 8 kHz, 8-bit unsigned mono */
+    cw(0x48, fmt);  /* MCE + I8: RATE, 8-bit unsigned mono */
     cw(0x49, 0x04); /* MCE + I9: SDC, playback off */
     cw(0x09, 0x04); /* leave MCE */
     delay(50);
