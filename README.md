@@ -112,7 +112,8 @@ record DMA is optional. `SET WSS`, which some OPTi 82C930/931 drivers are said t
 used: no format for it was found. On the 82C928 and 82C929 WSS mode turns the SB part's IRQ off.
 On a real 82C930 the SB part keeps answering, but once anything sets up WSS (`/XWSS`, or a
 program's own WSS driver, which also works after a plain `/NOPNP`), it plays on the WSS DMA with
-no IRQ, so SB programs fail until `UNISOUND /NOPNP` runs again.
+no IRQ, so SB programs fail until `UNISOUND /NOPNP` runs again. The same happens on a real
+82C931 (PnP) after a program's WSS driver: SB plays with no IRQ until `UNISOUND` runs again.
 
 On GUS PnP (InterWave) cards, UNISOUND reads `ULTRASND=port,dma,dma2,irq,irq2` instead of
 BLASTER. The GF1 goes at the port (220, 230, 240, 250 or 260 hex), its second range at port +
