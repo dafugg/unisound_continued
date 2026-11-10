@@ -7,7 +7,8 @@ on-board ES1688 (all but the unknown PnP cards), and the OPTi 82C924/925 probe (
 ES688/ES1688 IRQ and DMA writes (aee160e) on analog_programmer's ES1688F with the fix-3 build,
 which also found the chip with the DSP flush and the enable reads, and the non-PnP SB16 check's
 DSP reset (19a0fe1) on vintagefugg's Sound Blaster Pro 2, and the 82C928/82C929 MC1 check
-(0863ab4) on vintagefugg's Boca Research Sound Expression 14.4VSP (82C929). The table in
+(0863ab4) on vintagefugg's Boca Research Sound Expression 14.4VSP (82C929) and NewCom High
+Fidelity 16i (82C929A). The table in
 [changes_since_official_082a.md](changes_since_official_082a.md) marks them.
 
 ## Environment
@@ -277,7 +278,10 @@ On real hardware, vintagefugg's Boca Research Sound Expression 14.4VSP (SE1440, 
 an Intel SE440BX-2 with a Pentium III 450 under MS-DOS 6.22, `UNISOUND /NOPNP /LOG` with
 fix-4-rc4 logged `82C928: F8D FF, no pw FF, F8F FF`, then `82C929: F8D 81, no pw FF, F8F 02`
 and `MC1 01 written, 01 read`, printed "Card detected: OPTi 82C929" and set the card up in
-SB mode (`ADD:220 IRQ:5 DMA:1 JOY:200 MPU:330/I9`) from `BLASTER=A220 I5 D1 T4 P330`.
+SB mode (`ADD:220 IRQ:5 DMA:1 JOY:200 MPU:330/I9`) from `BLASTER=A220 I5 D1 T4 P330`. In the
+same machine, a NewCom High Fidelity 16i ([The Retro Web](https://theretroweb.com/expansioncards/s/newcom-inc-high-fidelty-16i-sound-card))
+with an OPTi 82C929A was found and set up by `UNISOUND /NOPNP` with fix-4-rc8, and vintagefugg
+reports that it works well (no log was taken).
 
 ## `/XSLAM`, `/XESSB`, the BLASTER suggestion and `/LOG`
 

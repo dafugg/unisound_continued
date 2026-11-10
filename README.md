@@ -155,7 +155,7 @@ If you have one of these cards, please open a GitHub issue with:
 | CDC1111 | Dynasonic Pro (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
 | ESS1878, ESS1879 | ESS ES1878 / ES1879 | ES1869 | ESS's data sheets give them the ES1869's layout and bypass key; 86Box ES1869 with each chip's internal PnP ROM from its data sheet |
 | ESS0100, ESS0102 | ESS ES688/ES1688 PnP cards | ES968 layout (SB and FM on LD0), MPU-401 on LD1 with its own IRQ, game port LD2, IDE LD3 | only 86Box's `ess_ess0100_pnp` and `ess_ess0102_pnp`, whose PnP data is a reconstruction, not a dump from a real card. A `UNISOUND /LOG` from a real card, and whether sound, FM and MIDI work, would settle it |
-| none (`/NOPNP`) | OPTi 82C929 (MAD16 Pro): Boca Research Sound Expression 4294 and SE1440, miro PCM10, Acer Magic S20 | OPTi 82C929, SB Pro or WSS (`/XWSS`, `ULTRA16`) | its data sheet; 86Box `acermagic_s20` and `mirosound_pcm10`, where it leaves the same registers as OPTi's own SNDINIT |
+| none (`/NOPNP`) | OPTi 82C929 (MAD16 Pro): Boca Research Sound Expression 4294 and SE1440, miro PCM10, Acer Magic S20 | OPTi 82C929, SB Pro or WSS (`/XWSS`, `ULTRA16`) | its data sheet; 86Box `acermagic_s20` and `mirosound_pcm10`, where it leaves the same registers as OPTi's own SNDINIT; on real hardware a Boca Research SE1440 (82C929) and a NewCom High Fidelity 16i (82C929A) work. Reports from other 82C929 cards and from WSS mode are still wanted |
 
 ### Held back: need a PnP dump first
 
