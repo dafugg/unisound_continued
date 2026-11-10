@@ -171,8 +171,9 @@ The Soundscape OPUS stays unsupported for now. What could be added later, in thi
 
 1. PnP setup: assign ENS0000's port, IRQs and DMA, as a PnP BIOS does, so that Ensoniq's
    `SSINIT /I` works on machines without one.
-2. WSS without Ensoniq's drivers: turn on the OPUS chip's AD1845 codec and program the gate
-   array's IRQ and DMA routing, as Linux does before its firmware load.
+2. WSS: turn on the OPUS chip's AD1845 codec and program the gate array's IRQ and DMA routing,
+   as Linux does before its firmware load. Ensoniq's DOS drivers don't set the card up for WSS;
+   under DOS it's used through SB emulation, MIDI and games' native Soundscape support.
 3. MIDI and the synth: load Ensoniq's firmware (SCOPE.COD and SNDSCAPE.CO0-CO4, from the
    directory in `SET SNDSCAPE=`), as UNISOUND already does with SAM9407.BIN on the Maxi Sound 64.
    The files are Ensoniq's and would not be included.
