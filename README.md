@@ -165,6 +165,14 @@ If you have one of these cards, please open a GitHub issue with:
 |---|---|---|---|
 | MIR0924 | miro PCM12 / PCM20 (OPTi 82C924) in PnP mode | OPTi 924 | Whether the logical devices sit where OPTi's OPT0924 has them (Linux lists MIR0000/0002/0005 like OPT0000/0002/0005) |
 | BVJ0440 | Turtle Beach Multisound Pinnacle (rev F?) | Pinnacle | Where the joystick and IDE devices are; UNISOUND's Pinnacle code expects the joystick on logical device 2, Linux's non-PnP setup has IDE there |
+| ENS3081 | Ensoniq Soundscape OPUS (Gateway 2000 OEM; fix-4 skips it as unknown) | Soundscape PnP: one logical device, ENS0000, with the gate array at its port + 4, the WSS codec at port + 8, a WSS/SB IRQ, a MIDI IRQ and one DMA (Linux `snd-sscape`) | Its resource data, which `UNISOUND /LOG` prints for a skipped card from fix-4-rc11 on; a real card is being tested |
+
+The planned scope for the Soundscape OPUS is PnP setup and WSS. Its Sound Blaster emulation runs on
+the card's firmware and plays FM music on the wavetable synth, which players report sounds poor,
+and its MIDI synth needs that firmware too. Ensoniq's `SSINIT /I` can load it after UNISOUND
+(`SBEnable=false` in SNDSCAPE.INI for MIDI without SB emulation). For Sound Blaster games the
+card is better paired with a real SB-compatible card. SB emulation in UNISOUND itself could be
+looked at later if someone needs it.
 
 ### Options not yet tried on real hardware
 
