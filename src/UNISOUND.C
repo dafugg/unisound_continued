@@ -410,6 +410,7 @@ int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type);
 int pnp_read_res(unsigned char *buf, int n);
 int pnp_read_tag(unsigned char *tag, unsigned *len);
+void log_pnp_res(unsigned char csn);
 int pnp_read_str(char *buf, unsigned len);
 void awe_init(unsigned port);
 void sb_print_dsp_ver(int port);
@@ -990,6 +991,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             pnp_write(2, 2);
             return 1;
         } else {
+            if (opt_log != 0) {
+                log_pnp_res(csn);
+            }
             printf("Card #%d [%s] Unknown, skipped.\n", cardno, id);
             nunknown++;
         }
@@ -3009,6 +3013,29 @@ int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type)
         ok = 0;
     }
     return ok;
+}
+
+/* /LOG: wake card csn, which the scan skips as unknown, and print its whole resource data as
+   pnp_map_devices does for the selected card, so that the log of an unsupported card holds what
+   is needed to add it. Stops at the end tag, a read error or the 1024-byte /LOG limit. */
+void log_pnp_res(unsigned char csn)
+{
+    unsigned char tag = 0;
+    unsigned len = 0;
+    int ok;
+    pnp_write(3, csn);
+    delay(1);
+    printf("LOG: CSN %d res:", csn);
+    res_logged = 0;
+    ok = pnp_read_res(0, 9);
+    while (ok && tag != 0xf && res_logged < 1024) {
+        ok = pnp_read_tag(&tag, &len);
+        if (ok && len > 0) {
+            ok = pnp_read_res(0, len);
+        }
+    }
+    puts("");
+    res_logged = -1;
 }
 
 /* Wake card csn and walk its whole resource data. The first ANSI string becomes the card's name.
