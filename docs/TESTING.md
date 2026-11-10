@@ -7,8 +7,8 @@ on-board ES1688 (all but the unknown PnP cards), and the OPTi 82C924/925 probe (
 ES688/ES1688 IRQ and DMA writes (aee160e) on analog_programmer's ES1688F with the fix-3 build,
 which also found the chip with the DSP flush and the enable reads, and the non-PnP SB16 check's
 DSP reset (19a0fe1) on vintagefugg's Sound Blaster Pro 2, and the 82C928/82C929 MC1 check
-(0863ab4) on vintagefugg's Boca Research Sound Expression 14.4VSP (82C929) and NewCom High
-Fidelity 16i (82C929A). The table in
+(0863ab4) on vintagefugg's Boca Research Sound Expression 14.4VSP (82C929), NewCom High
+Fidelity 16i (82C929A) and Turtle Beach Monte Carlo (82C929A). The table in
 [changes_since_official_082a.md](changes_since_official_082a.md) marks them.
 
 ## Environment
@@ -280,8 +280,11 @@ fix-4-rc4 logged `82C928: F8D FF, no pw FF, F8F FF`, then `82C929: F8D 81, no pw
 and `MC1 01 written, 01 read`, printed "Card detected: OPTi 82C929" and set the card up in
 SB mode (`ADD:220 IRQ:5 DMA:1 JOY:200 MPU:330/I9`) from `BLASTER=A220 I5 D1 T4 P330`. In the
 same machine, a NewCom High Fidelity 16i ([The Retro Web](https://theretroweb.com/expansioncards/s/newcom-inc-high-fidelty-16i-sound-card))
-with an OPTi 82C929A was found and set up by `UNISOUND /NOPNP` with fix-4-rc8, and vintagefugg
-reports that it works well (no log was taken).
+with an OPTi 82C929A logged the same probe values with fix-4-rc8 (`F8D 81`, `MC1 01 written, 01
+read`), was set up in SB mode the same way and works well. A Turtle Beach Monte Carlo (82C929A,
+Crystal CS4248 codec) logged them too and works in SB mode on IRQ 7 and DMA 3
+(`BLASTER=A220 I7 D3 T4`). See [Real hardware with fix-4](#real-hardware-with-fix-4) for WSS
+mode on both.
 
 ## `/XSLAM`, `/XESSB`, the BLASTER suggestion and `/LOG`
 
@@ -580,3 +583,16 @@ Apart from the "LOG: DOS 3.30"/"LOG: DOS 5.00" line, the output was the same on 
 On real hardware, an AMD Am5x86-P75 (133 MHz) with a Sound Blaster Pro 2 under MS-DOS 6.22 ran
 the small build of fix-4-rc3: `UNISOUND /LOG` twice and `/NOPNP /LOG` printed what the tiny build
 prints for an SB Pro 2 in 86Box, with `E1 03 02` on the first run after a cold boot.
+
+## Real hardware with fix-4
+
+vintagefugg's tests of fix-4 builds on real cards, all under MS-DOS 6.22. Cards that 0.82a
+already supported, such as the ES1868F, show that the fixed build still works on them.
+
+| Card | Chips | Machine | Build | Result |
+|---|---|---|---|---|
+| Creative Sound Blaster Pro 2 | DSP 3.02 | AMD Am5x86-P75 (133 MHz) | rc3, rc3 small model | DSP reset gives `E1 03 02` after a cold boot; the older-DSP lines instead of a false `/XSLAM` hint |
+| Boca Research Sound Expression 14.4VSP (SE1440) | OPTi 82C929 | Intel SE440BX-2, Pentium III 450 | rc4 | `/NOPNP`: found (`F8D 81`, MC1 kept), SB mode on IRQ 5, DMA 1, works |
+| NewCom High Fidelity 16i | OPTi 82C929A | Intel SE440BX-2, Pentium III 450 | rc8 | `/NOPNP`: found as on the SE1440, SB mode on IRQ 5, DMA 1, works. `/NOPNP /XWSS` with `ULTRA16=530,0,7,0`: set up, but no WSS sound, and none with NewCom's own DOS drivers either |
+| Turtle Beach Monte Carlo | OPTi 82C929A, Crystal CS4248, Yamaha YMF262 | Intel SE440BX-2, Pentium III 450 | rc8 | `/NOPNP`: found as on the SE1440, SB mode on IRQ 7, DMA 3, works. WSS at 530h, IRQ 7, DMA 0 works with Turtle Beach's drivers (Tyrian 2000); UNISOUND's WSS mode not yet tried |
+| Compaq ES1868F card | ESS ES1868F | Intel SE440BX-2, Pentium III 450 | rc8 | PnP scan: ESS1868 set up from BLASTER (`ADD:220 OPL:388 MPU:330/I5 IRQ:5 DMA:1/4 CTR:800`), works |
