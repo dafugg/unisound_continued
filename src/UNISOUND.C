@@ -5795,7 +5795,9 @@ int init_nonpnp_fallback(void)
    package) leaves in both of its modes; SB and WSS both stay enabled (MC6 bits 0 and 1), and MC3
    holds the SB IRQ and DMA. The WSS base comes from ULTRA16 (see parse_ultra16), not BLASTER.
    With /XWSS, as SNDINIT's WSS mode does, the WSS configuration register at the WSS base also
-   gets the codec's own IRQ and DMA, from ULTRA16 or SNDINIT's defaults (IRQ 7, DMA 0).
+   gets the codec's own IRQ and DMA, from ULTRA16 or SNDINIT's defaults (IRQ 7, DMA 0). On a
+   real 82C930 the SB part then plays on the WSS DMA with no IRQ (until a plain /NOPNP), so the
+   Settings line shows only WSS and no BLASTER hint is printed.
    Returns 1 if the chip was found, else 0. */
 int init_opti930(void)
 {
@@ -5934,9 +5936,10 @@ int init_opti930(void)
         idx45_write_slow(wss_port, 0x27, 0x84);
         delay(80);
         sbpro_mixer_set();
-        printf("Settings: ADD:%X IRQ:%d DMA:%d WSS:%X", sb_port, sb_irq, sb_dma, wss_port);
         if (opt_xwss > 0) {
-            /* WSS configuration register, as on the 82C929 plus IRQ 5 (code 5, as in MC3) */
+            /* WSS configuration register, as on the 82C929 plus IRQ 5 (code 5, as in MC3). On a
+               real 82C930 writing it leaves the SB part on the WSS DMA with no IRQ, so only the
+               WSS settings are shown, as on the 82C929 */
             unsigned char dbits = wss_pdma == 3 ? 3 : wss_pdma + 1;
             if (wss_pdma == 0 && wss_rdma == 1) {
                 dbits = 5;
@@ -5946,13 +5949,15 @@ int init_opti930(void)
                 wss_rdma = -1;
             }
             outportb(wss_port, (wss_irq == 5 ? 5 : wss_irq == 7 ? 1 : wss_irq - 7) << 3 | dbits);
-            printf("/I%d/D%d", wss_irq, wss_pdma);
+            printf("Settings: WSS:%X IRQ:%d DMA:%d", wss_port, wss_irq, wss_pdma);
             if (wss_rdma >= 0) {
                 printf("/%d", wss_rdma);
             }
+        } else {
+            printf("Settings: ADD:%X IRQ:%d DMA:%d WSS:%X", sb_port, sb_irq, sb_dma, wss_port);
         }
         printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
-        puts("");
+        puts(opt_xwss > 0 ? " [WSS mode]" : "");
         if (opt_xwss > 0 && !u16) {
             /* programs find a WSS codec through ULTRA16, which UNISOUND can't set for them */
             printf("ULTRA16 is missing or not valid, so programs can't find the WSS codec.\n"
@@ -5963,7 +5968,9 @@ int init_opti930(void)
         if (opt_log != 0) {
             log_codec(wss_port + 4);
         }
-        print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
+        if (opt_xwss == 0) {
+            print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
+        }
         return 1;
     }
     return 0;
