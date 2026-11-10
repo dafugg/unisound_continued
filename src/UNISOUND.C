@@ -2283,11 +2283,13 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     }
     printf("\n");
     if (opt_log != 0 && wss_port != 0) {
-        if (type == CARD_CRYSTAL) {
+        /* wss_port is the codec itself on the Crystal chips and on the 82C931/82C933, whose
+           first I/O range (534h) is the codec: Linux's opti9xx takes the WSS base as 4 less.
+           The Yamaha and the 82C924/925 have the codec read at + 4. */
+        if (type == CARD_CRYSTAL || type == CARD_OPTI93X) {
             log_codec(wss_port);
         }
-        if (type == CARD_YAMAHA || type == CARD_OPTI925 || type == CARD_OPTI924 ||
-            type == CARD_OPTI93X) {
+        if (type == CARD_YAMAHA || type == CARD_OPTI925 || type == CARD_OPTI924) {
             log_codec(wss_port + 4);
         }
     }
