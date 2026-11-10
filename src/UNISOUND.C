@@ -5697,8 +5697,11 @@ int init_opti928(void)
            reads I12 bit 7 as 1, and 0 for an AD1848; bit 3 enables the SB-mode command FIFO. OSS
            mad16 and Linux opti92x-ad1848 set CFIX for those codecs the same way. 0.82a tested
            (codec_st & 0xfd) == 2, which is never true, so it always wrote 20h. Untested on real
-           hardware. */
-        opti928_write(0xf91, ((codec_st & 0x80) ? 0x2a : 0x20) | mc5);
+           hardware. /LOG shows I12 and the MC5 written, since its codec dump in SB mode comes
+           after WSS is turned off. */
+        mc5 |= (codec_st & 0x80) ? 0x2a : 0x20;
+        opti928_write(0xf91, mc5);
+        dlog("82C92%d: I12 %02X, MC5 %02X", c929 ? 9 : 8, codec_st, mc5);
         if (opt_xwss > 0) {
             /* WSS configuration register (write only, at the WSS base; 82C929 data sheet, and
                OSS mad16 for the 82C928): IRQ in bits 5:3 (1-4 = 7, 9, 10, 11), DMA in bits 2:0:
