@@ -85,6 +85,9 @@ which shows the BIOS's configuration on pnp and an unconfigured card on nopnp.
 
 ### Emulation notes
 
+Every case where 86Box differed from a real card, or from a data sheet, is collected in
+[86BOX-DIFFERENCES.md](86BOX-DIFFERENCES.md) for reporting upstream.
+
 - **OPTi 82C930** is not found by `/NOPNP`. UNISOUND identifies the chip by reading control
   registers 1, 3 and 0x12 (index 0x12 must be below 8). 86Box implements only MC1-MC12 for the
   930 and returns FF for index 0x12, so the check fails. Registers 1 and 3 read correctly with
