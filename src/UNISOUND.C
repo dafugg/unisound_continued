@@ -298,6 +298,10 @@ int sb_port = 0x0220;          /* SB base port (BLASTER A) */
 int opl_port = 0x0388;         /* OPL port (F) */
 int awe_port = 0x0620;         /* AWE port (E) */
 int mpu_port = 0x0330;         /* MPU-401 port (P) */
+/* For the BLASTER hint: the MPU-401 port set up on the card and the port where awe_init found
+   an EMU8000, 0 if none. The defaults above don't count. */
+unsigned hint_mpu = 0;
+unsigned hint_awe = 0;
 int joy_port = 0x0299;         /* gameport (J); 0x299 = not set */
 int wss_port = 0x0530;         /* WSS codec port (W) */
 int yamaha_ctl_port = 0x0370;  /* Yamaha OPL3-SAx control port (R) */
@@ -1288,6 +1292,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                             }
                         }
                         printf(" MPU:%X", mpu_port);
+                        hint_mpu = mpu_port;
                         if (type == CARD_ES1868 || type == CARD_ES1869) {
                             /* The MPU-401 of the audio device takes its IRQ from the card-level
                                register 0x28, not from the device's 0x72 (that is the Audio 2 IRQ).
@@ -1543,6 +1548,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 pnp_write(0x30, (!enable || opt_disable != 0) ? 0 : 1);
                 if (enable != 0 || opt_read != 0) {
                     printf(" MPU:%X/I%d", mpu_port, irq);
+                    hint_mpu = enable ? mpu_port : 0;
                 }
             }
             if (ld.ld[6] >= 0) {
@@ -1608,6 +1614,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                         mpu_irq = pnp_read(0x72) & 0xf;
                     }
                     printf(" MPU:%X/I%d", mpu_port, mpu_irq);
+                    hint_mpu = mpu_port;
                     pnp_write(0x74, sb_dma);
                     pnp_write(0x75, sb_hdma);
                     if (opt_read != 0) {
@@ -2946,7 +2953,9 @@ void parse_cd(void)
    from what the card was given (irq, dma, and hdma, the SB16 H or -1 for none; no H in BLASTER
    is fine, programs then use the 8-bit DMA), suggest a SET BLASTER line for AUTOEXEC.BAT. If A
    is another port, BLASTER is taken to be for another card, perhaps one UNISOUND doesn't know,
-   as long as a DSP answers there. */
+   as long as a DSP answers there. The suggested line keeps BLASTER's other fields; if it has no
+   P or E, it adds P for an MPU-401 set up on this card that answers (status 3Fh or BFh) and E for
+   an EMU8000 that awe_init found. */
 void print_blaster_hint(int port, int irq, int dma, int hdma)
 {
     char *env = getenv("BLASTER");
@@ -2957,6 +2966,9 @@ void print_blaster_hint(int port, int irq, int dma, int hdma)
     int d = -1;
     int h = -1;
     int t = -1;
+    int p = 0;
+    int e = 0;
+    unsigned char st;
     while (env != 0 && *env == ' ') {
         env++;
     }
@@ -2982,6 +2994,12 @@ void print_blaster_hint(int port, int irq, int dma, int hdma)
                 case 'T':
                     t = (int)strtol(tok + 1, 0, 10);
                     break;
+                case 'P':
+                    p = 1;
+                    break;
+                case 'E':
+                    e = 1;
+                    break;
             }
         }
         free(dup);
@@ -3003,6 +3021,15 @@ void print_blaster_hint(int port, int irq, int dma, int hdma)
     printf("SET BLASTER=A%X I%d D%d", port, irq, dma);
     if (hdma >= 0) {
         printf(" H%d", hdma);
+    }
+    if (p == 0 && hint_mpu != 0) {
+        st = inportb(hint_mpu + 1);
+        if (st == 0xbf || st == 0x3f) {
+            printf(" P%X", hint_mpu);
+        }
+    }
+    if (e == 0 && hint_awe != 0) {
+        printf(" E%X", hint_awe);
     }
     if (env != 0) {
         dup = strdup(env);
@@ -3649,6 +3676,7 @@ void awe_init(unsigned port)
         ver = 1;
     }
     printf("AWE [%Xh] EMU8000 v%d Synth chip found. ", port, ver);
+    hint_awe = port;
     emu_write16(0x3f, port + 0x400, 0);
     printf("\nInitializing EMU8K... ");
     printf("AWE RAM detected: [%dK] ", emu_init(ver));
@@ -3819,6 +3847,7 @@ int init_nonpnp_sb16(void)
         }
         if (mpu > 0) {
             printf(" MPU:%X", mpu);
+            hint_mpu = mpu;
         }
         if (opt_read != 0) {
             /* /R: the AWE test and the mixer setup both write to the card */
@@ -5820,6 +5849,7 @@ int init_opti928(void)
         }
         if (c929 && mpu_port != 0) {
             printf(" MPU:%X/I%d", mpu_port, mpu_irq);
+            hint_mpu = mpu_port;
         }
         if (opt_xwss > 0) {
             printf(" [WSS mode]\n");
@@ -6051,6 +6081,7 @@ int init_opti930(void)
             printf("Settings: ADD:%X IRQ:%d DMA:%d WSS:%X", sb_port, sb_irq, sb_dma, wss_port);
         }
         printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
+        hint_mpu = mpu_port;
         puts(opt_xwss > 0 ? " [WSS mode]" : "");
         if (opt_xwss > 0 && !u16) {
             /* programs find a WSS codec through ULTRA16, which UNISOUND can't set for them */
@@ -6442,6 +6473,7 @@ int init_es688(void)
             printf("Settings: ADD:%X IRQ:%d DMA:%d", sb_port, sb_irq, sb_dma);
             if (ver >= 0x88) {
                 printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
+                hint_mpu = mpu_port;
             }
             puts("");
             sbpro_mixer_set();
