@@ -139,7 +139,12 @@ This list comes from the source and hasn't been checked on a real card; see
 Many of these cards have CD-ROM drive connectors: IDE, or Mitsumi, Sony or Panasonic. So far
 UNISOUND sets up only IDE: on PnP cards that describe it as a logical device, and on the OPTi
 82C924 and 82C925 in non-PnP mode. BLASTER's `C` field gives the port and `Y` the IRQ (see
-UNISOUND.TXT).
+UNISOUND.TXT); on the GUS PnP, which reads ULTRASND instead, `/XGCn` sets the port. In 86Box
+an ATAPI CD-ROM drive answers, with its IRQ, wherever UNISOUND puts the IDE port on the SB16
+PnP, AWE32 PnP and AWE64 with IDE, the GUS PnP and the OPTi 82C931 (checked with
+`tools/dos/ATAPIID.C`). The 82C931's resource data lists the IDE control port before the
+command block, so the control port goes in register 60h; UNISOUND follows the order the
+resource data gives. No real card has been tried yet.
 
 `C` and `Y` are UNISOUND's own BLASTER fields, and a program that parses every BLASTER field
 might reject them or misread the rest. If that happens, take them out of BLASTER and put them

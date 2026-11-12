@@ -367,6 +367,9 @@ char opt_log = 0;                   /* /LOG: print diagnostic lines */
 char opt_slam = 0;   /* /XSLAM: Crystal chip set up through SLAM; 2 while SLAM is open */
 char opt_essb = 0;   /* /XESSB: ES1868/ES1869 found through the ESS bypass key alone */
 int res_logged = -1; /* /LOG: resource data bytes printed so far; -1 = not printing them */
+/* Bit n set: logical device n's first I/O range is 1 or 2 bytes long, so it is an IDE control
+   port and goes in register 60h, with the 8-byte command block in 62h (OPTi 82C931). */
+unsigned ide_ctl_first = 0;
 /* Stack size. The small-model startup gives the data segment the whole 64K when memory allows,
    with the stack at the top, and refuses to run if the end of the BSS plus _stklen is past 64K.
    Data and BSS take about 12K, so the library's default 4K fits easily. Filling the stack with
@@ -1695,6 +1698,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     reg_ide = 0x62;
                     reg_ide2 = 0x60;
                 }
+                if (reg_ide == 0x60 && ((ide_ctl_first >> ld.ld[5]) & 1)) {
+                    reg_ide = 0x62;
+                    reg_ide2 = 0x60;
+                }
                 if (type == CARD_GUSPNP && opt_xgc > 0) {
                     ide_port = opt_xgc;
                 }
@@ -1726,7 +1733,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 pnp_write(0x30, (ide_port == 0 || opt_disable != 0) ? 0 : 1);
                 if (opt_read != 0 || ide_port > 0) {
                     if (opt_read != 0) {
-                        ide_port = pnp_read16(0x60);
+                        ide_port = pnp_read16(reg_ide);
                     }
                     printf(" IDE:%X", ide_port);
                     if (opt_read != 0) {
@@ -3100,6 +3107,8 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
     int ad_name = 0;
     int ews = 0;
     int maxi = 0;
+    int io_seen = 0;
+    ide_ctl_first = 0;
     if (opt_slam != 0 || opt_essb != 0) {
         done = 1; /* no resource data: the fixed layout below */
     } else {
@@ -3132,6 +3141,7 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
         switch (tag) {
             case 2:
                 ldn++;
+                io_seen = 0;
                 ok = pnp_read_res(ldid, len);
                 if (ldn == 1) {
                     ((unsigned char *)ld)[0x14] = ldid[2];
@@ -3452,6 +3462,19 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
                 ok = pnp_read_res(0, len);
                 done = 1;
                 break;
+            case 8: {
+                /* I/O port: info, min, max, alignment, length */
+                unsigned char io[7] = {0};
+                ok = pnp_read_res(io, len < 7 ? len : 7);
+                if (ok && len > 7) {
+                    ok = pnp_read_res(0, len - 7);
+                }
+                if (ok && !io_seen && ldn > 0 && ldn <= 16 && io[6] > 0 && io[6] <= 2) {
+                    ide_ctl_first |= 1u << (ldn - 1);
+                }
+                io_seen = 1;
+                break;
+            }
             case 0x82:
                 if (*name == 0) {
                     ok = pnp_read_str(name, len);
