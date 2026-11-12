@@ -88,9 +88,10 @@ which shows the BIOS's configuration on pnp and an unconfigured card on nopnp.
 Every case where 86Box differed from a real card, or from a data sheet, is collected in
 [86BOX-DIFFERENCES.md](86BOX-DIFFERENCES.md) for reporting upstream.
 
-- **OPTi 82C930** is not found by `/NOPNP`. UNISOUND identifies the chip by reading control
-  registers 1, 3 and 0x12 (index 0x12 must be below 8). 86Box implements only MC1-MC12 for the
-  930 and returns FF for index 0x12, so the check fails. Registers 1 and 3 read correctly with
+- **OPTi 82C930** was not found by `/NOPNP` until 86Box `789f2b628` (2026-10-26,
+  [86Box#8549](https://github.com/86Box/86Box/issues/8549)). UNISOUND identifies the chip by
+  reading control registers 1, 3 and 0x12 (index 0x12 must be below 8). 86Box implemented only
+  MC1-MC12 for the 930 and returned FF for index 0x12, so the check failed; it now returns 00. Registers 1 and 3 read correctly with
   UNISOUND's password sequence (E4 to 0xF8F before the index write and again before the data
   access). The 82C930 datasheet (912-3000-022) also documents only MC1-MC12. A real 82C930,
   on a Silicom Wavemaster 32 FGS, reads 00 at 0x12, so the check passes on real hardware.
@@ -486,8 +487,8 @@ configuration register at the WSS base with its IRQ2 and DRQ2 (7, 0). MC1 06h is
 from CDROM.CFG. UNISOUND's 82C930 code writes these MC values too, except that it cleared MC1's
 CD-ROM bits.
 
-86Box answers FFh at register 12h, which UNISOUND's 82C930 detection reads, so `/NOPNP` doesn't
-find `opti_82c930` (see the emulation notes). For these runs only, `main` and the fix were built
+86Box then answered FFh at register 12h, which UNISOUND's 82C930 detection reads, so `/NOPNP`
+didn't find `opti_82c930` (see the emulation notes; fixed in 86Box since). For these runs only, `main` and the fix were built
 with that check removed. On pnp2 and nopnp (the same on both):
 
 | Command, environment | `main` | fix |
