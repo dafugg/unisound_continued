@@ -188,7 +188,7 @@ If you have one of these cards, please open a GitHub issue with:
 |---|---|---|---|
 | MIR0924 | miro PCM12 / PCM20 (OPTi 82C924) in PnP mode | OPTi 924 | Whether the logical devices sit where OPTi's OPT0924 has them (Linux lists MIR0000/0002/0005 like OPT0000/0002/0005) |
 | BVJ0440 | Turtle Beach Multisound Pinnacle (rev F?) | Pinnacle | Where the joystick and IDE devices are; UNISOUND's Pinnacle code expects the joystick on logical device 2, Linux's non-PnP setup has IDE there |
-| ENS3081 | Ensoniq Soundscape OPUS (Gateway 2000 OEM; fix-4 skips it as unknown) | Soundscape PnP: one logical device, ENS0000, with the gate array at its port + 4, the WSS codec at port + 8, a WSS/SB IRQ, a MIDI IRQ and one DMA (Linux `snd-sscape`) | Its resource data, which `UNISOUND /LOG` prints for a skipped card from fix-4-rc11 on; a real card is being tested |
+| ENS3081 | Ensoniq Soundscape OPUS rev A (Gateway 2000 OEM; fix-4 skips it as unknown) | Soundscape PnP: one logical device, ENS0000, with the gate array at its port + 4, the WSS codec at port + 8, a WSS/SB IRQ, a MIDI IRQ and one DMA (Linux `snd-sscape`) | Nothing more from a dump: vintagefugg's rev A gave its resource data with fix-4-rc11's `/LOG` (ENS0000 at 330h or 350h, 16 bytes; a first IRQ of 5, 7 or 9, a second of 7, 9 or 10; DMA 0, 1 or 3; see [TESTING.md](docs/TESTING.md#real-hardware-with-fix-4)). What's left is the work below, tested on a real card |
 
 The Soundscape OPUS stays unsupported for now. What could be added later, in this order:
 
