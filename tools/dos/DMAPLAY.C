@@ -5,7 +5,8 @@
    drives reaches terminal count. With BLOCKS > 1 the found channel/IRQ is used to play that
    many more blocks (about 0.36 s each) for audio capture. Numbers: BASE hex, BLOCKS decimal.
    An interrupt already pending when the IRQs are unmasked is shown as "stray irq" and not
-   counted.
+   counted. After the reset it prints the DSP version (command E1h): 1.x-2.x mono SB, 3.x SB
+   Pro, 4.x SB16.
    Build: tcc DMAPLAY.C */
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,6 +99,17 @@ int dsp_reset(void)
     return inportb(base + 0xa);
 }
 
+int dsp_read(void)
+{
+    long i;
+    for (i = 0; i < 100000L; i++) {
+        if (inportb(base + 0xe) & 0x80) {
+            return inportb(base + 0xa);
+        }
+    }
+    return -1;
+}
+
 void dma_prog(int c)
 {
     outportb(0x0a, 4 | c);
@@ -167,6 +179,16 @@ int main(int argc, char *argv[])
         p[i] = (i / 10) & 1 ? 0xc0 : 0x40;
     }
     printf("reset %02X\n", dsp_reset());
+    n = -1;
+    if (dsp_write(0xe1)) {
+        n = dsp_read();
+        i = dsp_read();
+    }
+    if (n >= 0 && i >= 0) {
+        printf("DSP version %d.%02d\n", n, i);
+    } else {
+        puts("DSP version: no answer");
+    }
     old[5] = getvect(vec(5));
     setvect(vec(5), isr5);
     old[7] = getvect(vec(7));
