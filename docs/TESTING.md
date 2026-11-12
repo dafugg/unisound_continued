@@ -621,6 +621,13 @@ configuration registers at +10h (PSS), +12h (WSS), +14h (SB), +16h (CD-ROM) and 
 holding the address (bits 1-0 clear) shifted left 4 bits, the IRQ code in bits 5-3 and the DMA
 code in bits 2-0.
 
+Why it matters: the Orchid SoundWave 32 is a similar Echo PSS design with wavetable support.
+[VOGONS t=68476](https://www.vogons.org/viewtopic.php?t=68476) shows another similar card, a
+Weames PA-9050-B, getting the SoundWave 32's wavetable support with a few hardware mods and some
+ROM burning. The TNC Sound 16 DSP XO has the socket for that ROM too. A SoundWave 32 sells for
+hundreds on eBay, while a TNC Sound 16 DSP XO is often available for under 20. Setting these
+cards up without the vendor's driver would make that route easier to use.
+
 What UNISOUND could do, in order of effort:
 
 1. Recognise a PSS card (ID `45xx` at 220h, 230h, 240h or 250h + 4) and say that ADI_PSS.SYS
