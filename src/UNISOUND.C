@@ -3808,7 +3808,7 @@ int init_nonpnp_sb16(void)
         if (blaster == 0 && type < 2 && opt_read == 0) {
             puts("Loading default values...");
         }
-        printf("Settings: ADD:%X IRQ:%X DMA:%d", port, irqr, dmar & 0xf);
+        printf("Settings: ADD:%X IRQ:%d DMA:%d", port, irqr, dmar & 0xf);
         printf(" HDMA:%d", (dmar >> 4) > 0 ? dmar >> 4 : dmar & 0xf);
         if (inportb(0x331) == 0xbf || inportb(0x331) == 0x3f) {
             mpu = 0x330;
