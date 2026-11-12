@@ -313,6 +313,11 @@ unsigned decode_res(unsigned char far *p, unsigned n, char *indent)
                 printf("  Memory %02X%02X00-%02X%02X00 len %02X%02X00\n", p[i + 2], p[i + 1],
                        p[i + 4], p[i + 3], p[i + 8], p[i + 7]);
                 break;
+            case 0x85:
+                printf("  32-bit memory %08lX-%08lX align %08lX len %08lX\n",
+                       *(unsigned long far *)(p + i + 1), *(unsigned long far *)(p + i + 5),
+                       *(unsigned long far *)(p + i + 9), *(unsigned long far *)(p + i + 13));
+                break;
             case 0x86:
                 printf("  Fixed memory %08lX len %08lX\n", *(unsigned long far *)(p + i + 1),
                        *(unsigned long far *)(p + i + 5));
@@ -444,8 +449,10 @@ void report_mem(void)
             printf("Extended (88h): %u KB (an XMS driver may report 0)\n", r.x.ax);
         }
     }
-    printf("Extended (CMOS): %u KB set up, %u KB found by POST\n", cmos(0x17) | (cmos(0x18) << 8),
-           cmos(0x30) | (cmos(0x31) << 8));
+    printf("Extended (CMOS): %u KB set up, %u KB found by POST%s\n", cmos(0x17) | (cmos(0x18) << 8),
+           cmos(0x30) | (cmos(0x31) << 8),
+           (cmos(0x30) | (cmos(0x31) << 8)) == 0xffff ? " (the most CMOS can hold: 64 MB or more)" :
+           "");
 }
 
 /* --- BIOS ------------------------------------------------------------------------------------ */
@@ -493,7 +500,7 @@ void bios_strings(unsigned seg)
 
 char *smb_str(unsigned char *s, int n, unsigned len)
 {
-    unsigned char *p = s;
+    unsigned char *p = s, *q;
     if (n == 0) {
         return "";
     }
@@ -503,7 +510,18 @@ char *smb_str(unsigned char *s, int n, unsigned len)
             return "?";
         }
     }
-    return (char *)p;
+    for (q = p; *q == ' '; q++) {
+    }
+    return *q ? (char *)p : "(blank)";
+}
+
+/* An MPU-401's status port reads bit 6 clear when it can take a command, bit 7 set when it has
+   no data; FFh is no device. */
+void probe_mpu(unsigned base)
+{
+    unsigned char st = inportb(base + 1);
+    printf("MPU %X: status %02X, %s\n", base, st, st == 0xff ? "none" : st & 0x40 ? "busy or none" :
+           st & 0x80 ? "ready" : "ready, data waiting");
 }
 
 /* SMBIOS (_SM_) or legacy DMI (_DMI_) entry point in F0000h-FFFFFh, and its table. */
@@ -1530,7 +1548,8 @@ int main(int argc, char *argv[])
         }
         if (want("MPU")) {
             step("MPU");
-            printf("MPU 330: status %02X\nMPU 300: status %02X\n", inportb(0x331), inportb(0x301));
+            probe_mpu(0x330);
+            probe_mpu(0x300);
         }
         if (want("WSS")) {
             probe_wss();
