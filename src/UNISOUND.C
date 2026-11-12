@@ -405,6 +405,7 @@ const struct card_id *card_id_lookup(const char *id);
 int parse_ultrasnd(void);
 int parse_ultra16(int *port, int *dma, int *irq, int *rdma);
 int parse_blaster(void);
+void parse_cd(void);
 void print_blaster_hint(int port, int irq, int dma, int hdma);
 int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type);
@@ -2768,6 +2769,7 @@ int parse_blaster(void)
     char letter;
     env = getenv("BLASTER");
     if (env == 0) {
+        parse_cd();
         return 0;
     }
     dup = strdup(env);
@@ -2884,10 +2886,50 @@ int parse_blaster(void)
     dlog("BLASTER=%s: A%X I%d D%d H%d P%X W%X F%X E%X J%X R%X M%X C%X U%d Q%d K%d Y%d", env,
          sb_port, sb_irq, sb_dma, sb_hdma, mpu_port, wss_port, opl_port, awe_port, joy_port,
          ess_ctl_port, mpu2_port, ide_port, mpu_irq, irq2, wss_dma, ide_irq);
+    parse_cd();
     if (field < 1) {
         return 0;
     }
     return 1;
+}
+
+/* Read the UNISOUND_CD environment variable: C ide_port and Y ide_irq, as in BLASTER, which
+   programs that reject unknown BLASTER fields may not accept. Called after BLASTER is read, so
+   its values win over BLASTER's. Out-of-range values are ignored. */
+void parse_cd(void)
+{
+    char *env;
+    char *dup;
+    char *tok;
+    int val;
+    env = getenv("UNISOUND_CD");
+    if (env == 0) {
+        return;
+    }
+    dup = strdup(env);
+    for (tok = strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
+        if (strlen(tok) < 2) {
+            continue;
+        }
+        switch (toupper(*tok)) {
+            case 'C':
+                val = (int)strtol(tok + 1, 0, 16);
+                if (val == 0x168 || val == 0x1e8 || val == 0x170 || val == 0) {
+                    ide_port = val;
+                }
+                break;
+            case 'Y':
+                val = (int)strtol(tok + 1, 0, 10);
+                if (val >= 2 && val <= 15) {
+                    ide_irq = val;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    free(dup);
+    dlog("UNISOUND_CD=%s: C%X Y%d", env, ide_port, ide_irq);
 }
 
 /* After a card's SB part is set up, check that BLASTER describes it: programs find the card

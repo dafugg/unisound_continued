@@ -134,6 +134,23 @@ UNISOUND uses 240, DMA 3 and 3, IRQ 11. Limitations:
 This list comes from the source and hasn't been checked on a real card; see
 [Wanted](#wanted-testers-and-pnp-dumps).
 
+## Planned: CD-ROM interfaces
+
+Many of these cards have CD-ROM drive connectors: IDE, or Mitsumi, Sony or Panasonic. So far
+UNISOUND sets up only IDE: on PnP cards that describe it as a logical device, and on the OPTi
+82C924 and 82C925 in non-PnP mode. BLASTER's `C` field gives the port and `Y` the IRQ (see
+UNISOUND.TXT).
+
+`C` and `Y` are UNISOUND's own BLASTER fields, and a program that parses every BLASTER field
+might reject them or misread the rest. If that happens, take them out of BLASTER and put them
+in `UNISOUND_CD` instead, for example `SET UNISOUND_CD=C170 Y15`. UNISOUND reads it after
+BLASTER, so if both set a field, `UNISOUND_CD` wins.
+
+Proprietary interfaces, and the CD interface on other non-PnP chips, are left as
+they are (on the 82C930, for example, the CD interface isn't supported). The aim is to get the
+CD-ROM connectors working on every supported card. Reports of how a card's CD interface behaves
+with its vendor's driver are welcome.
+
 ## Wanted: testers and PnP dumps
 
 Some cards are recognised only from driver files, Linux's tables or 86Box tests with edited PnP
@@ -260,7 +277,8 @@ itself as an ES1869.
 
 `/LOG` adds lines starting with `LOG: ` that show what UNISOUND found and wrote:
 
-- the DOS version and the command line; BLASTER as given and every field as parsed, and ULTRASND;
+- the DOS version and the command line; BLASTER as given and every field as parsed, UNISOUND_CD
+  and ULTRASND;
 - on the PnP path: the read data port, an isolation that answered with a bad checksum, each
   card's vendor ID, whole serial identifier and card type, the selected card's resource data in
   hex and which logical device it uses for what, and after the setup each configured logical
