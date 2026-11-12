@@ -272,6 +272,17 @@ and say in the issue what each one printed:
    card's driver disk, a download link, the name of the package).
 5. **Your machine**: the board or model, the CPU, whether its BIOS is PnP, and the other cards
    in it with their ports.
+6. **If we ask for a dump**: `UNIDUMP > DUMP.TXT`, from the test package we send. It records the
+   PnP BIOS's devices, every PnP card's resource data and settings, the non-PnP sound chips it
+   can find, who owns each IRQ, the drivers and TSRs loaded, CONFIG.SYS and AUTOEXEC.BAT, and a
+   short summary of the CPU, memory, BIOS and PCI devices. It shows each step on screen as it
+   goes; if it hangs, tell us the last one and run it again with `/SKIP:` and that section's
+   name (`UNIDUMP /?` lists them).
+
+For more about the machine itself, MS-DOS 6.x's `MSD /F MSD.TXT` writes Microsoft Diagnostics'
+whole report to a file, and the freeware HWiNFO for DOS can save a report too. They add to
+UNIDUMP rather than replace it: UNIDUMP shows the PnP cards and sound chips the way UNISOUND
+sees them.
 
 `/XESSB` and `/XSLAM` skip the PnP scan, so they never read the card's ID and print a fixed
 name for the chip instead. The same card can show up under different names: an ES1898F card is
@@ -363,7 +374,7 @@ Tools:
 - `funcmap.py` and `libsyms.py`: regenerate `data/*.json`.
 - `libmatch.py`, `disasm.py`, `cmpcom.py`, `omf.py`: helpers.
 - `cardtest.py`, `cardreport.py` and `dos/PIO.C`: the 86Box sound card tests described in `docs/TESTING.md`.
-- `dos/`: the DOS test programs used for the fixes (PNPDUMP, ESSREG, DMAPLAY, WSSPLAY, OPLDET, SBST, TRACEPNP), ESSINIT (ES688/ES1688 setup test) and the prototypes of `/XESSB` and `/XSLAM` (ESSBYP, CSLAM); `pnpdecode.py` decodes TRACEPNP logs. See `docs/TESTING.md`.
+- `dos/`: the DOS test programs used for the fixes (PNPDUMP, ESSREG, DMAPLAY, WSSPLAY, OPLDET, SBST, TRACEPNP, PSSDUMP, ATAPIID), UNIDUMP (one dump of the sound, PnP and DOS state of a machine), ESSINIT (ES688/ES1688 setup test) and the prototypes of `/XESSB` and `/XSLAM` (ESSBYP, CSLAM); `pnpdecode.py` decodes TRACEPNP logs. See `docs/TESTING.md`.
 
 The analysis tools need Python with capstone. They also need the original v0.82a UNISOUND.COM,
 which this repo does not include: put it in `orig/` or set `UNISOUND_COM`.
