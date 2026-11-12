@@ -607,4 +607,30 @@ already supported, such as the ES1868F, show that the fixed build still works on
 | [Silicom Wavemaster 32 FGS 1.0](https://theretroweb.com/expansioncards/s/silicom-wavemaster-32fgs-1-0) (MegaImage32) | OPTi 82C930, QS700 wavetable | Intel SE440BX-2, Pentium III 450 | rc9 | `/NOPNP`: found (`82C930: r1 06 r3 00 r12 00`), SB mode on IRQ 7, DMA 3 (DMAPLAY, Mpxplay, Tyrian 2000). `/NOPNP /XWSS` with `ULTRA16=530,0,7,0`: WSSPLAY IRQ 7, DMA 0 at 8000 and 11025 Hz, Mpxplay and Tyrian 2000 play in WSS, and Tyrian 2000's General MIDI music (MPU-401 at 330h) plays on the QS700. One mode at a time: after any WSS setup (`/XWSS`, or Tyrian's own, also after a plain `/NOPNP`) DMAPLAY plays on DMA 0 with no IRQ, so SB programs fail until `/NOPNP` runs again |
 | Aspar P057-01-A0A (close to the [P057-01-A0D](https://theretroweb.com/expansioncards/s/aspar-p057-01-a0d) and, in layout and jumpers, the [SoundStar E-15-140](https://arvutimuuseum.ee/th99/i/I-L/51695.htm)) | ESS ES688FC; jumpers 220h, IRQ 7, DMA 1 | Intel SE440BX-2, Pentium III 450 | rc10 | Plain `/LOG`: DSP v3.01 at 220h and "ESS ES688/ES1688 or OPTi chip? Try /NOPNP." `/NOPNP`: found (`E7 68 86`, "ES688"); after power-on B1h/B2h read 1Ah (the jumpers' IRQ 7 and DMA 1) and get BLASTER's values: DMAPLAY plays on IRQ 7, DMA 3 with `I7 D3` and on IRQ 5, DMA 1 with `I5 D1`, so the jumpers only set the power-on values. Doom 2 (IRQ 7, DMA 3) music and effects and Tyrian 2000 work |
 | [BTC 1817DSL](https://www.dosdays.co.uk/topics/Manufacturers/btc/btc1817.php) Rev A (short card, no wavetable) | OPTi 82C931 | Intel SE440BX-2, Pentium III 450 | rc12 | PnP scan, BIOS set to "PnP OS: No": OPT0931 set up as `ADD:220 WSS:534 OPL:388 CTR:E0D IRQ:5 DMA:1 MPU:330/I9 JOY:200`. `/LOG` reads the codec at 534h (`LOG: codec 534 I0-31: AC AC 1E 1E ...`, I12 0A; rc11 read FFh at 538h). OPLDET finds the FM chip at 388h only (not 380h, which the BIOS assigns, or 390h, where 86Box answers). DMAPLAY plays on IRQ 5, DMA 1; its first run after power-on shows a pending IRQ 10 (the BIOS's IRQ for the card) as `stray irq`. Mpxplay plays in SB and WSS (`ULTRA16=530,1,5,1`), WSSPLAY on IRQ 5, DMA 1 at 8000 and 11025 Hz; Doom 2 and Tyrian 2000 work in SB mode. WSSPLAY leaves SB working, but after Mpxplay's WSS driver DMAPLAY plays with no IRQ until a plain `UNISOUND` runs again. Mpxplay's WSS once stayed silent after WSSPLAY then DMAPLAY; not yet explained |
+| [TNC Sound 16 DSP XO](https://theretroweb.com/expansioncards/s/tnc-sound-16-dsp-xo), also sold as the 2the Max SoundMedia Pro and the Western Digital Paradise 16 DSP (Mitsumi and Sony CD-ROM connectors fitted, Panasonic not) | Echo PSS: ESC614, ADSP-2115, AD1848KP; jumpered to 220h | Intel SE440BX-2, Pentium III 450 | rc12 | Not supported by UNISOUND: "No PnP card detected" and the generic DSP-at-220h hint. Set up with its own DOS driver, ADI_PSS.SYS 2.1a from the SoundMedia Pro set (SM002.zip, reported working in [VOGONS t=88337](https://www.vogons.org/viewtopic.php?t=88337)) and PSS.INI as shipped; it isn't a TSR (`MEM /C` shows nothing resident) and loads the DSP program SYNTH.LD ("Eusynth Version 1.4", EuPhonics). PSSDUMP: ID `4501` (PSS rev 1); before the driver the WSS, SB, CD and MIDI registers are 0, after it WSS `5300` (530h), SB `001A` (IRQ 7, DMA 1; no address, the SB part answers at the PSS base), MIDI `3310` (330h, IRQ 5), CD 0. SB emulation: DSP v2.01 (SB 2.0), mono, so stereo programs play the left channel only (Mpxplay plays SONG.WAV's left tone on both speakers and no right tone). DMAPLAY plays on IRQ 7, DMA 1. This card is locked to DMA 1 and will sound terrible if you try to use other DMA: with DMA 3 chosen in Tyrian 2000, its FM music becomes noise. FM: none before the driver (OPLDET s1=00 s2=00, no timer); after it OPLDET finds an OPL at 388h (s2=C0), emulated by the DSP program. WSS: the AD1848 answers at 534h (I12 0A), but the driver writes no WSS IRQ or DMA, so WSSPLAY, which doesn't write the configuration byte at 530h, sees neither; Tyrian 2000 sets them itself and plays in WSS. SB and WSS work together: DMAPLAY plays after WSSPLAY, and Tyrian 2000 works in both after one driver load |
 | Compaq ES1868F card | ESS ES1868F | Intel SE440BX-2, Pentium III 450 | rc8 | PnP scan: ESS1868 set up from BLASTER (`ADD:220 OPL:388 MPU:330/I5 IRQ:5 DMA:1/4 CTR:800`), works |
+
+### Echo PSS cards: notes for possible support
+
+The TNC Sound 16 DSP XO (2the Max SoundMedia Pro, Western Digital Paradise 16 DSP) is an Echo
+Personal Sound System card. It has no SB DSP and no OPL chip: the SB 2.0 emulation, the OPL
+emulation and the General MIDI synth on the MPU-401 port are all a program that the vendor's
+driver downloads to the ADSP-2115 (SYNTH.LD, or GENMIDI.LD on later disks). The registers, from
+Linux's `sound/oss/pss.c` and `tools/dos/PSSDUMP.C`: ID at base+4 (high byte `E`), and 16-bit
+configuration registers at +10h (PSS), +12h (WSS), +14h (SB), +16h (CD-ROM) and +18h (MIDI),
+holding the address (bits 1-0 clear) shifted left 4 bits, the IRQ code in bits 5-3 and the DMA
+code in bits 2-0.
+
+What UNISOUND could do, in order of effort:
+
+1. Recognise a PSS card (ID `45xx` at 220h, 230h, 240h or 250h + 4) and say that ADI_PSS.SYS
+   sets it up, instead of the generic hint.
+2. Set up WSS, which is native to the card: the AD1848 is on the bus and needs no DSP program,
+   and Linux enables it without one. UNISOUND would write the WSS register, and the codec's IRQ
+   and DMA (from `ULTRA16`) in the configuration byte at the WSS base, which ADI_PSS.SYS leaves
+   unset.
+3. SB, FM and MIDI need the DSP program, which UNISOUND doesn't have and can't ship. Downloading
+   the user's own SYNTH.LD, as Linux's `pss_download_boot` does, would be the way, but the
+   driver's SB register value (`001A` for IRQ 7, DMA 1) is all we know of that part.
+
+86Box doesn't emulate a PSS card, so every step needs a real card to test.
