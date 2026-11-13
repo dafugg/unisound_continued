@@ -91,8 +91,8 @@ A few card IDs and the options `/XSLAM` and `/XESSB` are experimental: see
 - **ESS:** ES688, ES1688, ES1788 and ES1887/ES1888, including on-board chips such as the
   Compaq LTE 5000's and Presario 7100's ES1688 and the Presario 224x's ES1888, and the ES1688 on
   the Gravis UltraSound Extreme and ViperMax.
-- **OPTi:** 82C924 and 82C925 in non-PnP mode, and 82C930. On the 82C930 the CD interface isn't
-  supported.
+- **OPTi:** 82C924 and 82C925 in non-PnP mode, and 82C930. On the 82C930 only the IDE CD
+  interface is supported, not the Mitsumi, Sony or Panasonic ones.
 - **OAK OTI601 "Mozart" and OPTi 82C928 (MAD16):** JazeFox's notes: poor compatibility with
   games, the card may need setting up again after some programs, and SB-mode audio is mono only;
   FM and WSS mode (`/XWSS`) are stereo.
@@ -138,7 +138,7 @@ This list comes from the source and hasn't been checked on a real card; see
 
 Many of these cards have CD-ROM drive connectors: IDE, or Mitsumi, Sony or Panasonic. So far
 UNISOUND sets up only IDE: on PnP cards that describe it as a logical device, and on the OPTi
-82C924 and 82C925 in non-PnP mode. BLASTER's `C` field gives the port and `Y` the IRQ (see
+82C924, 82C925 and 82C930 in non-PnP mode. BLASTER's `C` field gives the port and `Y` the IRQ (see
 UNISOUND.TXT); on the GUS PnP, which reads ULTRASND instead, `/XGCn` sets the port. In 86Box
 an ATAPI CD-ROM drive answers, with its IRQ, wherever UNISOUND puts the IDE port on the SB16
 PnP, AWE32 PnP and AWE64 with IDE, the GUS PnP and the OPTi 82C931 (checked with
@@ -146,13 +146,21 @@ PnP, AWE32 PnP and AWE64 with IDE, the GUS PnP and the OPTi 82C931 (checked with
 command block, so the control port goes in register 60h; UNISOUND follows the order the
 resource data gives. No real card has been tried yet.
 
+The 82C930's IDE is fixed at 170h (secondary IDE) on IRQ 15, so `/NOPNP` takes only `C170`,
+which turns it on, and `C0`, which turns it off; without `C` it stays as it was (for example
+as OPTi's CDSETUP.SYS left it), and `Y` is ignored. The settings line shows `IDE:170/I15` while
+it is on. As OPTi's CDSETUP.SYS does, UNISOUND writes the CD-type bits of control register 1
+(data sheet values 000 none, 100 secondary IDE) with bits 2 and 1 inverted, 011 and 111. The
+board's own secondary IDE channel must be off in its BIOS setup, as it uses the same ports.
+86Box's 82C930 has no IDE, so only the register writes have been checked.
+
 `C` and `Y` are UNISOUND's own BLASTER fields, and a program that parses every BLASTER field
 might reject them or misread the rest. If that happens, take them out of BLASTER and put them
 in `UNISOUND_CD` instead, for example `SET UNISOUND_CD=C170 Y15`. UNISOUND reads it after
 BLASTER, so if both set a field, `UNISOUND_CD` wins.
 
 Proprietary interfaces, and the CD interface on other non-PnP chips, are left as
-they are (on the 82C930, for example, the CD interface isn't supported). The aim is to get the
+they are (on the 82C929, for example). The aim is to get the
 CD-ROM connectors working on every supported card. Reports of how a card's CD interface behaves
 with its vendor's driver are welcome.
 

@@ -310,6 +310,7 @@ int opti_ctl_port = 0x0f0c;    /* OPTi control port */
 int ess_ctl_port = 0x0800;     /* ESS control port (R) */
 int mpu2_port = 0x0310;        /* 2nd MPU port (M) */
 int ide_port = 0;              /* IDE port (C) */
+int ide_given = 0;             /* 1 if C was given (BLASTER or UNISOUND_CD), even C0 */
 int sb_irq = 5;                /* IRQ (I) */
 int irq2 = 0;                  /* 2nd IRQ (Q) */
 int mpu_irq = -1;              /* MPU IRQ (U); -1 = auto */
@@ -2844,6 +2845,7 @@ int parse_blaster(void)
                 case 'C':
                     if (hex == 0x168 || hex == 0x1e8 || hex == 0x170 || hex == 0) {
                         ide_port = hex;
+                        ide_given = 1;
                         break;
                     }
                     break;
@@ -2930,6 +2932,7 @@ void parse_cd(void)
                 val = (int)strtol(tok + 1, 0, 16);
                 if (val == 0x168 || val == 0x1e8 || val == 0x170 || val == 0) {
                     ide_port = val;
+                    ide_given = 1;
                 }
                 break;
             case 'Y':
@@ -5947,8 +5950,23 @@ int init_opti930(void)
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         wss_port = 0x530;
         u16 = parse_ultra16(&wss_port, &wss_pdma, &wss_irq, &wss_rdma);
-        /* MC1 bits 3:1 select the CD-ROM interface (SNDINIT sets them from CDROM.CFG): keep them */
+        /* MC1 bits 3:1 select the CD-ROM interface (SNDINIT sets them from CDROM.CFG). Writes
+           take the data sheet's value XOR 011, as OPTi's CDSETUP.SYS writes them: 011 no CD,
+           111 secondary IDE (fixed at 170/376, IRQ 15). C170 turns the IDE on and C0 off;
+           without C they are kept */
         cfg1 = opti93x_read(0xe0e, 1) & 0x0e;
+        if (ide_given != 0) {
+            if (ide_port == 0x170) {
+                cfg1 = 0x0e;
+                if (ide_irq > 0 && ide_irq != 15) {
+                    printf("The 82C930's IDE uses IRQ 15: Y%d ignored.\n", ide_irq);
+                }
+            } else if (ide_port == 0) {
+                cfg1 = 0x06;
+            } else {
+                printf("The 82C930's IDE port is 170 only: C%X ignored.\n", ide_port);
+            }
+        }
         if (sb_port == 0x240) {
             cfg1 |= 0x80;
         } else {
@@ -6042,6 +6060,9 @@ int init_opti930(void)
         opti93x_write(opti_ctl_port + 2, 5, 0x3d);
         opti93x_write(opti_ctl_port + 2, 6, cfg3);
         opti93x_write(opti_ctl_port + 2, 0xa, 0x10);
+        if (opt_log != 0) {
+            dlog("82C930: MC1 %02X written, reads %02X", cfg1, opti93x_read(0xe0e, 1));
+        }
         delay(20);
         idx45_write_slow(wss_port, 0x29, 0);
         idx45_write_slow(wss_port, 0x2a, 2);
@@ -6081,6 +6102,9 @@ int init_opti930(void)
             printf("Settings: ADD:%X IRQ:%d DMA:%d WSS:%X", sb_port, sb_irq, sb_dma, wss_port);
         }
         printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
+        if ((cfg1 & 0x0e) == 0x0e) {
+            printf(" IDE:170/I15");
+        }
         hint_mpu = mpu_port;
         puts(opt_xwss > 0 ? " [WSS mode]" : "");
         if (opt_xwss > 0 && !u16) {
