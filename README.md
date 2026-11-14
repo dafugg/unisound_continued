@@ -310,7 +310,8 @@ and say in the issue what each one printed:
    card's driver disk, a download link, the name of the package).
 5. **Your machine**: the board or model, the CPU, whether its BIOS is PnP, and the other cards
    in it with their ports.
-6. **If we ask for a dump**: `UNIDUMP > DUMP.TXT`, from the test package we send. It records the
+6. **A dump, if UNISOUND doesn't find or support your card, or we ask for one**:
+   `UNIDUMP > DUMP.TXT`. UNIDUMP.EXE comes with fix-4 and later builds. It records the
    PnP BIOS's devices, every PnP card's resource data and settings, the non-PnP sound chips it
    can find, who owns each IRQ, the drivers and TSRs loaded, CONFIG.SYS and AUTOEXEC.BAT, and a
    short summary of the CPU, memory, BIOS and PCI devices. It shows each step on screen as it
