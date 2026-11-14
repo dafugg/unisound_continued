@@ -58,8 +58,8 @@ int main(int argc, char *argv[])
     if (argc >= 4) {
         dev = 0xb0;
     }
-    printf("IDE %X ctl %X irq %d %s: status %02X\n", base, ctl, irq, dev == 0xa0 ? "master" : "slave",
-           inportb(base + 7));
+    printf("IDE %X ctl %X irq %d %s: status %02X\n", base, ctl, irq,
+           dev == 0xa0 ? "master" : "slave", inportb(base + 7));
     outportb(ctl, 0x06); /* SRST, nIEN */
     delay(5);
     outportb(ctl, 0x02);

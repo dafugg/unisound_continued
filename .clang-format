@@ -1,4 +1,4 @@
-# clang-format 18 style for src/UNISOUND.C and tools/dos/*.C (each file keeps its line endings):
+# clang-format 23 style for src/UNISOUND.C and tools/dos/*.C (each file keeps its line endings):
 # run clang-format -i on the files you change before committing.
 BasedOnStyle: LLVM
 Language: Cpp

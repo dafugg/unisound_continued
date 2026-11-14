@@ -39,11 +39,11 @@
 #include <ctype.h>
 #include <dos.h>
 
-#define ADDR  0x279
-#define WDATA 0xa79
+#define ADDR    0x279
+#define WDATA   0xa79
 #define RES_MAX 2048
 
-typedef int (far *PNPFN)(int, ...);
+typedef int(far *PNPFN)(int, ...);
 
 PNPFN pnp_entry;
 unsigned pnp_ds;
@@ -80,24 +80,24 @@ unsigned char blob[] = {
 
 int cpu_class(void)
 {
-    return ((int (far *)(void))MK_FP(_DS, (unsigned)blob))();
+    return ((int(far *)(void))MK_FP(_DS, (unsigned)blob))();
 }
 
 void cpuid4(unsigned long leaf, unsigned long *out)
 {
-    ((void (far *)(unsigned long, unsigned long far *))MK_FP(_DS, (unsigned)blob + 0x7e))(
+    ((void(far *)(unsigned long, unsigned long far *))MK_FP(_DS, (unsigned)blob + 0x7e))(
         leaf, (unsigned long far *)out);
 }
 
 unsigned msw(void)
 {
-    return ((unsigned (far *)(void))MK_FP(_DS, (unsigned)blob + 0xa4))();
+    return ((unsigned(far *)(void))MK_FP(_DS, (unsigned)blob + 0xa4))();
 }
 
 unsigned long xms(void far *entry, unsigned ax)
 {
-    return ((unsigned long (far *)(void far *, unsigned))MK_FP(_DS, (unsigned)blob + 0xa8))(entry,
-                                                                                          ax);
+    return ((unsigned long(far *)(void far *, unsigned))MK_FP(_DS, (unsigned)blob + 0xa8))(entry,
+                                                                                           ax);
 }
 
 /* --- sections and progress ------------------------------------------------------------------- */
@@ -201,8 +201,8 @@ char *eisa_id(unsigned char far *b, char *s)
 /* Vendors of sound chips that UNISOUND knows, or that a BIOS may describe as on-board devices. */
 int sound_vendor(char *id)
 {
-    static char *v[] = {"CSC", "ESS", "YMH", "OPT", "CTL", "AZT", "ALS", "CMI", "GRV", "ENS",
-                        "BVJ", "RWB", "ADS", "DXP", "MIR", "RTL", 0};
+    static char *v[] = {"CSC", "ESS", "YMH", "OPT", "CTL", "AZT", "ALS", "CMI", "GRV",
+                        "ENS", "BVJ", "RWB", "ADS", "DXP", "MIR", "RTL", 0};
     int i;
     for (i = 0; v[i]; i++) {
         if (memcmp(id, v[i], 3) == 0) {
@@ -284,17 +284,18 @@ unsigned decode_res(unsigned char far *p, unsigned n, char *indent)
                 print_mask("", p[i], 7);
                 break;
             case 0x6:
-                printf("Dependent function%s\n",
-                       len == 0 ? "" : p[i] == 0 ? " (good)" : p[i] == 1 ? " (acceptable)" :
-                       " (sub-optimal)");
+                printf("Dependent function%s\n", len == 0    ? ""
+                                                 : p[i] == 0 ? " (good)"
+                                                 : p[i] == 1 ? " (acceptable)"
+                                                             : " (sub-optimal)");
                 break;
             case 0x7:
                 puts("End of dependent functions");
                 break;
             case 0x8:
                 printf("  I/O %03X-%03X align %X len %X, %s decode\n", p[i + 1] | (p[i + 2] << 8),
-                       p[i + 3] | (p[i + 4] << 8), p[i + 5], p[i + 6], p[i] & 1 ? "16-bit" :
-                       "10-bit");
+                       p[i + 3] | (p[i + 4] << 8), p[i + 5], p[i + 6],
+                       p[i] & 1 ? "16-bit" : "10-bit");
                 break;
             case 0x9:
                 printf("  Fixed I/O %03X len %X\n", (p[i] | (p[i + 1] << 8)) & 0x3ff, p[i + 2]);
@@ -366,10 +367,10 @@ void report_env(void)
 void report_cpu(void)
 {
     static char *cls[] = {"8086/8088", "?", "80286", "80386", "80486 (no CPUID)", "CPUID"};
-    static char *feat[] = {"FPU", "VME", "DE", "PSE", "TSC", "MSR", "PAE", "MCE", "CX8", "APIC",
-                           "", "SEP", "MTRR", "PGE", "MCA", "CMOV", "PAT", "PSE36", "PSN",
-                           "CLFSH", "", "DS", "ACPI", "MMX", "FXSR", "SSE", "SSE2", "SS", "HTT",
-                           "TM", "", "PBE"};
+    static char *feat[] = {"FPU",  "VME",   "DE",   "PSE",   "TSC",  "MSR", "PAE",  "MCE",
+                           "CX8",  "APIC",  "",     "SEP",   "MTRR", "PGE", "MCA",  "CMOV",
+                           "PAT",  "PSE36", "PSN",  "CLFSH", "",     "DS",  "ACPI", "MMX",
+                           "FXSR", "SSE",   "SSE2", "SS",    "HTT",  "TM",  "",     "PBE"};
     unsigned long r[4], max, ext;
     char name[52];
     union REGS g;
@@ -451,8 +452,8 @@ void report_mem(void)
     }
     printf("Extended (CMOS): %u KB set up, %u KB found by POST%s\n", cmos(0x17) | (cmos(0x18) << 8),
            cmos(0x30) | (cmos(0x31) << 8),
-           (cmos(0x30) | (cmos(0x31) << 8)) == 0xffff ? " (the most CMOS can hold: 64 MB or more)" :
-           "");
+           (cmos(0x30) | (cmos(0x31) << 8)) == 0xffff ? " (the most CMOS can hold: 64 MB or more)"
+                                                      : "");
 }
 
 /* --- BIOS ------------------------------------------------------------------------------------ */
@@ -478,9 +479,23 @@ void bios_strings(unsigned seg)
         for (j = i; j < 0xffff && p[j] >= ' ' && p[j] < 0x7f; j++) {
         }
         if (j - i >= 12) {
-            static char *w[] = {"Award", "AMI", "American Megatrends", "Phoenix", "Copyright",
-                                "(C)", "(c)", "MR BIOS", "SystemSoft", "Quadtel", "Insyde",
-                                "Compaq", "IBM", "Dell", "Gateway", "Intel", 0};
+            static char *w[] = {"Award",
+                                "AMI",
+                                "American Megatrends",
+                                "Phoenix",
+                                "Copyright",
+                                "(C)",
+                                "(c)",
+                                "MR BIOS",
+                                "SystemSoft",
+                                "Quadtel",
+                                "Insyde",
+                                "Compaq",
+                                "IBM",
+                                "Dell",
+                                "Gateway",
+                                "Intel",
+                                0};
             int hit = 0, x;
             for (x = 0; w[x] && !hit; x++) {
                 hit = has(p + i, j - i, w[x]);
@@ -520,8 +535,11 @@ char *smb_str(unsigned char *s, int n, unsigned len)
 void probe_mpu(unsigned base)
 {
     unsigned char st = inportb(base + 1);
-    printf("MPU %X: status %02X, %s\n", base, st, st == 0xff ? "none" : st & 0x40 ? "busy or none" :
-           st & 0x80 ? "ready" : "ready, data waiting");
+    printf("MPU %X: status %02X, %s\n", base, st,
+           st == 0xff  ? "none"
+           : st & 0x40 ? "busy or none"
+           : st & 0x80 ? "ready"
+                       : "ready, data waiting");
 }
 
 /* SMBIOS (_SM_) or legacy DMI (_DMI_) entry point in F0000h-FFFFFh, and its table. */
@@ -628,8 +646,8 @@ void report_bios(void)
     int86x(0x15, &r, &r, &s);
     if (!r.x.cflag && r.h.ah == 0) {
         unsigned char far *c = MK_FP(s.es, r.x.bx);
-        printf("INT 15h C0h: model %02X, submodel %02X, revision %02X, features %02X\n", c[2],
-               c[3], c[4], c[5]);
+        printf("INT 15h C0h: model %02X, submodel %02X, revision %02X, features %02X\n", c[2], c[3],
+               c[4], c[5]);
     }
     puts("ID strings:");
     bios_strings(0xf000);
@@ -665,15 +683,39 @@ char *pci_vendor(unsigned v)
     static struct {
         unsigned id;
         char *name;
-    } t[] = {{0x8086, "Intel"}, {0x1106, "VIA"}, {0x10b9, "ALi"}, {0x1039, "SiS"},
-             {0x1022, "AMD"}, {0x1045, "OPTi"}, {0x1060, "UMC"}, {0x1078, "Cyrix"},
-             {0x1274, "Ensoniq"}, {0x1102, "Creative"}, {0x125d, "ESS"}, {0x13f6, "C-Media"},
-             {0x1073, "Yamaha"}, {0x1013, "Cirrus"}, {0x10de, "NVIDIA"}, {0x1002, "ATI"},
-             {0x5333, "S3"}, {0x1023, "Trident"}, {0x102b, "Matrox"}, {0x121a, "3dfx"},
-             {0x104c, "TI"}, {0x10ec, "Realtek"}, {0x1011, "DEC"}, {0x10b7, "3Com"},
-             {0x9004, "Adaptec"}, {0x1000, "LSI/Symbios"}, {0x14f1, "Conexant"},
-             {0x11d4, "Analog Devices"}, {0x1319, "ForteMedia"}, {0x1412, "VIA/ICEnsemble"},
-             {0x5053, "Voyetra/Aureal"}, {0x12eb, "Aureal"}, {0, 0}};
+    } t[] = {{0x8086, "Intel"},
+             {0x1106, "VIA"},
+             {0x10b9, "ALi"},
+             {0x1039, "SiS"},
+             {0x1022, "AMD"},
+             {0x1045, "OPTi"},
+             {0x1060, "UMC"},
+             {0x1078, "Cyrix"},
+             {0x1274, "Ensoniq"},
+             {0x1102, "Creative"},
+             {0x125d, "ESS"},
+             {0x13f6, "C-Media"},
+             {0x1073, "Yamaha"},
+             {0x1013, "Cirrus"},
+             {0x10de, "NVIDIA"},
+             {0x1002, "ATI"},
+             {0x5333, "S3"},
+             {0x1023, "Trident"},
+             {0x102b, "Matrox"},
+             {0x121a, "3dfx"},
+             {0x104c, "TI"},
+             {0x10ec, "Realtek"},
+             {0x1011, "DEC"},
+             {0x10b7, "3Com"},
+             {0x9004, "Adaptec"},
+             {0x1000, "LSI/Symbios"},
+             {0x14f1, "Conexant"},
+             {0x11d4, "Analog Devices"},
+             {0x1319, "ForteMedia"},
+             {0x1412, "VIA/ICEnsemble"},
+             {0x5053, "Voyetra/Aureal"},
+             {0x12eb, "Aureal"},
+             {0, 0}};
     int i;
     for (i = 0; t[i].name; i++) {
         if (t[i].id == v) {
@@ -697,7 +739,10 @@ void report_pci(void)
     }
     last = r.h.cl;
     printf("PCI BIOS %X.%02X, mechanism %s, last bus %u\n", r.h.bh, r.h.bl,
-           r.h.al & 1 ? "1" : r.h.al & 2 ? "2" : "?", last);
+           r.h.al & 1   ? "1"
+           : r.h.al & 2 ? "2"
+                        : "?",
+           last);
     for (bus = 0; bus <= last; bus++) {
         for (dev = 0; dev < 32; dev++) {
             for (fn = 0; fn < 8; fn++) {
@@ -714,16 +759,16 @@ void report_pci(void)
                 c1 = pci_b(bus, df, 0x0a);
                 c2 = pci_b(bus, df, 0x09);
                 ht = pci_b(bus, df, 0x0e);
-                printf("  %02X:%02X.%d %04X:%04X rev %02X class %02X %02X %02X", bus, dev, fn,
-                       ven, did, pci_b(bus, df, 8), c0, c1, c2);
+                printf("  %02X:%02X.%d %04X:%04X rev %02X class %02X %02X %02X", bus, dev, fn, ven,
+                       did, pci_b(bus, df, 8), c0, c1, c2);
                 if ((ht & 0x7f) == 0) {
                     printf(" sub %04X:%04X", pci_w(bus, df, 0x2c), pci_w(bus, df, 0x2e));
                     if (pci_b(bus, df, 0x3d)) {
                         printf(" irq %d", pci_b(bus, df, 0x3c));
                     }
                 }
-                printf(" %s%s\n", pci_vendor(ven), c0 == 4 && (c1 == 1 || c1 == 3) ?
-                       "   <-- sound" : "");
+                printf(" %s%s\n", pci_vendor(ven),
+                       c0 == 4 && (c1 == 1 || c1 == 3) ? "   <-- sound" : "");
                 if (fn == 0 && !(ht & 0x80)) {
                     break;
                 }
@@ -865,8 +910,10 @@ void report_dos(void)
             break;
         }
         printf("  %04X %7lu %s%s\n", m + 1, 16UL * size,
-               own == 0 ? "free" : own == 8 ? "DOS" : "", own == 0 || own == 8 ? "" :
-               owner_name(m + 1));
+               own == 0   ? "free"
+               : own == 8 ? "DOS"
+                          : "",
+               own == 0 || own == 8 ? "" : owner_name(m + 1));
         if (b[0] == 'Z') {
             break;
         }
@@ -940,8 +987,8 @@ void report_irq(void)
         printf("%2d   %02Xh  %04X:%04X  %s  %s      %s\n", i, v, seg, off, mk ? "off " : "on  ",
                rq ? "yes" : "-  ", own);
     }
-    printf("COM ports: %X %X %X %X\nLPT ports: %X %X %X\n", bda[0], bda[1], bda[2], bda[3],
-           bda[4], bda[5], bda[6]);
+    printf("COM ports: %X %X %X %X\nLPT ports: %X %X %X\n", bda[0], bda[1], bda[2], bda[3], bda[4],
+           bda[5], bda[6]);
 }
 
 /* --- PNPBIOS --------------------------------------------------------------------------------- */
@@ -982,9 +1029,9 @@ void report_pnp_bios(void)
     pnp_entry = (PNPFN)MK_FP(*(unsigned far *)(h + 0x0f), *(unsigned far *)(h + 0x0d));
     pnp_ds = *(unsigned far *)(h + 0x1b);
     printf("$PnP at F000:%04X: version %d.%d, control %04X, real-mode entry %04X:%04X, data %04X, "
-           "OEM ID %08lX\n", FP_OFF(h), h[4] >> 4, h[4] & 0xf, *(unsigned far *)(h + 6),
-           *(unsigned far *)(h + 0x0f), *(unsigned far *)(h + 0x0d), pnp_ds,
-           *(unsigned long far *)(h + 0x17));
+           "OEM ID %08lX\n",
+           FP_OFF(h), h[4] >> 4, h[4] & 0xf, *(unsigned far *)(h + 6), *(unsigned far *)(h + 0x0f),
+           *(unsigned far *)(h + 0x0d), pnp_ds, *(unsigned long far *)(h + 0x17));
     step("PnP BIOS function 00h");
     ax = pnp_entry(0x00, (unsigned char far *)&nnodes, (unsigned far *)&nsize, pnp_ds);
     printf("Function 00h: %04X, %d device nodes, largest %u bytes\n", ax, nnodes, nsize);
@@ -1006,7 +1053,9 @@ void report_pnp_bios(void)
             printf("\nNode %02X: %s, type %02X %02X %02X, attributes %04X%s\n", node_buf[2], id,
                    node_buf[7], node_buf[8], node_buf[9], node_buf[10] | (node_buf[11] << 8),
                    (node_buf[7] == 4 && node_buf[8] == 1 && strcmp(id, "PNP0800") != 0) ||
-                   sound_vendor(id) ? "   <-- sound" : "");
+                           sound_vendor(id)
+                       ? "   <-- sound"
+                       : "");
             if (size > 12 && size <= sizeof(node_buf)) {
                 /* three resource blocks, each ending with an end tag: allocated (current),
                    possible, and compatible */

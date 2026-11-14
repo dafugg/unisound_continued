@@ -34,8 +34,10 @@ jobs:
       - uses: actions/checkout@v7
       - name: clang-format
         run: |
-          command -v clang-format-18 || { sudo apt-get update -qq && sudo apt-get install -y -qq clang-format-18; }
-          git ls-files 'src/*.C' 'tools/dos/*.C' | xargs clang-format-18 --dry-run -Werror
+          # The PyPI build of clang-format, pinned to the version the code is formatted with
+          pipx install clang-format==23.1.1
+          clang-format --version
+          git ls-files 'src/*.C' 'tools/dos/*.C' | xargs clang-format --dry-run -Werror
 
   build:
     name: UNISOUND.COM
