@@ -8,7 +8,8 @@
 
 C source for **UNISOUND.COM v0.82a**, the "Universal ISA PnP Sound Card Driver for DOS" by
 JazeFox, decompiled so that it rebuilds the released binary byte for byte. UNISOUND is released
-and discussed in [its thread on the VOGONS forum](https://www.vogons.org/viewtopic.php?t=72553).
+and discussed in [its thread on the VOGONS forum](https://www.vogons.org/viewtopic.php?t=72553);
+this fork's unofficial builds have [their own thread](https://www.vogons.org/viewtopic.php?p=1456858).
 
 It is also a fork: `main` adds fixes and more cards, and the `0.82a` branch keeps the
 decompilation alone.
@@ -289,8 +290,10 @@ Before opening an issue here, check whether the problem also happens with the of
 
 - **If it does**, report it in [the UNISOUND thread on VOGONS](https://www.vogons.org/viewtopic.php?t=72553)
   first, then open an issue here that links to your post.
-- **If it happens only with the build from `main`**, open an issue here. Include the
-  version line UNISOUND prints, your card, your BLASTER or ULTRASND setting and the command line.
+- **If it happens only with the build from `main`**, post in
+  [the VOGONS thread for these unofficial builds](https://www.vogons.org/viewtopic.php?p=1456858)
+  or open an issue here. Include the version line UNISOUND prints, your card, your BLASTER or
+  ULTRASND setting and the command line.
 
 ### What to run
 
@@ -316,7 +319,8 @@ and say in the issue what each one printed:
    can find, who owns each IRQ, the drivers and TSRs loaded, CONFIG.SYS and AUTOEXEC.BAT, and a
    short summary of the CPU, memory, BIOS and PCI devices. It shows each step on screen as it
    goes; if it hangs, tell us the last one and run it again with `/SKIP:` and that section's
-   name (`UNIDUMP /?` lists them).
+   name (`UNIDUMP /?` lists them). `UNIDUMP /NOFILES > DUMP.TXT` leaves CONFIG.SYS and
+   AUTOEXEC.BAT out if you'd rather not share them.
 
 For more about the machine itself, MS-DOS 6.x's `MSD /F MSD.TXT` writes Microsoft Diagnostics'
 whole report to a file, and the freeware HWiNFO for DOS can save a report too. They add to

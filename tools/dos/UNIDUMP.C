@@ -9,7 +9,7 @@
               processor and memory devices
      PCI      every PCI function (PCI BIOS): vendor, device, class, sound devices marked
      DOS      EMS, XMS, Windows, memory blocks with their owners (as MEM /C), device drivers,
-              CONFIG.SYS and AUTOEXEC.BAT
+              CONFIG.SYS and AUTOEXEC.BAT (not with /NOFILES)
      IRQ      PIC mask, request and in-service registers; IRQ vectors and who owns them;
               COM and LPT ports from the BIOS data area
      PNPBIOS  the PnP BIOS: header, every system device node with its current, possible and
@@ -28,6 +28,8 @@
      /DEEP       also the OPTi 82C924/925, 82C928/929 and 82C930 password probes at F8Ch-F8Fh
                  and E0Eh, which write to those ports (a card decoding 10 address bits sees F8Fh
                  as 38Fh, next to the FM ports)
+     /NOFILES    leave CONFIG.SYS and AUTOEXEC.BAT out of the DOS section, for anyone who'd
+                 rather not share them; the rest of the section is still reported
    Before each step it prints "UNIDUMP: step" on the screen (stderr), and the report is flushed
    after each section, so if the machine hangs the screen shows where and DUMP.TXT holds the rest.
    The PnP BIOS calls and register layouts are from the Plug and Play BIOS Specification 1.0A and
@@ -53,7 +55,7 @@ int cpu = 0;            /* processor class from cpu_class: 0 8086, 2 286, 3 386,
 unsigned char res[RES_MAX];
 unsigned char node_buf[1024];
 char only[80], skip[80];
-int opt_escd, opt_isolate, opt_deep;
+int opt_escd, opt_isolate, opt_deep, opt_nofiles;
 
 /* 16-bit routines that need 386/486 instructions, which Turbo C can't emit without an assembler.
    Assembled with GNU as (.code16), all far cdecl:
@@ -943,6 +945,10 @@ void report_dos(void)
             d = MK_FP(*(unsigned far *)(d + 2), *(unsigned far *)d);
         }
     }
+    if (opt_nofiles) {
+        puts("CONFIG.SYS and AUTOEXEC.BAT: not included (/NOFILES)");
+        return;
+    }
     r.x.ax = 0x3305;
     intdos(&r, &r);
     sprintf(path, "%c:\\CONFIG.SYS", r.h.dl ? 'A' + r.h.dl - 1 : 'C');
@@ -1537,8 +1543,11 @@ int main(int argc, char *argv[])
             opt_isolate = 1;
         } else if (stricmp(argv[i], "/DEEP") == 0) {
             opt_deep = 1;
+        } else if (stricmp(argv[i], "/NOFILES") == 0) {
+            opt_nofiles = 1;
         } else {
-            puts("usage: UNIDUMP [/SKIP:A,B] [/ONLY:A,B] [/ESCD] [/ISOLATE] [/DEEP] > DUMP.TXT\n"
+            puts("usage: UNIDUMP [/SKIP:A,B] [/ONLY:A,B] [/ESCD] [/ISOLATE] [/DEEP] [/NOFILES]"
+                 " > DUMP.TXT\n"
                  "sections: ENV CPU MEM BIOS PCI DOS IRQ PNPBIOS PNP SB OPL MPU WSS PSS");
             return 1;
         }
