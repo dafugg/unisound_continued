@@ -5941,8 +5941,8 @@ int init_opti930(void)
     opti_ctl_port = 0xe0c;
     opti93x_pwd_port = 0xf8f;
     if (opt_log != 0) {
-        dlog("82C930: r1 %02X r3 %02X r12 %02X", opti93x_read(0xe0e, 1), opti93x_read(0xe0e, 3),
-             opti93x_read(0xe0e, 0x12));
+        dlog("82C930: r1 %02X r2 %02X r3 %02X r12 %02X", opti93x_read(0xe0e, 1),
+             opti93x_read(0xe0e, 2), opti93x_read(0xe0e, 3), opti93x_read(0xe0e, 0x12));
     }
     if (opti93x_read(0xe0e, 1) < 0xff && opti93x_read(0xe0e, 3) < 0xff &&
         opti93x_read(0xe0e, 0x12) < 8) {
@@ -5952,9 +5952,10 @@ int init_opti930(void)
         u16 = parse_ultra16(&wss_port, &wss_pdma, &wss_irq, &wss_rdma);
         /* MC1 bits 3:1 select the CD-ROM interface (SNDINIT sets them from CDROM.CFG). Writes
            take the data sheet's value XOR 011, as OPTi's CDSETUP.SYS writes them: 011 no CD,
-           111 secondary IDE (fixed at 170/376, IRQ 15). C170 turns the IDE on and C0 off;
-           without C they are kept */
-        cfg1 = opti93x_read(0xe0e, 1) & 0x0e;
+           111 secondary IDE (fixed at 170/376, IRQ 15). A real 82C930 reads them back with
+           bits 2 and 1 inverted again (0E written reads 08), so keeping them means writing the
+           read value XOR 011. C170 turns the IDE on and C0 off; without C they are kept */
+        cfg1 = (opti93x_read(0xe0e, 1) & 0x0e) ^ 0x06;
         if (ide_given != 0) {
             if (ide_port == 0x170) {
                 cfg1 = 0x0e;

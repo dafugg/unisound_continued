@@ -144,15 +144,20 @@ an ATAPI CD-ROM drive answers, with its IRQ, wherever UNISOUND puts the IDE port
 PnP, AWE32 PnP and AWE64 with IDE, the GUS PnP and the OPTi 82C931 (checked with
 `tools/dos/ATAPIID.C`). The 82C931's resource data lists the IDE control port before the
 command block, so the control port goes in register 60h; UNISOUND follows the order the
-resource data gives. No real card has been tried yet.
+resource data gives. On real cards, the CT3600 (SB32 PnP) turns its IDE port on with
+`C168 Y10` (no drive connected), and the Wavemaster 32 FGS (82C930) runs a CD-ROM drive (see
+below).
 
 The 82C930's IDE is fixed at 170h (secondary IDE) on IRQ 15, so `/NOPNP` takes only `C170`,
 which turns it on, and `C0`, which turns it off; without `C` it stays as it was (for example
 as OPTi's CDSETUP.SYS left it), and `Y` is ignored. The settings line shows `IDE:170/I15` while
 it is on. As OPTi's CDSETUP.SYS does, UNISOUND writes the CD-type bits of control register 1
-(data sheet values 000 none, 100 secondary IDE) with bits 2 and 1 inverted, 011 and 111. The
-board's own secondary IDE channel must be off in its BIOS setup, as it uses the same ports.
-86Box's 82C930 has no IDE, so only the register writes have been checked.
+(data sheet values 000 none, 100 secondary IDE) with bits 2 and 1 inverted, 011 and 111; the
+chip reads them back inverted again (100 for IDE), so a kept value is written back flipped. The
+board's own secondary IDE channel must be off in its BIOS setup, as it uses the same ports. On
+a Silicom Wavemaster 32 FGS with a Sony DDU1615 DVD-ROM drive, `C170` turns the port on and the
+drive answers on IRQ 15 and reads through OAKCDROM.SYS and MSCDEX; after OPTi's CDSETUP.SYS,
+UNISOUND without `C` leaves the drive answering. 86Box's 82C930 has no IDE and doesn't invert the bits on reads.
 
 `C` and `Y` are UNISOUND's own BLASTER fields, and a program that parses every BLASTER field
 might reject them or misread the rest. If that happens, take them out of BLASTER and put them
@@ -163,6 +168,31 @@ Proprietary interfaces, and the CD interface on other non-PnP chips, are left as
 they are (on the 82C929, for example). The aim is to get the
 CD-ROM connectors working on every supported card. Reports of how a card's CD interface behaves
 with its vendor's driver are welcome.
+
+### Loading the CD-ROM driver
+
+UNISOUND runs from AUTOEXEC.BAT, after CONFIG.SYS has loaded its drivers, so a CD-ROM driver in
+CONFIG.SYS looks for the drive before UNISOUND has turned the port on. There are three ways
+around it:
+
+- **DEVLOAD** (as UNISOUND.TXT suggests): leave the CD-ROM driver out of CONFIG.SYS and load
+  it from AUTOEXEC.BAT after UNISOUND with a loader such as FreeDOS's DEVLOAD (DOS 3.00 and
+  later), for example:
+
+      SET BLASTER=A220 I7 D3 P330 T3 C170
+      UNISOUND /NOPNP
+      DEVLOAD OAKCDROM.SYS /D:MSCD000
+      MSCDEX /D:MSCD000
+
+  Checked on the Wavemaster 32 FGS (82C930) under MS-DOS 6.22.
+- **The card's own CD setup driver in CONFIG.SYS** (82C930 only), needing no other tools:
+  OPTi's `CDSETUP.SYS /T:I` before the CD-ROM driver turns the IDE port on, and UNISOUND in
+  AUTOEXEC.BAT without `C` leaves it on. On the Wavemaster 32 FGS the drive still answers
+after UNISOUND. On PnP cards
+  UNISOUND turns the IDE port off when `C` is missing, so this doesn't apply there.
+- **A warm reboot**: run UNISOUND with `C`, then press Ctrl+Alt+Del, so that the CD-ROM driver
+  in CONFIG.SYS finds the port already on. This works only on motherboards that leave ISA cards
+  alone on a warm reboot. The Intel SE440BX-2 resets them, so there the port was off again.
 
 ## Wanted: testers and PnP dumps
 
