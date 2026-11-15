@@ -1698,11 +1698,15 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 unsigned char irq = 0;
                 unsigned char reg_ide = 0x60;
                 unsigned char reg_ide2 = 0x62;
-                if (type == CARD_OPTI925) {
-                    reg_ide = 0x62;
-                    reg_ide2 = 0x63;
-                }
-                if (type == CARD_OPTI924) {
+                /* 82C924/925 without C: the IDE device is left as it is, for example as OPTi's
+                   CDSETUP.SYS set it from CONFIG.SYS (as on the 82C930); /D still turns it off */
+                int ide_keep = (type == CARD_OPTI925 || type == CARD_OPTI924) && ide_given == 0 &&
+                               opt_disable == 0 && opt_read == 0;
+                /* 82C924/925: command port (170) in 62h, control port (376) in 60h, IRQ in 70h,
+                   as OPTi's CDSETUP.SYS v1.04 (03/10/96, in OPTi's 82C924/925 driver package
+                   OPTI-925.ZIP, TOOLS.ZIP) writes them for /T:I /P:376,170 /I:15. 0.82a put
+                   the 82C925's control port in 63h, over the low byte of the command port */
+                if (type == CARD_OPTI925 || type == CARD_OPTI924) {
                     reg_ide = 0x62;
                     reg_ide2 = 0x60;
                 }
@@ -1726,20 +1730,27 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     irq = ide_irq;
                 }
                 pnp_write(7, ld.ld[5]);
-                pnp_write16(reg_ide, ide_port);
-                pnp_write(0x70, irq);
-                if (type == CARD_CREATIVE || type == CARD_GUSPNP || type == CARD_ALS ||
-                    type == CARD_OPTI925 || type == CARD_OPTI93X || type == CARD_YAMAHA ||
-                    type == CARD_AZTECH || type == CARD_ES1869 || type == CARD_CRYSTAL ||
-                    type == CARD_OPTI924) {
-                    pnp_write16(reg_ide2, ide_port + (irq > 0) * 0x206);
-                    pnp_write(0x71, 2);
+                if (ide_keep != 0) {
+                    if (pnp_read(0x30) & 1) {
+                        ide_port = pnp_read16(reg_ide);
+                        printf(" IDE:%X/I%d", ide_port, pnp_read(0x70) & 0xf);
+                    }
+                } else {
+                    pnp_write16(reg_ide, ide_port);
+                    pnp_write(0x70, irq);
+                    if (type == CARD_CREATIVE || type == CARD_GUSPNP || type == CARD_ALS ||
+                        type == CARD_OPTI925 || type == CARD_OPTI93X || type == CARD_YAMAHA ||
+                        type == CARD_AZTECH || type == CARD_ES1869 || type == CARD_CRYSTAL ||
+                        type == CARD_OPTI924) {
+                        pnp_write16(reg_ide2, ide_port + (irq > 0) * 0x206);
+                        pnp_write(0x71, 2);
+                    }
+                    if (type == CARD_GUSPNP) {
+                        pnp_write(0x74, 0);
+                    }
+                    pnp_write(0x30, (ide_port == 0 || opt_disable != 0) ? 0 : 1);
                 }
-                if (type == CARD_GUSPNP) {
-                    pnp_write(0x74, 0);
-                }
-                pnp_write(0x30, (ide_port == 0 || opt_disable != 0) ? 0 : 1);
-                if (opt_read != 0 || ide_port > 0) {
+                if (ide_keep == 0 && (opt_read != 0 || ide_port > 0)) {
                     if (opt_read != 0) {
                         ide_port = pnp_read16(reg_ide);
                     }
@@ -4188,7 +4199,7 @@ void sb16_mixer_switches(void)
 /* Initialize an OPTi 82C925 (mode 5, CARD_OPTI925) or 82C924 (mode 4, CARD_OPTI924) through its
    control chip at opti_ctl_port. Then:
    - converts the volume settings to codec attenuation values,
-   - resets the chip and programs the SB base, MPU, IDE and WSS/SB mode configuration registers,
+   - resets the chip and programs the SB base, MPU and WSS/SB mode configuration registers,
    - initializes the WSS codec at wss_port and sets its mixer,
    - resets the SB DSP and prints the mixer and card mode. */
 void opti92x_init(int mode)
@@ -4224,9 +4235,11 @@ void opti92x_init(int mode)
     if (sb_port == 0x240) {
         cfg3 = 0xf4;
     }
-    if (ide_port > 0) {
-        cfg1 |= 8;
-    }
+    /* MC1 bits 3:1 (CDTYPE) are left at 000, CD disabled. 100 would be secondary IDE, fixed at
+       170 (82C925 data sheet, OPTi 912-3000-034 rev 1.1, page 12, "Mode Control Register 1"),
+       but OPTi's CDSETUP.SYS v1.04 clears them (MC1 AND F1h) and turns the IDE on through its
+       PnP logical device only, which is what UNISOUND does. 0.82a set 100 with any C, so with
+       C1E8 or C168 the chip may also have answered at 170. */
     if (opt_xwss > 0) {
         cfg1 |= 0x80;
     }

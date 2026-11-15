@@ -160,6 +160,13 @@ a Silicom Wavemaster 32 FGS with a Sony DDU1615 DVD-ROM drive, `C170` turns the 
 drive answers on IRQ 15 and reads through OAKCDROM.SYS and MSCDEX; after OPTi's CDSETUP.SYS,
 UNISOUND without `C` leaves the drive answering. 86Box's 82C930 has no IDE and doesn't invert the bits on reads.
 
+On the 82C924 and 82C925 the IDE is a PnP logical device, which UNISOUND sets as OPTi's
+CDSETUP.SYS v1.04 does: command port in register 62h, control port in 60h, IRQ in 70h, and
+the CD-type bits of control register 1 left at 000. Without `C` the device is left as it was
+(for example as CDSETUP.SYS set it), and `/D` turns it off. 0.82a and fix-4 wrote the
+82C925's control port over the low byte of the command port, so `C170` there gave a command
+port of 103h. Untested: no 82C924 or 82C925 card was available, and 86Box has neither.
+
 `C` and `Y` are UNISOUND's own BLASTER fields, and a program that parses every BLASTER field
 might reject them or misread the rest. If that happens, take them out of BLASTER and put them
 in `UNISOUND_CD` instead, for example `SET UNISOUND_CD=C170 Y15`. UNISOUND reads it after
@@ -186,10 +193,11 @@ around it:
       MSCDEX /D:MSCD000
 
   Checked on the Wavemaster 32 FGS (82C930) under MS-DOS 6.22.
-- **The card's own CD setup driver in CONFIG.SYS** (82C930 only), needing no other tools:
+- **The card's own CD setup driver in CONFIG.SYS** (82C930; after fix-4 also the 82C924
+  and 82C925), needing no other tools:
   OPTi's `CDSETUP.SYS /T:I` before the CD-ROM driver turns the IDE port on, and UNISOUND in
   AUTOEXEC.BAT without `C` leaves it on. On the Wavemaster 32 FGS the drive still answers
-after UNISOUND. On PnP cards
+after UNISOUND. On other PnP cards
   UNISOUND turns the IDE port off when `C` is missing, so this doesn't apply there.
 - **A warm reboot**: run UNISOUND with `C`, then press Ctrl+Alt+Del, so that the CD-ROM driver
   in CONFIG.SYS finds the port already on. This works only on motherboards that leave ISA cards
