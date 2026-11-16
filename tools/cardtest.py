@@ -7,7 +7,7 @@ prompt in time is recorded as a hang, with the screen, and ends that run.
 
 Usage: cardtest.py OUTDIR COM PLATFORM=BASEVM[,...] CARD[,...] [-j N] [-c CMD;CMD...] [-e VAR=VAL;...]
   PLATFORM=BASEVM  e.g. pnp=/path/vm-bc31   (base VMs must boot to C:\\> on their own)
-  CARD             86Box internal sound card name, or "none"
+  CARD             86Box internal sound card name, or "none"; a+b puts both cards in the VM
   -c               commands to run (default: the baseline set below)
   -e               environment variables to SET before the commands
   -f               extra files to copy into C:\\T, comma-separated
@@ -22,11 +22,27 @@ BASELINE = ["UNISOUND /CL", "UNISOUND /R", "UNISOUND", "UNISOUND /R", "UNISOUND 
 TIMEOUT_MS = 120000
 
 
+# 86Box device names of the cards whose jumpers set_card can set (their config sections)
+DEVICE_NAMES = {"gus": "Gravis UltraSound", "sbprov2": "Sound Blaster Pro v2",
+                "wss": "Windows Sound System", "sb16": "Sound Blaster 16"}
+
+
 def set_card(cfg: str, card: str) -> str:
-    """Return cfg with the [Sound] section's sndcard set (or removed for "none")."""
+    """Return cfg with the [Sound] section's sndcard set (or removed for "none"). A card such as
+    "sb16_pnp+ess_es1688" puts up to four cards in sndcard, sndcard2, sndcard3 and sndcard4, and
+    "sbprov2{base=0240:irq=5}" sets that card's jumpers (cards in DEVICE_NAMES)."""
     cfg = re.sub(r'\n\[Sound\]\n(?:[^\[\n][^\n]*\n|\n)*', '\n', cfg)
     if card != "none":
-        cfg = cfg.rstrip('\n') + f"\n\n[Sound]\nsndcard = {card}\n"
+        keys = ["sndcard", "sndcard2", "sndcard3", "sndcard4"]
+        cards = card.split("+")
+        lines = "".join(f"{k} = {c.split('{')[0]}\n" for k, c in zip(keys, cards))
+        cfg = cfg.rstrip('\n') + f"\n\n[Sound]\n{lines}"
+        for slot, c in enumerate(cards, 1):
+            # "gus{base=0240}": the card's jumpers, in its device section ("<name> #<slot>")
+            m = re.fullmatch(r'([^{]+)\{([^}]*)\}', c)
+            if m:
+                opts = "".join(f"{kv.strip()}\n".replace("=", " = ", 1) for kv in m[2].split(":"))
+                cfg += f"\n[{DEVICE_NAMES[m[1]]} #{slot}]\n{opts}"
     return cfg
 
 
