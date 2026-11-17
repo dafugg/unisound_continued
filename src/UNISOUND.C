@@ -733,28 +733,28 @@ void print_banner(void)
     }
 }
 
-/* Print the banner and the usage screen for /H and /?. */
+/* Print the banner and the usage screen for /H and /?. /CS, /F and /FS work in 0.82a but were
+   left off its screen (v0.80a took /F off, the manual says /CS "will continue working"). The
+   screen is 24 lines of at most 79 characters, so it fits on a 25-line screen with the prompt;
+   the volume options share two lines for that. */
 void print_help(void)
 {
     print_banner();
     puts("Options:");
     puts("   /Cn    Select PnP card number 'n' to initialize/read (1-9)");
     puts("   /CL    List all PnP cards present in the system");
+    puts("   /CS    Initialize non-PnP Creative card (SB16 & AWE32)");
     puts("   /R     Read PnP card current settings only");
     puts("   /D     Disable PnP sound card");
-    puts("   /Vnn   Set Master Volume (0-99)");
-    puts("   /VWnn  Set Wave Volume (0-99)");
-    puts("   /VFnn  Set FM/Synth/Wavetable Volume (0-99)");
-    puts("   /VLnn  Set Line-in Volume (0-99)");
-    puts("   /VCnn  Set CD Volume (0-99)");
-    puts("   /VMnn  Set Mic Volume (0-99)");
-    puts("   /VPnn  Set PC Speaker-in Volume (0-99) (Creative)");
+    puts("   /Vnn   Set Master Volume (0-99); also /VWnn Wave, /VFnn FM/Synth/Wavetable,");
+    puts("          /VLnn Line-in, /VCnn CD, /VMnn Mic, /VPnn PC Speaker-in (Creative)");
     puts("   /VTnn  and /VBnn Set Treble/Bass/AuxB level (0-99) On supported cards");
     puts("   /VRnn  and /VUnn Set FM Reverb/Chorus amount (0-99) (SB AWE only)");
     puts("   /Xxxx  eXtended settings (See TXT section 5)");
     puts("   /NOPNP Detect & init some Non-PnP cards (See TXT end of section 3)");
+    puts("   /F /FS PnP card not found: set the read port on every try (/FS: slower)");
     puts("   /XSLAM Crystal chip set up by the BIOS (no PnP): configure it through SLAM");
-    puts("   /XESSB ES1868/ES1869 not found by PnP (on-board): use the ESS bypass key, R=port");
+    puts("   /XESSB ES1868/ES1869 not found by PnP (on-board): ESS bypass key, R=port");
     puts("   /LOG   Print diagnostic lines (UNISOUND /LOG > LOG.TXT)");
     puts("   /H /?  This help screen");
     puts("\nUNISOUND (w/o options) initializes 1st card found with default vols.");
