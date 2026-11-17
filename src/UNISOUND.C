@@ -6074,7 +6074,9 @@ int init_opti930(void)
         }
         switch (mpu_port) {
             case 0:
-                cfg3 &= 0xef;
+                /* MC6 bit 7 is the MPU-401 enable (82C930 data sheet, page 14); 0.82a cleared
+                   bit 4, part of the MPU IRQ field, so P0 left the MPU-401 on */
+                cfg3 &= 0x7f;
                 break;
             case 0x300:
                 cfg3 |= 0x60;
