@@ -5239,8 +5239,10 @@ int emu_init(int ver)
 
 /* ESS ES1869, or ES1868 with /XEA (the "alternate init" in the manual): put the cards back into
    Wait for Key and send send_alt_pnp_key, which apparently tells the chip to use ess_ctl_port as
-   its PnP address port. Then use ess_ctl_port and ess_ctl_port + 1 as the PnP address and
-   write-data ports from now on. */
+   its PnP address port. Then use ess_ctl_port as the PnP address port and ess_ctl_port + 1 as
+   the write- and read-data port from now on: Base+1h is the read/write Configuration Register
+   Data (ES1869 data sheet, ESS SAM0023-122898, page 38, Table 12). The read-data port found by
+   isolation no longer answers, so /LOG's register dump read junk there */
 void use_alt_pnp_ports(void)
 {
     pnp_write(2, 2);
@@ -5248,6 +5250,7 @@ void use_alt_pnp_ports(void)
     send_alt_pnp_key();
     pnp_addr_port = ess_ctl_port;
     pnp_wdata_port = ess_ctl_port + 1;
+    pnp_rdata_port = ess_ctl_port + 1;
 }
 
 /* Send the alternate 32-byte key, XORed with 0..3 in four rounds, each round followed by
