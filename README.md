@@ -61,7 +61,9 @@ vendor drivers needed.
   with an ES688 or ES1688, and ES688/ES1688 PnP cards with ID `ESS0100` or `ESS0102`
   (experimental, see [Wanted](#wanted-testers-and-pnp-dumps)). On the Maxi Sound 64 (ES1868 +
   SAM9407 versions only), the SAM9407 firmware is uploaded, but the firmware itself isn't
-  included.
+  included. The MK1869, a modern ES1869 card, works with 0.82a according to its developer's
+  [notes on UNISOUND](https://pcmidi.eu/mk1869.html) (`/X3D0` turns the 3D effect off, `/VBnn`
+  sets AuxB, the wavetable header, apart from FM); it hasn't been tried with these builds.
 - **Yamaha:** YMF715, YMF718 and YMF719 (OPL3-SAx, OPL3-SA3, AudioTrix XG-3D). ISA PnP models
   only: Yamaha chips built into laptops are usually configured through the BIOS and aren't
   supported.
