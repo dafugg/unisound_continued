@@ -686,11 +686,14 @@ void log_codec(unsigned port)
     puts("");
 }
 
-/* After "No card detected" or "No PnP card detected.", point to the options for chips that
-   isolation doesn't find, and to /LOG. Ends without a newline. */
+/* After "No card detected" or "No PnP card detected.", point to the options for cards that the
+   PnP scan doesn't find, and to /LOG. /F and /FS come first: an ES1869F that answered isolation
+   only after a few tries was found with them, while the hint sent its owner to /XESSB. Ends
+   without a newline. */
 void no_card_hint(void)
 {
-    printf("Crystal chip set up by the BIOS? Try /XSLAM. On-board ESS chip? Try /XESSB.\n"
+    printf("PnP card not found? Try /F, then /FS (a slower scan).\n"
+           "Crystal chip set up by the BIOS? Try /XSLAM. On-board ESS chip? Try /XESSB.\n"
            "To report a problem: UNISOUND /LOG > LOG.TXT");
 }
 
