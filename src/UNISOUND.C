@@ -637,7 +637,6 @@ int main(int argc, char *argv[])
                 opt_xof = 8;
             } else if (strcmp(opt, "NOPNP") == 0) {
                 nopnp_mode = 1;
-                probe_opti_ctl();
             } else if (strcmp(opt, "LOG") == 0) {
                 opt_log = 1;
             } else if (strcmp(opt, "XSLAM") == 0) {
@@ -653,6 +652,10 @@ int main(int argc, char *argv[])
                 return 2;
             }
         }
+    }
+    /* after the loop, so that /R given after /NOPNP is seen */
+    if (nopnp_mode != 0) {
+        probe_opti_ctl();
     }
     return configure_pnp(card, list, full_scan, scan_port);
 }
@@ -874,6 +877,11 @@ int configure_pnp(int card, int list, int pass, unsigned port)
            PnP registers through it, with no CSN. The port is BLASTER R; without it, 660h (the
            port 0.82a's own ESS setup and ESSCFG use), then 800h. Before the second try the chip
            is put back into Wait for Key through the first port, in case it took the key there. */
+        if (opt_read != 0) {
+            /* the key itself places and activates the control port */
+            puts("/R can't read a chip found through the ESS bypass key.");
+            return 1;
+        }
         ess_ctl_port = 0;
         parse_blaster();
         if (ess_ctl_port == 0) {
@@ -5676,6 +5684,27 @@ int init_opti928(void)
     }
     if (found) {
         puts(c929 ? "Card detected: OPTi 82C929" : "Card detected: OAK OTI601 / OPTi 82C928");
+        if (opt_read != 0) {
+            /* /R: decode MC1 (id_f8d) and MC3 (id_f8f), read above, as the setup below writes
+               them, and write nothing. MC6 (MPU-401) is write only. MC1 bit 7 set means WSS mode;
+               MC3 bits 7:6 are the SB IRQ (11 none, as in WSS mode) and 5:4 the DMA. The SB base
+               is MC3 bit 2 on the 82C929, and 240 with the WSS at F40 on the 82C928 */
+            static unsigned wss[4] = {0x530, 0xe80, 0xf40, 0x604};
+            static int dmas[4] = {1, 0, 3, 4};
+            int irqs[4] = {7, 0, 5, 0};
+            irqs[1] = c929 ? 10 : 11;
+            puts("Reading card current settings...");
+            if (id_f8d & 0x80) {
+                printf("Settings: WSS:%X", wss[(id_f8d >> 4) & 3]);
+            } else {
+                printf("Settings: ADD:%X IRQ:%d DMA:%d",
+                       (c929 ? id_f8f & 4 : (id_f8d & 0x30) == 0x20) ? 0x240 : 0x220,
+                       irqs[id_f8f >> 6], dmas[(id_f8f >> 4) & 3]);
+            }
+            printf(" JOY:%X%s\n", id_f8d & 1 ? 0 : 0x200,
+                   id_f8d & 0x80 ? " [WSS mode]" : " [SB Mode]");
+            return 1;
+        }
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         /* The WSS base, IRQ and DMA come from ULTRA16, not from BLASTER (W, K), which describes
            the SB part. Without it, OPTi's SOUND16.CFG defaults: 530, IRQ 7, DMA 0. */
@@ -5882,7 +5911,8 @@ int init_opti928(void)
 }
 
 /* /NOPNP: if an OPTi 82C924/925 control chip answers at 0xF8C, enable its configuration through
-   register 7 and set nopnp_mode to 2. configure_pnp then runs the PnP scan, and moves
+   register 7 (not with /R, which never writes a setting; a chip set up before is already in PnP
+   mode) and set nopnp_mode to 2. configure_pnp then runs the PnP scan, and moves
    opti_ctl_port by 0x80 for the chip it finds.
    Registers 1 and 3 must read below 0xFF after the password, and F8Dh read again right after
    register 1 must not give the same value: the chip closes its gate after one access, which
@@ -5897,7 +5927,9 @@ void probe_opti_ctl(void)
     opti_probe[3] = inportb(0xf8d);
     opti_probe[4] = opti92x_read(0xf8c, 3);
     if (opti_probe[2] < 0xff && opti_probe[4] < 0xff && opti_probe[3] != opti_probe[2]) {
-        opti92x_write(0xf8c, 7, 0x40);
+        if (opt_read == 0) {
+            opti92x_write(0xf8c, 7, 0x40);
+        }
         nopnp_mode = 2;
     }
 }
@@ -5947,6 +5979,23 @@ int init_opti930(void)
     if (opti93x_read(0xe0e, 1) < 0xff && opti93x_read(0xe0e, 3) < 0xff &&
         opti93x_read(0xe0e, 0x12) < 8) {
         puts("Card detected: OPTi 82C930");
+        if (opt_read != 0) {
+            /* /R: decode MC1 and MC3 as the setup below writes them, and write nothing. MC6 (MPU)
+               is write only (82C930 data sheet, OPTi 912-3000-022, page 14), so it isn't shown.
+               MC3 (page 13): IRQ in bits 5:3 (0 none), DMA in bits 2:0, 5-7 a playback and
+               record pair */
+            static int irqs[8] = {0, 7, 9, 10, 11, 5, 0, 0};
+            static char *dmas[8] = {"4", "0", "1", "3", "4", "0/1", "1/0", "3/0"};
+            static unsigned wss[4] = {0x530, 0xe80, 0xf40, 0x604};
+            unsigned char mc1 = opti93x_read(0xe0e, 1);
+            unsigned char mc3 = opti93x_read(0xe0e, 3);
+            puts("Reading card current settings...");
+            printf("Settings: ADD:%X IRQ:%d DMA:%s WSS:%X JOY:%X", mc1 & 0x80 ? 0x240 : 0x220,
+                   irqs[(mc3 >> 3) & 7], dmas[mc3 & 7], wss[(mc1 >> 4) & 3], mc1 & 1 ? 0 : 0x200);
+            /* the CD-type bits read back inverted: 08 is secondary IDE (see below) */
+            puts((mc1 & 0x0e) == 0x08 ? " IDE:170/I15" : "");
+            return 1;
+        }
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         wss_port = 0x530;
         u16 = parse_ultra16(&wss_port, &wss_pdma, &wss_irq, &wss_rdma);
@@ -6398,6 +6447,33 @@ int init_es688(void)
                 }
             }
             printf("Card detected: ES%s at [%xh] \n", name, port);
+            if (opt_read != 0) {
+                /* /R: decode B1h/B2h and, from the ES1688 on, mixer 40h as the setup below writes
+                   them, and write nothing */
+                static int irqs[4] = {9, 5, 7, 10};
+                static int pins[6] = {0, 9, 5, 7, 10, 11};
+                static int mirqs[8] = {0, 0, -1, 0, 9, 5, 7, 10}; /* -1: the SB IRQ */
+                static unsigned mports[4] = {0x300, 0x310, 0x320, 0x330};
+                int irq = pin > 0 ? pins[pin] : irqs[(ess_ext_read(port, 0xb1) >> 2) & 3];
+                b = (ess_ext_read(port, 0xb2) >> 2) & 3;
+                puts("Reading card current settings...");
+                printf("Settings: ADD:%X IRQ:%d DMA:%d", port, irq,
+                       b == 0   ? 4
+                       : b == 1 ? 0
+                       : b == 2 ? 1
+                                : 3);
+                if (ver >= 0x88) {
+                    outportb(port + 4, 0x40);
+                    b = inportb(port + 5);
+                    if (mirqs[b >> 5] != 0) {
+                        printf(" MPU:%X/I%d", mports[(b >> 3) & 3],
+                               mirqs[b >> 5] < 0 ? irq : mirqs[b >> 5]);
+                    }
+                    printf(" JOY:%X", b & 2 ? 0x201 : 0);
+                }
+                puts("");
+                return 1;
+            }
             puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
             sb_port = port;
             delay(50);
