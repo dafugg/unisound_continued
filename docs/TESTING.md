@@ -597,6 +597,28 @@ On real hardware, an AMD Am5x86-P75 (133 MHz) with a Sound Blaster Pro 2 under M
 the small build of fix-4-rc3: `UNISOUND /LOG` twice and `/NOPNP /LOG` printed what the tiny build
 prints for an SB Pro 2 in 86Box, with `E1 03 02` on the first run after a cold boot.
 
+## Medium-model build
+
+UNISOUND.COM is built as a medium-model EXE (`TCC -mm`, C0M and CM.LIB) so that support for more
+chips fits: in the small-model build all code shared one 64K segment, and fix-5-rc1 used 52341
+bytes of it. From the MAP, UNISOUND.C's code segment (`UNISOUND_TEXT`) is now B0E6h bytes (45286),
+and the runtime library is in its own segment (25E5h); the far calls cost 2646 bytes of code in
+all. The data segment is unchanged. The MZ header has 596 relocations instead of 6, so the file
+grows from 65774 to 72516 bytes and the program needs about 2.7K more memory while it runs (68.3K
+instead of 65.6K). The CI toolchain (Turbo C++ 3.00 from joncloud/dos-build-action) already had
+C0M.OBJ and CM.LIB; its C0S.OBJ, C0T.OBJ, CS.LIB and TCC.EXE are byte-identical to ours.
+
+Compared with the small-model build of the same source (fix-5-rc1, `998852b`) in 86Box on pnp2
+and nopnp (MS-DOS 6.22): all 75 ISA sound cards of the test 86Box, each with `UNISOUND /LOG`,
+`/NOPNP /LOG`, `/R`, `/NOPNP /R`, `/XESSB /LOG`, `/XSLAM /LOG`, `/?`, `DMAPLAY 220` and
+`WSSPLAY 530`: 150 boots, and all 1350 outputs were identical. That includes the ES1688 and SB
+interrupt tests and the playback tools.
+
+On MS-DOS 3.30 and 5.00, booted from their own floppies, both builds ran `VER`, `CHKDSK` or `MEM`,
+`UNISOUND /LOG`, `/NOPNP /LOG`, `/XESSB /LOG` and `/R` on `sb16_pnp`, `ess_es1688`, `ess_es1869`,
+`cs4236b`, `sbprov2` and `sbawe32_pnp`, on pnp2 and nopnp: 24 boots per build, and every UNISOUND
+output was identical. Only CHKDSK's file sizes differed.
+
 ## Real hardware with fix-4
 
 vintagefugg's tests of fix-4 builds on real cards, all under MS-DOS 6.22. Cards that 0.82a
