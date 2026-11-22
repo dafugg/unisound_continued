@@ -141,8 +141,10 @@ void dsp_play(void)
 
 int wait_irq(int before)
 {
-    long t0 = biostime(0, 0L);
-    while (biostime(0, 0L) - t0 < 18) {
+    /* Unsigned difference: biostime() wraps at midnight, and a signed difference then stays
+       negative (and < 18) for ~24 h. */
+    unsigned long t0 = (unsigned long)biostime(0, 0L);
+    while ((unsigned long)biostime(0, 0L) - t0 < 18) {
         int i, n = 0;
         for (i = 0; i < 4; i++) {
             n += hit[irqs[i]];
