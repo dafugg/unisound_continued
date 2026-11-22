@@ -654,6 +654,13 @@ int main(int argc, char *argv[])
         }
     }
     /* after the loop, so that /R given after /NOPNP is seen */
+    if (opt_slam != 0 && opt_essb != 0) {
+        /* /XSLAM turns every PnP write into a SLAM command, so with /XESSB the ESS
+           card would never be programmed; refuse the combination. */
+        print_banner();
+        puts("/XSLAM cannot be used with /XESSB.");
+        return 2;
+    }
     if (nopnp_mode != 0) {
         probe_opti_ctl();
     }
