@@ -515,17 +515,34 @@ void bios_strings(unsigned seg)
     }
 }
 
+/* String number n (1-based) of the string area s[0..len). Every scan is bounded by len, so a
+   malformed table can only yield "?" or "(blank)", never a read past the table. */
 char *smb_str(unsigned char *s, int n, unsigned len)
 {
-    unsigned char *p = s, *q;
+    unsigned char *p = s, *q, *end = s + len;
+    unsigned k;
     if (n == 0) {
         return "";
     }
-    while (--n > 0 && p < s + len) {
-        p += strlen((char *)p) + 1;
-        if (*p == 0) {
-            return "?";
+    while (--n > 0 && p < end) {
+        for (k = 0; p + k < end && p[k]; k++) {
         }
+        if (p + k >= end) {
+            return "?"; /* unterminated string: no NUL before the end of the area */
+        }
+        p += k + 1;
+        if (p >= end || *p == 0) {
+            return "?"; /* past the last string: index out of range */
+        }
+    }
+    if (p >= end) {
+        return "?";
+    }
+    /* The string must end with a NUL inside the area; without one printf %s would read on. */
+    for (k = 0; p + k < end && p[k]; k++) {
+    }
+    if (p + k >= end) {
+        return "?";
     }
     for (q = p; *q == ' '; q++) {
     }
@@ -587,36 +604,67 @@ void report_smbios(void)
     end = t + tlen;
     for (i = 0; i < count && p + 4 <= end; i++) {
         unsigned char ty = p[0], ln = p[1];
-        unsigned char *s = p + ln, *n = s;
+        unsigned char *s, *n;
+        if (ln < 4 || p + ln > end) {
+            /* A length past the end of the table would make the string scan below read past
+               the malloc'd buffer. */
+            printf("  type %u: (truncated structure, len %u)\n", ty, ln);
+            break;
+        }
+        s = p + ln;
+        n = s;
         while (n + 1 < end && (n[0] || n[1])) {
             n++;
         }
         n += 2;
+        if (n > end) {
+            n = end;
+        }
         switch (ty) {
             case 0:
-                printf("  BIOS: %s, version %s, date %s\n", smb_str(s, p[4], end - s),
-                       smb_str(s, p[5], end - s), smb_str(s, p[8], end - s));
+                if (ln >= 9) {
+                    printf("  BIOS: %s, version %s, date %s\n", smb_str(s, p[4], n - s),
+                           smb_str(s, p[5], n - s), smb_str(s, p[8], n - s));
+                } else {
+                    printf("  BIOS: (short structure, len %u)\n", ln);
+                }
                 break;
             case 1:
-                printf("  System: %s %s, version %s\n", smb_str(s, p[4], end - s),
-                       smb_str(s, p[5], end - s), smb_str(s, p[6], end - s));
+                if (ln >= 7) {
+                    printf("  System: %s %s, version %s\n", smb_str(s, p[4], n - s),
+                           smb_str(s, p[5], n - s), smb_str(s, p[6], n - s));
+                } else {
+                    printf("  System: (short structure, len %u)\n", ln);
+                }
                 break;
             case 2:
-                printf("  Board: %s %s, version %s\n", smb_str(s, p[4], end - s),
-                       smb_str(s, p[5], end - s), smb_str(s, p[6], end - s));
+                if (ln >= 7) {
+                    printf("  Board: %s %s, version %s\n", smb_str(s, p[4], n - s),
+                           smb_str(s, p[5], n - s), smb_str(s, p[6], n - s));
+                } else {
+                    printf("  Board: (short structure, len %u)\n", ln);
+                }
                 break;
             case 4:
-                printf("  Processor: %s, %s %s, %u MHz (max %u)\n", smb_str(s, p[4], end - s),
-                       smb_str(s, p[7], end - s), smb_str(s, p[0x10], end - s),
-                       *(unsigned *)(p + 0x16), *(unsigned *)(p + 0x14));
+                if (ln >= 0x18) {
+                    printf("  Processor: %s, %s %s, %u MHz (max %u)\n", smb_str(s, p[4], n - s),
+                           smb_str(s, p[7], n - s), smb_str(s, p[0x10], n - s),
+                           *(unsigned *)(p + 0x16), *(unsigned *)(p + 0x14));
+                } else {
+                    printf("  Processor: (short structure, len %u)\n", ln);
+                }
                 break;
             case 6:
-                printf("  Memory module %s: size code %02X\n", smb_str(s, p[4], end - s), p[9]);
+                if (ln >= 10) {
+                    printf("  Memory module %s: size code %02X\n", smb_str(s, p[4], n - s), p[9]);
+                } else {
+                    printf("  Memory module: (short structure, len %u)\n", ln);
+                }
                 break;
             case 17:
                 if (ln >= 0x11) {
                     unsigned sz = *(unsigned *)(p + 0x0c);
-                    printf("  Memory device %s: ", smb_str(s, p[0x10], end - s));
+                    printf("  Memory device %s: ", smb_str(s, p[0x10], n - s));
                     if (sz == 0) {
                         puts("empty");
                     } else if (sz == 0xffff) {
