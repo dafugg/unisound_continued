@@ -2707,11 +2707,13 @@ const struct card_id *card_id_lookup(const char *id)
 
 /* Read the ULTRASND environment variable ("port,dma,dma2,irq,irq2") into gus_port, gus_dma,
    gus_dma2, gus_irq and gus_irq2. Out-of-range fields are ignored.
-   Returns 1 if the variable exists and has at least 3 fields, else 0. */
+   Returns 1 if the variable exists, has at least 3 fields and at least one field was
+   applied, else 0. */
 int parse_ultrasnd(void)
 {
     char *env = 0;
     char *dup = 0;
+    int applied = 0;
     int dec = 0; /* unread initial value */
     int hex = 0; /* unread initial value */
     char *tok;
@@ -2744,30 +2746,35 @@ int parse_ultrasnd(void)
             case 0:
                 if (hex == 0x220 || hex == 0x230 || hex == 0x240 || hex == 0x250 || hex == 0x260) {
                     gus_port = hex;
+                    applied++;
                     break;
                 }
                 break;
             case 1:
                 if (dec >= 0 && dec <= 7) {
                     gus_dma = dec;
+                    applied++;
                     break;
                 }
                 break;
             case 2:
                 if (dec >= 0 && dec <= 7) {
                     gus_dma2 = dec;
+                    applied++;
                     break;
                 }
                 break;
             case 3:
                 if (dec >= 0 && dec <= 15) {
                     gus_irq = dec;
+                    applied++;
                     break;
                 }
                 break;
             case 4:
                 if (dec >= 0 && dec <= 15) {
                     gus_irq2 = dec;
+                    applied++;
                     break;
                 }
                 break;
@@ -2777,7 +2784,7 @@ int parse_ultrasnd(void)
     }
     free(dup);
     dlog("ULTRASND=%s: %X,%d,%d,%d,%d", env, gus_port, gus_dma, gus_dma2, gus_irq, gus_irq2);
-    if (field < 3) {
+    if (field < 3 || applied < 1) {
         return 0;
     }
     return 1;
@@ -2840,11 +2847,12 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
    and DMA globals: A sb_port, I sb_irq, D sb_dma, H sb_hdma, P mpu_port, E awe_port, J joy_port,
    W wss_port, C ide_port, R the control ports, M mpu2_port, F opl_port, U mpu_irq, Q irq2,
    K wss_dma, Y ide_irq. Out-of-range values are ignored.
-   Returns 1 if the variable exists, else 0. */
+   Returns 1 if the variable exists and at least one field was applied, else 0. */
 int parse_blaster(void)
 {
     char *env = 0;
     char *dup = 0;
+    int applied = 0;
     int dec = 0; /* unread initial value */
     int hex = 0; /* unread initial value */
     char *tok;
@@ -2873,51 +2881,60 @@ int parse_blaster(void)
                 case 'A':
                     if (hex >= 0x220 && hex <= 0x280) {
                         sb_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'I':
                     if (dec >= 0 && dec <= 15) {
                         sb_irq = dec;
+                        applied++;
                         break;
                     }
                     break;
                 case 'D':
                     if (hex >= 0 && hex <= 7) {
                         sb_dma = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'H':
                     if (hex >= 0 && hex <= 7) {
                         sb_hdma = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'P':
                     if ((hex >= 0x300 && hex <= 0x3f0) || hex == 0) {
                         mpu_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'E':
                     if ((hex >= 0x620 && hex <= 0x680) || hex == 0) {
                         awe_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'J':
                     if ((hex >= 0x200 && hex < 0x212) || hex == 0) {
                         joy_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'W':
                     wss_port = hex;
+                    applied++;
                     break;
                 case 'C':
                     if (hex == 0x168 || hex == 0x1e8 || hex == 0x170 || hex == 0) {
                         ide_port = hex;
+                        applied++;
                         ide_given = 1;
                         break;
                     }
@@ -2926,34 +2943,40 @@ int parse_blaster(void)
                     yamaha_ctl_port = hex;
                     ess_ctl_port = hex;
                     aux_ctl_port = hex;
+                    applied++;
                     break;
                 case 'M':
                     if ((hex >= 0x300 && hex <= 0x380) || hex == 0) {
                         mpu2_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'F':
                     if ((hex >= 0x300 && hex <= 0x3ff) || hex == 0) {
                         opl_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'U':
                     if (dec >= 0 && dec <= 15) {
                         mpu_irq = dec;
+                        applied++;
                         break;
                     }
                     break;
                 case 'Q':
                     if (dec >= 0 && dec <= 15) {
                         irq2 = dec;
+                        applied++;
                         break;
                     }
                     break;
                 case 'K':
                     if (hex >= 0 && hex <= 7) {
                         wss_dma = hex;
+                        applied++;
                         wss_dma_set = 1;
                         break;
                     }
@@ -2961,6 +2984,7 @@ int parse_blaster(void)
                 case 'Y':
                     if (dec >= 2 && dec <= 15) {
                         ide_irq = dec;
+                        applied++;
                         break;
                     }
                     break;
@@ -2976,7 +3000,7 @@ int parse_blaster(void)
          sb_port, sb_irq, sb_dma, sb_hdma, mpu_port, wss_port, opl_port, awe_port, joy_port,
          ess_ctl_port, mpu2_port, ide_port, mpu_irq, irq2, wss_dma, ide_irq);
     parse_cd();
-    if (field < 1) {
+    if (applied < 1) {
         return 0;
     }
     return 1;
