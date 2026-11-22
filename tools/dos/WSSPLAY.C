@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 {
     int i, irq = -1, dma = -1, fmt = -1;
     unsigned rate = 8000;
-    unsigned char m1, m2, st;
+    unsigned char m1, m2, st, idx0;
     unsigned char *p;
     unsigned long a, t0;
     if (argc >= 3) {
@@ -158,7 +158,12 @@ int main(int argc, char *argv[])
     for (i = 0; i < LEN; i++) {
         p[i] = (i / 8) & 1 ? 0xc0 : 0x40;
     }
-    printf("WSS cfg[%X]=%02X codec idx=%02X I12=%02X\n", base, inportb(base), inportb(cdc), cr(12));
+    /* Read the codec index before cr(12) changes it: the old print mixed a side-effecting
+       cr() call with a plain read of the same index register, so "codec idx" printed 0Ch,
+       the value the tool itself had just written. The index is restored afterwards. */
+    idx0 = inportb(cdc);
+    printf("WSS cfg[%X]=%02X codec idx=%02X I12=%02X\n", base, inportb(base), idx0, cr(12));
+    outportb(cdc, idx0);
     printf("rate %u Hz (I8 %02X, XTAL%d)\n", rate, fmt, (fmt & 1) + 1);
     old[5] = getvect(vec(5));
     setvect(vec(5), isr5);
