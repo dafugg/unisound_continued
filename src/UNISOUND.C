@@ -967,7 +967,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
     }
     dlog("PnP RD port %X", pnp_rdata_port);
-    while (found != 0) {
+    while (found != 0 && cardno < 16) {
         csn++;
         pnp_write(6, csn);
         delay(1);
