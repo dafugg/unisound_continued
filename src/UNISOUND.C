@@ -523,9 +523,9 @@ int main(int argc, char *argv[])
                 card = 10;
                 list = 1;
             } else if (strcmp(opt, "CS") == 0) {
-                if (list < 1) {
-                    opt_cs = 1;
-                }
+                /* No list < 1 guard: /CS must be recorded even after /CL,
+                   so the rejection below fires for either order (#21). */
+                opt_cs = 1;
             } else if (opt[0] == 'V' && (opt[1] == 0 || isdigit((unsigned char)opt[1]) ||
                                          strchr("FWLCMPTBUR", opt[1]))) {
                 char c = isdigit((unsigned char)opt[1]) || opt[1] == 0 ? 'V' : opt[1];
