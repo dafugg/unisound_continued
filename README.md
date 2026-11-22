@@ -125,6 +125,8 @@ UNISOUND uses 240, DMA 3 and 3, IRQ 11. Limitations:
 
 - The fifth field, the MIDI IRQ, is read but not used: the second IRQ is left off, as are SB
   emulation and the MPU-401.
+- The joystick is off unless `/XGJ` is given: without it the gameport logical device is
+  deactivated and no joystick port is set up.
 - The DMA and IRQ fields are only range-checked (DMA 0-7, IRQ 0-15), not checked against what
   the card supports. An out-of-range field keeps the default.
 - With fewer than three fields UNISOUND says it is loading its defaults, but the fields given are
