@@ -417,7 +417,7 @@ void parse_cd(void);
 void print_blaster_hint(int port, int irq, int dma, int hdma);
 int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type);
-int pnp_read_res(unsigned char *buf, int n);
+int pnp_read_res(unsigned char *buf, unsigned n);
 int pnp_read_tag(unsigned char *tag, unsigned *len);
 void log_pnp_res(unsigned char csn);
 int pnp_read_str(char *buf, unsigned len);
@@ -3594,9 +3594,9 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
    For each byte, polls the status register (5) for up to 15 ms until bit 0 says data is ready,
    then reads the resource data register (4).
    Returns 1 on success, 0 on a timeout. */
-int pnp_read_res(unsigned char *buf, int n)
+int pnp_read_res(unsigned char *buf, unsigned n)
 {
-    int i = 0;
+    unsigned i = 0;
     unsigned char ready = 0;
     unsigned char data = 0;   /* unread initial value */
     unsigned char tries = 15; /* unread initial value */
