@@ -2706,6 +2706,7 @@ int parse_ultrasnd(void)
     int dec = 0; /* unread initial value */
     int hex = 0; /* unread initial value */
     char *tok;
+    char *next;
     unsigned char field;
     env = getenv("ULTRASND");
     if (env == 0) {
@@ -2715,9 +2716,19 @@ int parse_ultrasnd(void)
     if (dup == 0) {
         return 0;
     }
-    tok = strtok(dup, ",");
     field = 0;
-    while (field < 5 && tok != 0) {
+    /* Split on commas positionally: strtok collapses consecutive commas, so an empty field
+       ("240,,3,11") would shift every later field one slot left. An empty field keeps the
+       caller's value for that position. */
+    for (tok = dup; field < 5 && tok != 0; tok = next, field++) {
+        next = strchr(tok, ',');
+        if (next != 0) {
+            *next = 0;
+            next++;
+        }
+        if (*tok == 0) {
+            continue;
+        }
         dec = strtol(tok, 0, 10);
         hex = strtol(tok, 0, 16);
         switch (field) {
@@ -2754,8 +2765,6 @@ int parse_ultrasnd(void)
             default:
                 break;
         }
-        tok = strtok(0, ",");
-        field++;
     }
     free(dup);
     dlog("ULTRASND=%s: %X,%d,%d,%d,%d", env, gus_port, gus_dma, gus_dma2, gus_irq, gus_irq2);
@@ -2776,6 +2785,7 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
     char *env = getenv("ULTRA16");
     char *dup;
     char *tok;
+    char *next;
     int field = 0;
     int ok = 0;
     int v;
@@ -2786,7 +2796,18 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
     if (dup == 0) {
         return 0;
     }
-    for (tok = strtok(dup, ","); tok != 0 && field < 4; tok = strtok(0, ","), field++) {
+    /* Split on commas positionally: strtok collapses consecutive commas, so an empty field
+       ("530,,7") would shift every later field one slot left. An empty field keeps the
+       caller's value for that position. */
+    for (tok = dup; field < 4 && tok != 0; tok = next, field++) {
+        next = strchr(tok, ',');
+        if (next != 0) {
+            *next = 0;
+            next++;
+        }
+        if (*tok == 0) {
+            continue;
+        }
         v = (int)strtol(tok, 0, field == 0 ? 16 : 10);
         if (field == 0 && (v == 0x530 || v == 0xe80 || v == 0xf40 || v == 0x604)) {
             *port = v;
