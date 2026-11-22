@@ -1865,7 +1865,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             }
         } else {
             type = 0;
-            printf("No supported PnP card detected.");
+            /* A supported card was found, but pnp_map_devices could not read its
+               resource data, so nothing was configured. */
+            printf("Supported PnP card found, but its resource data could not be read.");
+            ret = 1;
             if (opt_log != 0 || nopnp_mode == 2) {
                 puts(""); /* end the line before the fallback's output */
             }
@@ -1903,7 +1906,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     pnp_write(2, 2);
     delay(1);
     if (opt_disable != 0) {
-        return 0;
+        return ret;
     }
     if (opt_slam != 0 && inportb(wss_port) == 0xff) {
         puts("No Crystal codec answered after the SLAM setup.");
