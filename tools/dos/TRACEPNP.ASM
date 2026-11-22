@@ -1,6 +1,7 @@
 ; TRACEPNP [options]: run UNISOUND.COM [options] with the trap flag set and log every
 ; OUT DX,AL to the ISA PnP ports (279h address, A79h write data) and to the ESS
 ; configuration ports 660h/661h and 800h/801h. Prints "port=value" for each, in order.
+; Exits with the child's exit code, or 1 if UNISOUND.COM could not be loaded.
 ; Build: TASM TRACEPNP.ASM / TLINK /t TRACEPNP.OBJ
         .model tiny
         .code
@@ -37,6 +38,7 @@ start:
         mov     dx, offset msg_load
         mov     ah, 9
         int     21h
+        mov     byte ptr retcode, 1 ; load failed: report it instead of "exit code: 00"
         jmp     restore
 loaded:
         push    cs
@@ -139,7 +141,8 @@ no_ovf:
         mov     ax, word ptr steps
         call    hex4
         call    crlf
-        mov     ax, 4c00h
+        mov     ah, 4ch
+        mov     al, retcode ; the child's exit code (1 on load failure)
         int     21h
 
 ; single-step handler: look at the instruction about to execute
