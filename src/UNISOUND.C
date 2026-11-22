@@ -653,6 +653,13 @@ int main(int argc, char *argv[])
             }
         }
     }
+    if (opt_cs != 0 && (list != 0 || card != 1)) {
+        /* /CS is a non-PnP init; /CL lists and /Cn picks a PnP card. Which one happens
+           depends on the option order, so refuse the combination. */
+        print_banner();
+        puts("/CS cannot be used with /CL or /Cn.");
+        return 2;
+    }
     /* after the loop, so that /R given after /NOPNP is seen */
     if (opt_slam != 0 && opt_essb != 0) {
         /* /XSLAM turns every PnP write into a SLAM command, so with /XESSB the ESS
