@@ -281,7 +281,7 @@ yet. Details and links to the reports are in
 | Commit | Card | Fix | Reported by |
 |---|---|---|---|
 | [00806ef](https://github.com/dafugg/unisound_continued/commit/00806ef) | Any card | After setup, BLASTER's A, I, D and H are compared with what the card got | analog_programmer |
-| [5281f0f](https://github.com/dafugg/unisound_continued/commit/5281f0f) | Crystal CS4237B/CS4238B cards (Orpheus, Turtle Beach) | The codec is put back in MODE 1 | vanfanel |
+| [5281f0f](https://github.com/dafugg/unisound_continued/commit/5281f0f) | Crystal CS4237B-class cards (Orpheus, Turtle Beach, and cards whose PnP ID ends in 37) | The codec is put back in MODE 1 | vanfanel |
 | [1adfd17](https://github.com/dafugg/unisound_continued/commit/1adfd17) | ES1868/ES1869 | BLASTER `U` sets the MPU-401 IRQ | crvs |
 | [f73bb3f](https://github.com/dafugg/unisound_continued/commit/f73bb3f) | ES1868/ES1869 | `H4`, or D = H, means no second DMA | Kahenraz |
 | [26f3356](https://github.com/dafugg/unisound_continued/commit/26f3356) | ES1887/ES1888 with `/NOPNP` | The IRQ the BIOS set up is kept | 0xDEADBEEF |
