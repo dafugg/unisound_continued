@@ -2709,6 +2709,9 @@ int parse_ultrasnd(void)
         return 0;
     }
     dup = strdup(env);
+    if (dup == 0) {
+        return 0;
+    }
     tok = strtok(dup, ",");
     field = 0;
     while (field < 5 && tok != 0) {
@@ -2777,6 +2780,9 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
         return 0;
     }
     dup = strdup(env);
+    if (dup == 0) {
+        return 0;
+    }
     for (tok = strtok(dup, ","); tok != 0 && field < 4; tok = strtok(0, ","), field++) {
         v = (int)strtol(tok, 0, field == 0 ? 16 : 10);
         if (field == 0 && (v == 0x530 || v == 0xe80 || v == 0xf40 || v == 0x604)) {
@@ -2817,6 +2823,10 @@ int parse_blaster(void)
         return 0;
     }
     dup = strdup(env);
+    if (dup == 0) {
+        parse_cd();
+        return 0;
+    }
     tok = strtok(dup, " ");
     field = 0;
     /* BLASTER has 17 possible fields; 20 covers them all. */
@@ -2953,6 +2963,9 @@ void parse_cd(void)
         return;
     }
     dup = strdup(env);
+    if (dup == 0) {
+        return;
+    }
     for (tok = strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
         if (strlen(tok) < 2) {
             continue;
@@ -3010,7 +3023,7 @@ void print_blaster_hint(int port, int irq, int dma, int hdma)
     }
     if (env != 0) {
         dup = strdup(env);
-        for (tok = strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
+        for (tok = dup == 0 ? 0 : strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
             switch (toupper(*tok)) {
                 case 'A':
                     a = (int)strtol(tok + 1, 0, 16);
@@ -3066,7 +3079,7 @@ void print_blaster_hint(int port, int irq, int dma, int hdma)
     }
     if (env != 0) {
         dup = strdup(env);
-        for (tok = strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
+        for (tok = dup == 0 ? 0 : strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
             if (strchr("AIDHaidh", *tok) == 0) {
                 printf(" %s", tok);
             }
