@@ -510,7 +510,7 @@ int main(int argc, char *argv[])
             char *opt = argv[i] + 1; /* option name, without the / or - */
             int n = 0;               /* unread initial value */
             for (j = 1; j <= strlen(argv[i]); j++) {
-                argv[i][j] = toupper(argv[i][j]);
+                argv[i][j] = toupper((unsigned char)argv[i][j]);
             }
             if (argv[i][0] != '/' && argv[i][0] != '-') {
                 opt = "";
@@ -526,9 +526,9 @@ int main(int argc, char *argv[])
                 if (list < 1) {
                     opt_cs = 1;
                 }
-            } else if (opt[0] == 'V' &&
-                       (opt[1] == 0 || isdigit(opt[1]) || strchr("FWLCMPTBUR", opt[1]))) {
-                char c = isdigit(opt[1]) || opt[1] == 0 ? 'V' : opt[1];
+            } else if (opt[0] == 'V' && (opt[1] == 0 || isdigit((unsigned char)opt[1]) ||
+                                         strchr("FWLCMPTBUR", opt[1]))) {
+                char c = isdigit((unsigned char)opt[1]) || opt[1] == 0 ? 'V' : opt[1];
                 n = opt_value(c == 'V' ? opt + 1 : opt + 2);
                 if (n < 0) {
                     print_banner();
@@ -627,11 +627,13 @@ int main(int argc, char *argv[])
                 opt_xea = 1;
             } else if (strcmp(opt, "XXF") == 0) {
                 opt_xxf = 1;
-            } else if (strncmp(opt, "XXG", 3) == 0 && isdigit(opt[3]) && opt[4] == 0) {
+            } else if (strncmp(opt, "XXG", 3) == 0 && isdigit((unsigned char)opt[3]) &&
+                       opt[4] == 0) {
                 opt_xxg = opt[3] - '0';
             } else if (strcmp(opt, "XNET") == 0) {
                 opt_xnet = 1;
-            } else if (strncmp(opt, "X3D", 3) == 0 && isdigit(opt[3]) && opt[4] == 0) {
+            } else if (strncmp(opt, "X3D", 3) == 0 && isdigit((unsigned char)opt[3]) &&
+                       opt[4] == 0) {
                 opt_x3d = opt[3] - '0';
             } else if (strcmp(opt, "XRU") == 0) {
                 opt_xof = 8;
@@ -716,10 +718,10 @@ void no_card_hint(void)
    above it. */
 int opt_value(char *s)
 {
-    if (isdigit(s[0]) && s[1] == 0) {
+    if (isdigit((unsigned char)s[0]) && s[1] == 0) {
         return s[0] - '0';
     }
-    if (isdigit(s[0]) && isdigit(s[1]) && s[2] == 0) {
+    if (isdigit((unsigned char)s[0]) && isdigit((unsigned char)s[1]) && s[2] == 0) {
         return (s[0] - '0') * 10 + s[1] - '0';
     }
     return -1;
@@ -2872,12 +2874,12 @@ int parse_blaster(void)
     field = 0;
     /* BLASTER has 17 possible fields; 20 covers them all. */
     while (field < 20 && tok != 0) {
-        if (isalpha(*tok) && strlen(tok) > 1) {
+        if (isalpha((unsigned char)*tok) && strlen(tok) > 1) {
             letter = *tok;
             tok++;
             dec = strtol(tok, 0, 10);
             hex = strtol(tok, 0, 16);
-            switch (toupper(letter)) {
+            switch (toupper((unsigned char)letter)) {
                 case 'A':
                     if (hex >= 0x220 && hex <= 0x280) {
                         sb_port = hex;
@@ -3027,7 +3029,7 @@ void parse_cd(void)
         if (strlen(tok) < 2) {
             continue;
         }
-        switch (toupper(*tok)) {
+        switch (toupper((unsigned char)*tok)) {
             case 'C':
                 val = (int)strtol(tok + 1, 0, 16);
                 if (val == 0x168 || val == 0x1e8 || val == 0x170 || val == 0) {
@@ -3081,7 +3083,7 @@ void print_blaster_hint(int port, int irq, int dma, int hdma)
     if (env != 0) {
         dup = strdup(env);
         for (tok = dup == 0 ? 0 : strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
-            switch (toupper(*tok)) {
+            switch (toupper((unsigned char)*tok)) {
                 case 'A':
                     a = (int)strtol(tok + 1, 0, 16);
                     break;
