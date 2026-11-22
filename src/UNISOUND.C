@@ -1816,8 +1816,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     }
                     printf(" OPL:%X", opl_port);
                 }
-                /* no card family is 0x63, so that test is always false */
-                pnp_write(0x30, (type == 0x63 || type == CARD_AZTECH || opt_disable != 0) ? 0 : 1);
+                pnp_write(0x30, (type == CARD_AZTECH || opt_disable != 0) ? 0 : 1);
             }
             if (type == CARD_OPTI925 || type == CARD_OPTI924) {
                 delay(10);
