@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     base = (unsigned)strtoul(argv[1], 0, 16);
-    if (argc > 2 && !strcmp(argv[2], "C6")) {
+    if (argc > 2 && !stricmp(argv[2], "C6")) {
         dsp_write(0xc6);
     }
     printf("ext B1=%02X B2=%02X\n", ext_read(0xb1) & 0xff, ext_read(0xb2) & 0xff);
