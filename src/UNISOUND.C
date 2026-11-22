@@ -4496,7 +4496,7 @@ void sam9407_upload(unsigned base)
     unsigned word = 0;
     unsigned long size;
     register FILE *fp;
-    int i;
+    unsigned i;
     int lo, hi;
     unsigned out;
 
