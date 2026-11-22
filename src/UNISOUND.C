@@ -1829,7 +1829,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                        "differ from D.\n",
                        wss_dma);
             }
-            if (type == CARD_ADS7141) {
+            /* /R reads only: this block writes PnP register 0x20 and the codec directly,
+               bypassing the pnp_write /R guards, so skip it entirely when reading. */
+            if (type == CARD_ADS7141 && opt_read == 0) {
                 if (opt_xwss != 0) {
                     pnp_write(0x20, 8);
                     delay(0x78);
