@@ -268,7 +268,7 @@ a machine that needs them yet. Please include `UNISOUND /LOG` output with the op
 
 | Option | For | Machines that need it |
 |---|---|---|
-| `/XSLAM` | Crystal CS423x chips whose PnP key is disabled, so they take no part in isolation | Laptops and boards whose BIOS or CWDINIT sets up the chip, where UNISOUND says "No PnP card detected." |
+| `/XSLAM` | Crystal CS423x chips whose PnP key is disabled, so they take no part in isolation. They get the generic Crystal variant: no CS4232 firmware upload, no Orpheus/Turtle Beach/CS4237 extended setup, no MODE-1 return | Laptops and boards whose BIOS or CWDINIT sets up the chip, where UNISOUND says "No PnP card detected." |
 | `/XESSB` | ES1868/ES1869 chips that isolation doesn't find. Without BLASTER `R` it tries control port 660h, then 800h | On-board ES1868/ES1869, or chipsets that don't pass A79h on to the chip; 86Box always passes it on, so only a real machine can test this. On a real ES1898F card in a Gateway 2000 4DX2-66 the key was taken and the chip set up, but isolation finds that card too |
 
 ### Fixes for VOGONS reports, not yet tried on real hardware
