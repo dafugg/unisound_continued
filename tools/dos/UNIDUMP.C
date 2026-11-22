@@ -20,8 +20,9 @@
               B1h/B2h), OPL timers at 388h, MPU-401 status at 330h/300h, WSS codecs at 530h,
               604h, E80h and F40h, an Echo PSS ID at 220h-250h
    Options:
-     /SKIP:A,B   leave sections out (e.g. /SKIP:PCI,WSS if a probe hangs the machine)
-     /ONLY:A,B   run only these sections
+     /SKIP:A,B   leave sections out (e.g. /SKIP:PCI,WSS if a probe hangs the machine);
+                 repeatable, lists combine
+     /ONLY:A,B   run only these sections (repeatable, lists combine)
      /ESCD       also print the ESCD in hex (PnP BIOS function 42h, or read from memory)
      /ISOLATE    isolate ISA PnP cards that have no CSN, as UNISOUND does, and report them too.
                  It assigns CSNs; without a PnP BIOS (or with no CSNs) it resets them first
@@ -128,6 +129,21 @@ int want(char *name)
         return in_list(only, name);
     }
     return !in_list(skip, name);
+}
+
+/* Append src to a comma-separated list, so repeated /SKIP: and /ONLY: combine instead of
+   overwriting each other. */
+void add_list(char *dst, unsigned size, char *src)
+{
+    unsigned n = strlen(dst);
+    if (n > 0) {
+        if (n + 1 >= size) {
+            return;
+        }
+        dst[n++] = ',';
+        dst[n] = 0;
+    }
+    strncat(dst, src, size - n - 1);
 }
 
 void step(char *what)
@@ -1582,9 +1598,9 @@ int main(int argc, char *argv[])
     int i;
     for (i = 1; i < argc; i++) {
         if (strnicmp(argv[i], "/SKIP:", 6) == 0) {
-            strncpy(skip, argv[i] + 6, sizeof(skip) - 1);
+            add_list(skip, sizeof(skip), argv[i] + 6);
         } else if (strnicmp(argv[i], "/ONLY:", 6) == 0) {
-            strncpy(only, argv[i] + 6, sizeof(only) - 1);
+            add_list(only, sizeof(only), argv[i] + 6);
         } else if (stricmp(argv[i], "/ESCD") == 0) {
             opt_escd = 1;
         } else if (stricmp(argv[i], "/ISOLATE") == 0) {
