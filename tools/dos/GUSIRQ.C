@@ -26,20 +26,45 @@ void ack(int irq)
     outportb(base + 0x103, 0x41);
     st41 = inportb(base + 0x105);
     outportb(base + 0x100, 3); /* MIDI reset: stops the TX IRQ */
-    if (irq >= 8)
+    if (irq >= 8) {
         outportb(0xa0, 0x20);
+    }
     outportb(0x20, 0x20);
 }
-void interrupt isr3(void) { ack(3); }
-void interrupt isr5(void) { ack(5); }
-void interrupt isr7(void) { ack(7); }
-void interrupt isr9(void) { ack(9); }
-void interrupt isr11(void) { ack(11); }
-void interrupt isr12(void) { ack(12); }
-void interrupt isr15(void) { ack(15); }
+void interrupt isr3(void)
+{
+    ack(3);
+}
+void interrupt isr5(void)
+{
+    ack(5);
+}
+void interrupt isr7(void)
+{
+    ack(7);
+}
+void interrupt isr9(void)
+{
+    ack(9);
+}
+void interrupt isr11(void)
+{
+    ack(11);
+}
+void interrupt isr12(void)
+{
+    ack(12);
+}
+void interrupt isr15(void)
+{
+    ack(15);
+}
 void interrupt (*isrs[7])(void) = {isr3, isr5, isr7, isr9, isr11, isr12, isr15};
 
-int vec(int irq) { return irq < 8 ? 8 + irq : 0x70 + irq - 8; }
+int vec(int irq)
+{
+    return irq < 8 ? 8 + irq : 0x70 + irq - 8;
+}
 
 void w8(unsigned char r, unsigned char v)
 {
@@ -62,17 +87,20 @@ unsigned char dpeek(unsigned long a)
 void clear(void)
 {
     int i;
-    for (i = 0; i < 16; i++)
+    for (i = 0; i < 16; i++) {
         hit[i] = 0;
+    }
 }
 int wait_hit(void)
 {
     unsigned long t0 = biostime(0, 0L);
     int i;
     while (biostime(0, 0L) - t0 < 18) {
-        for (i = 0; i < 7; i++)
-            if (hit[irqs[i]])
+        for (i = 0; i < 7; i++) {
+            if (hit[irqs[i]]) {
                 return irqs[i];
+            }
+        }
     }
     return -1;
 }
@@ -80,8 +108,9 @@ void show(char *what)
 {
     int i;
     printf("%s irq:", what);
-    for (i = 0; i < 7; i++)
+    for (i = 0; i < 7; i++) {
         printf(" %d=%d", irqs[i], hit[irqs[i]]);
+    }
     puts("");
 }
 
@@ -105,8 +134,9 @@ int main(void)
         p += LEN;
         a += LEN;
     }
-    for (i = 0; i < LEN; i++)
+    for (i = 0; i < LEN; i++) {
         p[i] = (unsigned char)(i * 7 + 3);
+    }
     for (i = 0; i < 7; i++) {
         old[irqs[i]] = getvect(vec(irqs[i]));
         setvect(vec(irqs[i]), isrs[i]);
@@ -116,11 +146,14 @@ int main(void)
     outportb(0x21, m1 & ~((1 << 3) | (1 << 5) | (1 << 7) | (1 << 2)));
     outportb(0xa1, m2 & ~((1 << 1) | (1 << 3) | (1 << 4) | (1 << 7)));
     delay(10);
-    for (i = 0; i < 7; i++)
-        if (hit[irqs[i]])
+    for (i = 0; i < 7; i++) {
+        if (hit[irqs[i]]) {
             bad = 1;
-    if (bad)
+        }
+    }
+    if (bad) {
         show("stray");
+    }
     clear();
     /* 1: DMA to DRAM */
     if (c == 1 || c == 3) {
@@ -150,9 +183,11 @@ int main(void)
         w8(0x41, 0);
         show("dma");
         bad = 0;
-        for (i = 0; i < LEN; i++)
-            if (dpeek(0x1000L + i) != (unsigned char)(i * 7 + 3))
+        for (i = 0; i < LEN; i++) {
+            if (dpeek(0x1000L + i) != (unsigned char)(i * 7 + 3)) {
                 bad++;
+            }
+        }
         printf("isr 2x6=%02X 41h=%02X; 8237 ch%d %s count %04X; DRAM %d/%d bytes wrong\n", st6,
                st41, c, (st >> c) & 1 ? "TC" : "--", left, bad, LEN);
         printf("RESULT: GF1 DMA %d IRQ %d DRAM %s\n", (st >> c) & 1 ? c : -1, got,
@@ -171,7 +206,8 @@ int main(void)
     printf("RESULT: MIDI IRQ %d\n", got);
     outportb(0x21, m1);
     outportb(0xa1, m2);
-    for (i = 0; i < 7; i++)
+    for (i = 0; i < 7; i++) {
         setvect(vec(irqs[i]), old[irqs[i]]);
+    }
     return 0;
 }
