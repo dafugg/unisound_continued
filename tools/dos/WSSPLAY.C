@@ -85,7 +85,15 @@ int vec(int irq)
 void wait_init(void)
 {
     int k;
-    for (k = 0; k < 1000 && (inportb(cdc) & 0x80); k++) {
+    unsigned char v;
+    for (k = 0; k < 1000; k++) {
+        v = inportb(cdc);
+        if (v == 0xff) {
+            return; /* no codec: open bus, not a codec still initialising */
+        }
+        if (!(v & 0x80)) {
+            return;
+        }
         delay(1);
     }
 }
