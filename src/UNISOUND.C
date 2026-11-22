@@ -5389,6 +5389,9 @@ int ess_bypass_id(void)
     dlog("bypass %X: E7 %02X, 40h %02X %02X %02X %02X", ess_ctl_port, e7, m[0], m[1], m[2], m[3]);
     if (e7 != 0x68 || m[0] != 0x18 || (m[1] != 0x68 && m[1] != 0x69) || m[2] != ess_ctl_port >> 8 ||
         m[3] != (ess_ctl_port & 0xff)) {
+        /* LD1 was activated to reach the PnP registers; put it back off. */
+        pnp_write(7, 1);
+        pnp_write(0x30, 0);
         return 0;
     }
     return m[1] == 0x68 ? CARD_ES1868 : CARD_ES1869;
