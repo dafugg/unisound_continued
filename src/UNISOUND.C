@@ -6517,7 +6517,7 @@ int init_es688(void)
             ver = sb_dsp_read(port);
         }
         dlog("%X: E7 %02X %02X", port, id, ver);
-        if (id == 0x68) {
+        if (id == 0x68 && ver >= 0x80) {
             break;
         }
     }
