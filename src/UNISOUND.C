@@ -1,6 +1,6 @@
 /* UNISOUND v0.82a - Universal ISA PnP Sound Card Driver for DOS, (c) JazeFox 2019-2025.
-   Reconstructed source. Build: tcc -c -ms -O -d UNISOUND.C (Turbo C++ 3.0), link with C0S + CS.LIB
-   (see BUILD.BAT). v0.82a was a tiny-model .COM; this is a small-model EXE named UNISOUND.COM. */
+   Reconstructed source. Build: tcc -c -mm -O -d UNISOUND.C (Turbo C++ 3.0), link with C0M + CM.LIB
+   (see BUILD.BAT). v0.82a was a tiny-model .COM; this is a medium-model EXE named UNISOUND.COM. */
 
 #include <stdio.h>
 #include <stdlib.h>
