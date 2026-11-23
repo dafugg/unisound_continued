@@ -4011,6 +4011,9 @@ int init_nonpnp_sb16(void)
         }
         delay(20);
         irqr = sb16_get_irq(port);
+        if (irqr == 2 && irq == 9) {
+            irqr = 9; /* the same line: show it as BLASTER asks for it, so the hint matches */
+        }
         delay(20);
         dmar = sb16_get_dma(port);
         delay(1);
@@ -4069,13 +4072,14 @@ int init_nonpnp_sb16(void)
 }
 
 /* Program an SB16's IRQ select (mixer register 0x80) and DMA select (0x81) for the given IRQ
-   (2/5/7/10, default 5), 8-bit DMA (0/1/3, default 1) and 16-bit DMA (5/6/7; 4 = none). */
+   (2 or 9/5/7/10, default 5), 8-bit DMA (0/1/3, default 1) and 16-bit DMA (5/6/7; 4 = none). */
 void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned char hdma)
 {
     unsigned char irqv = 2;
     unsigned char dmav = 2;
     switch (irq) {
         case 2:
+        case 9: /* the AT's IRQ 9 is the ISA bus IRQ 2 line; 0.82a set IRQ 5 for I9 */
             irqv = 1;
             break;
         case 5:
@@ -5936,9 +5940,14 @@ int init_opti928(void)
             cfg1 &= 0xfe;
             joy_port = 0x200;
         }
+        /* MC3 bits 7:6 and 5:4: SB IRQ 7, 10 (82C929) or 11 (82C928), 5; DMA 1, 0, 3. Anything
+           else is set as IRQ 5 / DMA 1, and said so */
         if (sb_irq == (c929 ? 10 : 11)) {
             cfg2 |= 0x40;
         } else if (sb_irq != 7) {
+            if (sb_irq != 5 && opt_xwss == 0) {
+                printf("IRQ %d not possible on OPTi 82C92%d, using 5.\n", sb_irq, c929 ? 9 : 8);
+            }
             sb_irq = 5;
             cfg2 |= 0x80;
         }
@@ -5950,6 +5959,9 @@ int init_opti928(void)
                 cfg2 |= 0x10;
                 break;
             default:
+                if (sb_dma != 1) {
+                    printf("DMA %d not possible on OPTi 82C92%d, using 1.\n", sb_dma, c929 ? 9 : 8);
+                }
                 sb_dma = 1;
         }
         if (opt_xwss > 0) {
@@ -6244,6 +6256,10 @@ int init_opti930(void)
                 cfg2 |= 8;
                 break;
             default:
+                /* 5, or one the 82C930 doesn't have */
+                if (sb_irq != 5) {
+                    printf("IRQ %d not possible on OPTi 82C930, using 5.\n", sb_irq);
+                }
                 sb_irq = 5;
                 cfg2 |= 0x28;
         }
@@ -6255,6 +6271,9 @@ int init_opti930(void)
                 cfg2 |= 1;
                 break;
             default:
+                if (sb_dma != 1) {
+                    printf("DMA %d not possible on OPTi 82C930, using 1.\n", sb_dma);
+                }
                 sb_dma = 1;
                 cfg2 |= 2;
         }
