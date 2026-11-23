@@ -1,6 +1,6 @@
 /* UNISOUND v0.82a - Universal ISA PnP Sound Card Driver for DOS, (c) JazeFox 2019-2025.
-   Reconstructed source. Build: tcc -c -ms -O -d UNISOUND.C (Turbo C++ 3.0), link with C0S + CS.LIB
-   (see BUILD.BAT). v0.82a was a tiny-model .COM; this is a small-model EXE named UNISOUND.COM. */
+   Reconstructed source. Build: tcc -c -mm -O -d UNISOUND.C (Turbo C++ 3.0), link with C0M + CM.LIB
+   (see BUILD.BAT). v0.82a was a tiny-model .COM; this is a medium-model EXE named UNISOUND.COM. */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -350,6 +350,7 @@ int bass_lvl = -1;                /* bass / AuxB (/VBnn); -1 = not set */
 char opt_cs = 0;                  /* /CS: initialize a non-PnP Creative card */
 unsigned char opt_read = 0;       /* /R: read settings only */
 int opt_disable = 0;              /* /D: disable the card */
+char disable_refused = 0;         /* /D found a non-PnP card and left it alone: exit 1 */
 char opt_xxf = 0; /* /XXF: ignore bad checksums; set to 2 when one was bad, 1 when good */
 unsigned char isolate_limit =
     4;              /* isolation gives up after this many bits without a response (/FS: 0x50) */
@@ -370,7 +371,7 @@ int opt_xxg = 0;                    /* /XXGn: SB16 gain */
 int nopnp_mode = 0;                 /* /NOPNP = 1; 2 = OPTi control chip found */
 char opt_log = 0;                   /* /LOG: print diagnostic lines */
 char opt_slam = 0;   /* /XSLAM: Crystal chip set up through SLAM; 2 while SLAM is open */
-char opt_essb = 0;   /* /XESSB: ES1868/ES1869 found through the ESS bypass key alone */
+char opt_essb = 0;   /* /XESSB: ES1868/69/78/79 found through the ESS bypass key alone */
 int res_logged = -1; /* /LOG: resource data bytes printed so far; -1 = not printing them */
 /* Bit n set: logical device n's first I/O range is 1 or 2 bytes long, so it is an IDE control
    port and goes in register 60h, with the 8-byte command block in 62h (OPTi 82C931). */
@@ -393,7 +394,7 @@ int configure_pnp(int card, int list, int pass, unsigned port);
 void pnp_send_key(void);
 void pnp_write(unsigned char reg, unsigned char val);
 void slam_write(unsigned char reg, unsigned char val);
-int ess_bypass_id(void);
+int ess_bypass_id(unsigned char *part);
 void no_card_hint(void);
 void log_ldn(int ldn);
 void log_codec(unsigned port);
@@ -417,13 +418,15 @@ void parse_cd(void);
 void print_blaster_hint(int port, int irq, int dma, int hdma);
 int pnp_read_ansi_name(unsigned char csn, unsigned char *buf, int type);
 int pnp_map_devices(unsigned char csn, char *name, int *ld, int type);
-int pnp_read_res(unsigned char *buf, int n);
+int pnp_read_res(unsigned char *buf, unsigned n);
 int pnp_read_tag(unsigned char *tag, unsigned *len);
 void log_pnp_res(unsigned char csn);
 int pnp_read_str(char *buf, unsigned len);
 void awe_init(unsigned port);
 void sb_print_dsp_ver(int port);
 int init_nonpnp_sb16(void);
+int refuse_disable(void);
+void read_notice(void);
 void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned char hdma);
 unsigned char sb16_get_irq(int port);
 unsigned char sb16_get_dma(int port);
@@ -510,7 +513,7 @@ int main(int argc, char *argv[])
             char *opt = argv[i] + 1; /* option name, without the / or - */
             int n = 0;               /* unread initial value */
             for (j = 1; j <= strlen(argv[i]); j++) {
-                argv[i][j] = toupper(argv[i][j]);
+                argv[i][j] = toupper((unsigned char)argv[i][j]);
             }
             if (argv[i][0] != '/' && argv[i][0] != '-') {
                 opt = "";
@@ -523,12 +526,12 @@ int main(int argc, char *argv[])
                 card = 10;
                 list = 1;
             } else if (strcmp(opt, "CS") == 0) {
-                if (list < 1) {
-                    opt_cs = 1;
-                }
-            } else if (opt[0] == 'V' &&
-                       (opt[1] == 0 || isdigit(opt[1]) || strchr("FWLCMPTBUR", opt[1]))) {
-                char c = isdigit(opt[1]) || opt[1] == 0 ? 'V' : opt[1];
+                /* No list < 1 guard: /CS must be recorded even after /CL,
+                   so the rejection below fires for either order (#21). */
+                opt_cs = 1;
+            } else if (opt[0] == 'V' && (opt[1] == 0 || isdigit((unsigned char)opt[1]) ||
+                                         strchr("FWLCMPTBUR", opt[1]))) {
+                char c = isdigit((unsigned char)opt[1]) || opt[1] == 0 ? 'V' : opt[1];
                 n = opt_value(c == 'V' ? opt + 1 : opt + 2);
                 if (n < 0) {
                     print_banner();
@@ -627,11 +630,13 @@ int main(int argc, char *argv[])
                 opt_xea = 1;
             } else if (strcmp(opt, "XXF") == 0) {
                 opt_xxf = 1;
-            } else if (strncmp(opt, "XXG", 3) == 0 && isdigit(opt[3]) && opt[4] == 0) {
+            } else if (strncmp(opt, "XXG", 3) == 0 && isdigit((unsigned char)opt[3]) &&
+                       opt[4] == 0) {
                 opt_xxg = opt[3] - '0';
             } else if (strcmp(opt, "XNET") == 0) {
                 opt_xnet = 1;
-            } else if (strncmp(opt, "X3D", 3) == 0 && isdigit(opt[3]) && opt[4] == 0) {
+            } else if (strncmp(opt, "X3D", 3) == 0 && isdigit((unsigned char)opt[3]) &&
+                       opt[4] == 0) {
                 opt_x3d = opt[3] - '0';
             } else if (strcmp(opt, "XRU") == 0) {
                 opt_xof = 8;
@@ -653,11 +658,28 @@ int main(int argc, char *argv[])
             }
         }
     }
+    if (opt_cs != 0 && (list != 0 || card != 1)) {
+        /* /CS is a non-PnP init; /CL lists and /Cn picks a PnP card. Which one happens
+           depends on the option order, so refuse the combination. */
+        print_banner();
+        puts("/CS cannot be used with /CL or /Cn.");
+        return 2;
+    }
     /* after the loop, so that /R given after /NOPNP is seen */
+    if (opt_slam != 0 && opt_essb != 0) {
+        /* /XSLAM turns every PnP write into a SLAM command, so with /XESSB the ESS
+           card would never be programmed; refuse the combination. */
+        print_banner();
+        puts("/XSLAM cannot be used with /XESSB.");
+        return 2;
+    }
     if (nopnp_mode != 0) {
         probe_opti_ctl();
     }
-    return configure_pnp(card, list, full_scan, scan_port);
+    i = configure_pnp(card, list, full_scan, scan_port);
+    /* /D on a non-PnP card disabled nothing: ERRORLEVEL 1, whether the card was reached
+       through /CS, /NOPNP or the fallback after the PnP scan. */
+    return disable_refused != 0 ? 1 : i;
 }
 
 /* /LOG: select logical device ldn and print its registers 30h, 60h-65h and 70h-75h. */
@@ -697,16 +719,19 @@ void no_card_hint(void)
            "To report a problem: UNISOUND /LOG > LOG.TXT");
 }
 
-/* Return the value of a /V option value s of one or two digits ("0" to "99"), or -1 if s is
-   anything else. 99 sets every mixer to its maximum; the treble, bass and AWE formulas overflow
-   above it. */
+/* Return the value of a /V option value s of one or two digits ("0" to "99"), or of three
+   digits with a leading zero ("000" to "099"), or -1 if s is anything else. 99 sets every mixer
+   to its maximum; the treble, bass and AWE formulas overflow above it. */
 int opt_value(char *s)
 {
-    if (isdigit(s[0]) && s[1] == 0) {
+    if (isdigit((unsigned char)s[0]) && s[1] == 0) {
         return s[0] - '0';
     }
-    if (isdigit(s[0]) && isdigit(s[1]) && s[2] == 0) {
+    if (isdigit((unsigned char)s[0]) && isdigit((unsigned char)s[1]) && s[2] == 0) {
         return (s[0] - '0') * 10 + s[1] - '0';
+    }
+    if (s[0] == '0' && isdigit((unsigned char)s[1]) && isdigit((unsigned char)s[2]) && s[3] == 0) {
+        return (s[1] - '0') * 10 + s[2] - '0';
     }
     return -1;
 }
@@ -744,8 +769,8 @@ void print_help(void)
     puts("   /Cn    Select PnP card number 'n' to initialize/read (1-9)");
     puts("   /CL    List all PnP cards present in the system");
     puts("   /CS    Initialize non-PnP Creative card (SB16 & AWE32)");
-    puts("   /R     Read PnP card current settings only");
-    puts("   /D     Disable PnP sound card");
+    puts("   /R     Read card current settings only (not with /XSLAM or /XESSB)");
+    puts("   /D     Disable PnP sound card (a non-PnP card is left unchanged)");
     puts("   /Vnn   Set Master Volume (0-99); also /VWnn Wave, /VFnn FM/Synth/Wavetable,");
     puts("          /VLnn Line-in, /VCnn CD, /VMnn Mic, /VPnn PC Speaker-in (Creative)");
     puts("   /VTnn  and /VBnn Set Treble/Bass/AuxB level (0-99) On supported cards");
@@ -754,10 +779,10 @@ void print_help(void)
     puts("   /NOPNP Detect & init some Non-PnP cards (See TXT end of section 3)");
     puts("   /F /FS PnP card not found: set the read port on every try (/FS: slower)");
     puts("   /XSLAM Crystal chip set up by the BIOS (no PnP): configure it through SLAM");
-    puts("   /XESSB ES1868/ES1869 not found by PnP (on-board): ESS bypass key, R=port");
+    puts("   /XESSB ES1868/69/78/79 not found by PnP (on-board): ESS bypass key, R=port");
     puts("   /LOG   Print diagnostic lines (UNISOUND /LOG > LOG.TXT)");
     puts("   /H /?  This help screen");
-    puts("\nUNISOUND (w/o options) initializes 1st card found with default vols.");
+    puts("\nUNISOUND (w/o options) inits 1st PnP card, else non-PnP SB16, default vols.");
     puts("If BLASTER/ULTRASND env var is found, values will be used to configure");
     puts("the card. If not, default values will be used. This program is FREEWARE!");
 }
@@ -814,10 +839,13 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     unsigned char reg_irq2 = 0x72;
     unsigned char reg_dma = 0x74;
     unsigned char reg_dma2 = 0x75;
-    int ret = 0;   /* return value */
-    int hint = 0;  /* SB device set up: check BLASTER at the end */
-    int h16 = -1;  /* SB16-compatible card: the H DMA, else -1 */
-    int tries = 1; /* /XESSB: control ports to try */
+    int ret = 0;             /* return value */
+    int hint = 0;            /* SB device set up: check BLASTER at the end */
+    int h16 = -1;            /* SB16-compatible card: the H DMA, else -1 */
+    int tries = 1;           /* /XESSB: control ports to try */
+    unsigned char part = 0;  /* /XESSB: the ESS part number's low byte (68h for the ES1868) */
+    static char essb_id[8];  /* /XESSB: the chip name shown */
+    unsigned xnet_rd = port; /* /XNET: the read-data port isolation found, else the first one */
 
     print_banner();
     if (nopnp_mode != 0) {
@@ -875,11 +903,12 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         pass = 2;
     }
     if (opt_essb != 0) {
-        /* /XESSB: for an ES1868/ES1869 that isolation doesn't find (a chipset that doesn't pass
-           A79h on, an on-board chip), send the ESS bypass key with the control port and reach the
-           PnP registers through it, with no CSN. The port is BLASTER R; without it, 660h (the
-           port 0.82a's own ESS setup and ESSCFG use), then 800h. Before the second try the chip
-           is put back into Wait for Key through the first port, in case it took the key there. */
+        /* /XESSB: for an ES1868, ES1869, ES1878 or ES1879 that isolation doesn't find (a chipset
+           that doesn't pass A79h on, an on-board chip), send the ESS bypass key with the control
+           port and reach the PnP registers through it, with no CSN. The port is BLASTER R; without
+           it, 660h (the port 0.82a's own ESS setup and ESSCFG use), then 800h. Before the second
+           try the chip is put back into Wait for Key through the first port, in case it took the
+           key there. */
         if (opt_read != 0) {
             /* the key itself places and activates the control port */
             puts("/R can't read a chip found through the ESS bypass key.");
@@ -896,9 +925,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             pnp_addr_port = ess_ctl_port;
             pnp_wdata_port = ess_ctl_port + 1;
             pnp_rdata_port = ess_ctl_port + 1;
-            type = ess_bypass_id();
+            type = ess_bypass_id(&part);
             if (type == 0) {
-                printf("No ES1868/ES1869 answered the ESS bypass key at %X.\n", ess_ctl_port);
+                printf("No ES1868/ES1869/ES1878/ES1879 answered the ESS bypass key at %X.\n",
+                       ess_ctl_port);
             }
             if (type != 0 || --tries == 0) {
                 break;
@@ -912,7 +942,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         if (type == 0) {
             return 1;
         }
-        id = type == CARD_ES1868 ? "ESS1868" : "ESS1869";
+        /* the part number, as the PnP id of logical device 1: ESS1868 ... ESS1879 */
+        sprintf(essb_id, "ESS18%02X", part);
+        id = essb_id;
         csn = 1;
         nsup = 1;
         pass = 2;
@@ -951,7 +983,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
     }
     dlog("PnP RD port %X", pnp_rdata_port);
-    while (found != 0) {
+    if (opt_essb == 0 && opt_slam == 0) {
+        xnet_rd = pnp_rdata_port; /* before an ES1868/ES1869 moves the PnP ports */
+    }
+    while (found != 0 && cardno < 16) {
         csn++;
         pnp_write(6, csn);
         delay(1);
@@ -1064,6 +1099,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 gus_irq2 = 0;
             }
             if (opt_read != 0) {
+                read_notice();
                 puts("Reading card current settings...\n");
             } else if (opt_disable == 0) {
                 if (type == CARD_GUSPNP) {
@@ -1422,7 +1458,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 if (type != CARD_ES968 && type != CARD_ES968B && type != CARD_ESS01 &&
                     als_variant != 1 && als_variant != 2 &&
                     (sb_hdma != 4 || (opt_disable != 0 && sb_hdma == 4) ||
-                     (type == CARD_CMI && sb_hdma == 4) ||
+                     (type == CARD_CMI && sb_hdma == 4) || (type == CARD_CRYSTAL && sb_hdma == 4) ||
                      ((type == CARD_ES1868 || type == CARD_ES1869) && sb_hdma == 4))) {
                     pnp_write(reg_dma2, sb_hdma);
                     if (opt_read != 0) {
@@ -1800,8 +1836,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                     }
                     printf(" OPL:%X", opl_port);
                 }
-                /* no card family is 0x63, so that test is always false */
-                pnp_write(0x30, (type == 0x63 || type == CARD_AZTECH || opt_disable != 0) ? 0 : 1);
+                pnp_write(0x30, (type == CARD_AZTECH || opt_disable != 0) ? 0 : 1);
             }
             if (type == CARD_OPTI925 || type == CARD_OPTI924) {
                 delay(10);
@@ -1815,7 +1850,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                        "differ from D.\n",
                        wss_dma);
             }
-            if (type == CARD_ADS7141) {
+            /* /R reads only: this block writes PnP register 0x20 and the codec directly,
+               bypassing the pnp_write /R guards, so skip it entirely when reading. */
+            if (type == CARD_ADS7141 && opt_read == 0) {
                 if (opt_xwss != 0) {
                     pnp_write(0x20, 8);
                     delay(0x78);
@@ -1858,7 +1895,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             }
         } else {
             type = 0;
-            printf("No supported PnP card detected.");
+            /* A supported card was found, but pnp_map_devices could not read its
+               resource data, so nothing was configured. */
+            printf("Supported PnP card found, but its resource data could not be read.");
+            ret = 1;
             if (opt_log != 0 || nopnp_mode == 2) {
                 puts(""); /* end the line before the fallback's output */
             }
@@ -1896,7 +1936,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     pnp_write(2, 2);
     delay(1);
     if (opt_disable != 0) {
-        return 0;
+        return ret;
     }
     if (opt_slam != 0 && inportb(wss_port) == 0xff) {
         puts("No Crystal codec answered after the SLAM setup.");
@@ -2338,7 +2378,17 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         print_blaster_hint(sb_port, sb_irq, sb_dma, h16);
     }
     if (opt_xnet > 0) {
-        xnet_workaround(pnp_rdata_port);
+        /* The Realtek key and isolation go out on the standard PnP ports, which an ES1868/
+           ES1869 setup (and /XESSB) moved to the ESS control port, so 0.82a sent them there.
+           /XESSB and /XSLAM ran no isolation: use the first read-data port it would have tried.
+           Wake[CSN] and plain PnP writes are needed, so /XESSB's and /XSLAM's write rules are
+           off for it. Nothing uses the PnP ports after this */
+        pnp_addr_port = 0x279;
+        pnp_wdata_port = 0xa79;
+        pnp_rdata_port = xnet_rd;
+        opt_essb = 0;
+        opt_slam = 0;
+        xnet_workaround(xnet_rd);
     }
     return ret;
 }
@@ -2688,65 +2738,91 @@ const struct card_id *card_id_lookup(const char *id)
 
 /* Read the ULTRASND environment variable ("port,dma,dma2,irq,irq2") into gus_port, gus_dma,
    gus_dma2, gus_irq and gus_irq2. Out-of-range fields are ignored.
-   Returns 1 if the variable exists and has at least 3 fields, else 0. */
+   Returns 1 if the variable exists, has at least 3 fields and at least one field was
+   applied, else 0. */
 int parse_ultrasnd(void)
 {
     char *env = 0;
     char *dup = 0;
+    int applied = 0;
     int dec = 0; /* unread initial value */
     int hex = 0; /* unread initial value */
     char *tok;
+    char *next;
+    char *dend; /* end of the digits read as decimal */
+    char *hend; /* end of the digits read as hex */
     unsigned char field;
     env = getenv("ULTRASND");
     if (env == 0) {
         return 0;
     }
     dup = strdup(env);
-    tok = strtok(dup, ",");
+    if (dup == 0) {
+        return 0;
+    }
     field = 0;
-    while (field < 5 && tok != 0) {
-        dec = strtol(tok, 0, 10);
-        hex = strtol(tok, 0, 16);
+    /* Split on commas positionally: strtok collapses consecutive commas, so an empty field
+       ("240,,3,11") would shift every later field one slot left. An empty field keeps the
+       caller's value for that position. */
+    for (tok = dup; field < 5 && tok != 0; tok = next, field++) {
+        next = strchr(tok, ',');
+        if (next != 0) {
+            *next = 0;
+            next++;
+        }
+        if (*tok == 0) {
+            continue;
+        }
+        dec = strtol(tok, &dend, 10);
+        hex = strtol(tok, &hend, 16);
+        if ((field == 0 ? hend : dend) == tok) {
+            /* No digits ("240,X,3,11"): strtol returns 0, which is not what the field says, so
+               ignore it. The port is hex, the DMAs and IRQs decimal. */
+            continue;
+        }
         switch (field) {
             case 0:
                 if (hex == 0x220 || hex == 0x230 || hex == 0x240 || hex == 0x250 || hex == 0x260) {
                     gus_port = hex;
+                    applied++;
                     break;
                 }
                 break;
             case 1:
                 if (dec >= 0 && dec <= 7) {
                     gus_dma = dec;
+                    applied++;
                     break;
                 }
                 break;
             case 2:
                 if (dec >= 0 && dec <= 7) {
                     gus_dma2 = dec;
+                    applied++;
                     break;
                 }
                 break;
             case 3:
                 if (dec >= 0 && dec <= 15) {
                     gus_irq = dec;
+                    applied++;
                     break;
                 }
                 break;
             case 4:
                 if (dec >= 0 && dec <= 15) {
                     gus_irq2 = dec;
+                    applied++;
                     break;
                 }
                 break;
             default:
                 break;
         }
-        tok = strtok(0, ",");
-        field++;
     }
     free(dup);
     dlog("ULTRASND=%s: %X,%d,%d,%d,%d", env, gus_port, gus_dma, gus_dma2, gus_irq, gus_irq2);
-    if (field < 3) {
+    if (field < 3 || applied < 1) {
         return 0;
     }
     return 1;
@@ -2763,6 +2839,8 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
     char *env = getenv("ULTRA16");
     char *dup;
     char *tok;
+    char *next;
+    char *end;
     int field = 0;
     int ok = 0;
     int v;
@@ -2770,8 +2848,27 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
         return 0;
     }
     dup = strdup(env);
-    for (tok = strtok(dup, ","); tok != 0 && field < 4; tok = strtok(0, ","), field++) {
-        v = (int)strtol(tok, 0, field == 0 ? 16 : 10);
+    if (dup == 0) {
+        return 0;
+    }
+    /* Split on commas positionally: strtok collapses consecutive commas, so an empty field
+       ("530,,7") would shift every later field one slot left. An empty field keeps the
+       caller's value for that position. */
+    for (tok = dup; field < 4 && tok != 0; tok = next, field++) {
+        next = strchr(tok, ',');
+        if (next != 0) {
+            *next = 0;
+            next++;
+        }
+        if (*tok == 0) {
+            continue;
+        }
+        v = (int)strtol(tok, &end, field == 0 ? 16 : 10);
+        if (end == tok) {
+            /* No digits ("530,X,10"): strtol returns 0, which is not what the field says, so
+               ignore it. */
+            continue;
+        }
         if (field == 0 && (v == 0x530 || v == 0xe80 || v == 0xf40 || v == 0x604)) {
             *port = v;
             ok++;
@@ -2794,14 +2891,17 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
    and DMA globals: A sb_port, I sb_irq, D sb_dma, H sb_hdma, P mpu_port, E awe_port, J joy_port,
    W wss_port, C ide_port, R the control ports, M mpu2_port, F opl_port, U mpu_irq, Q irq2,
    K wss_dma, Y ide_irq. Out-of-range values are ignored.
-   Returns 1 if the variable exists, else 0. */
+   Returns 1 if the variable exists and at least one field was applied, else 0. */
 int parse_blaster(void)
 {
     char *env = 0;
     char *dup = 0;
+    int applied = 0;
     int dec = 0; /* unread initial value */
     int hex = 0; /* unread initial value */
     char *tok;
+    char *dend; /* end of the digits read as decimal */
+    char *hend; /* end of the digits read as hex */
     unsigned char field;
     char letter;
     env = getenv("BLASTER");
@@ -2810,99 +2910,143 @@ int parse_blaster(void)
         return 0;
     }
     dup = strdup(env);
+    if (dup == 0) {
+        parse_cd();
+        return 0;
+    }
     tok = strtok(dup, " ");
     field = 0;
-    while (field < 12 && tok != 0) {
-        if (isalpha(*tok) && strlen(tok) > 1) {
+    /* BLASTER has 17 possible fields; 20 covers them all. */
+    while (field < 20 && tok != 0) {
+        if (isalpha((unsigned char)*tok) && strlen(tok) > 1) {
             letter = *tok;
             tok++;
-            dec = strtol(tok, 0, 10);
-            hex = strtol(tok, 0, 16);
-            switch (toupper(letter)) {
+            dec = strtol(tok, &dend, 10);
+            hex = strtol(tok, &hend, 16);
+            if ((strchr("IUQY", toupper((unsigned char)letter)) != 0 ? dend : hend) == tok) {
+                /* No digits after the letter ("IX", "CX"): strtol returns 0, which is not what
+                   the field says, so ignore it. I, U, Q and Y are read as decimal, the other
+                   fields as hex, so WE80 or WF40 has digits. */
+                letter = 0;
+            }
+            switch (toupper((unsigned char)letter)) {
                 case 'A':
                     if (hex >= 0x220 && hex <= 0x280) {
                         sb_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'I':
                     if (dec >= 0 && dec <= 15) {
                         sb_irq = dec;
+                        applied++;
                         break;
                     }
                     break;
                 case 'D':
                     if (hex >= 0 && hex <= 7) {
                         sb_dma = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'H':
                     if (hex >= 0 && hex <= 7) {
                         sb_hdma = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'P':
                     if ((hex >= 0x300 && hex <= 0x3f0) || hex == 0) {
                         mpu_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'E':
                     if ((hex >= 0x620 && hex <= 0x680) || hex == 0) {
                         awe_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'J':
                     if ((hex >= 0x200 && hex < 0x212) || hex == 0) {
                         joy_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'W':
-                    wss_port = hex;
+                    /* 0 (none) or a port in 100h-FFFh. The cards take W anywhere in their
+                       PnP ranges (86Box ROMs: AD1816 500-620, Yamaha 530-F48, Crystal and
+                       Aztech codec 100-FFC), so no list of bases. Below 100h are the
+                       motherboard's DMA, PIC and timer ports, and above FFFh the 12-bit ISA
+                       PnP decode wraps around, while UNISOUND writes the codec at W + 4. */
+                    if (hex == 0 || (hex >= 0x100 && hex <= 0xfff)) {
+                        wss_port = hex;
+                        applied++;
+                        break;
+                    }
                     break;
                 case 'C':
                     if (hex == 0x168 || hex == 0x1e8 || hex == 0x170 || hex == 0) {
                         ide_port = hex;
+                        applied++;
                         ide_given = 1;
                         break;
                     }
                     break;
                 case 'R':
-                    yamaha_ctl_port = hex;
-                    ess_ctl_port = hex;
-                    aux_ctl_port = hex;
+                    /* 0 (none), a port in 100h-FFFh, or the Ensoniq range 2100h-21FFh
+                       (default 2180h). 100h-FFFh holds the PnP ranges of the other users,
+                       86Box ROMs: ESS ES1868/ES1869 800-FF8 (and 660h for the bypass key),
+                       Yamaha 100-FFE (default 370h); Rockwell 250h and GUS PnP 350h. Others
+                       would aim the control port writes at the motherboard (below 100h) or
+                       past the 12-bit decode. */
+                    if (hex == 0 || (hex >= 0x100 && hex <= 0xfff) ||
+                        (hex >= 0x2100 && hex <= 0x21ff)) {
+                        yamaha_ctl_port = hex;
+                        ess_ctl_port = hex;
+                        aux_ctl_port = hex;
+                        applied++;
+                        break;
+                    }
                     break;
                 case 'M':
                     if ((hex >= 0x300 && hex <= 0x380) || hex == 0) {
                         mpu2_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'F':
                     if ((hex >= 0x300 && hex <= 0x3ff) || hex == 0) {
                         opl_port = hex;
+                        applied++;
                         break;
                     }
                     break;
                 case 'U':
                     if (dec >= 0 && dec <= 15) {
                         mpu_irq = dec;
+                        applied++;
                         break;
                     }
                     break;
                 case 'Q':
                     if (dec >= 0 && dec <= 15) {
                         irq2 = dec;
+                        applied++;
                         break;
                     }
                     break;
                 case 'K':
                     if (hex >= 0 && hex <= 7) {
                         wss_dma = hex;
+                        applied++;
                         wss_dma_set = 1;
                         break;
                     }
@@ -2910,6 +3054,7 @@ int parse_blaster(void)
                 case 'Y':
                     if (dec >= 2 && dec <= 15) {
                         ide_irq = dec;
+                        applied++;
                         break;
                     }
                     break;
@@ -2925,7 +3070,7 @@ int parse_blaster(void)
          sb_port, sb_irq, sb_dma, sb_hdma, mpu_port, wss_port, opl_port, awe_port, joy_port,
          ess_ctl_port, mpu2_port, ide_port, mpu_irq, irq2, wss_dma, ide_irq);
     parse_cd();
-    if (field < 1) {
+    if (applied < 1) {
         return 0;
     }
     return 1;
@@ -2939,26 +3084,38 @@ void parse_cd(void)
     char *env;
     char *dup;
     char *tok;
+    char *end;
     int val;
     env = getenv("UNISOUND_CD");
     if (env == 0) {
         return;
     }
     dup = strdup(env);
+    if (dup == 0) {
+        return;
+    }
     for (tok = strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
         if (strlen(tok) < 2) {
             continue;
         }
-        switch (toupper(*tok)) {
+        switch (toupper((unsigned char)*tok)) {
             case 'C':
-                val = (int)strtol(tok + 1, 0, 16);
+                val = (int)strtol(tok + 1, &end, 16);
+                if (end == tok + 1) {
+                    /* No digits after the letter ("CX"): not a zero, ignore the field. */
+                    break;
+                }
                 if (val == 0x168 || val == 0x1e8 || val == 0x170 || val == 0) {
                     ide_port = val;
                     ide_given = 1;
                 }
                 break;
             case 'Y':
-                val = (int)strtol(tok + 1, 0, 10);
+                val = (int)strtol(tok + 1, &end, 10);
+                if (end == tok + 1) {
+                    /* No digits after the letter ("YX"): not a zero, ignore the field. */
+                    break;
+                }
                 if (val >= 2 && val <= 15) {
                     ide_irq = val;
                 }
@@ -3002,8 +3159,8 @@ void print_blaster_hint(int port, int irq, int dma, int hdma)
     }
     if (env != 0) {
         dup = strdup(env);
-        for (tok = strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
-            switch (toupper(*tok)) {
+        for (tok = dup == 0 ? 0 : strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
+            switch (toupper((unsigned char)*tok)) {
                 case 'A':
                     a = (int)strtol(tok + 1, 0, 16);
                     break;
@@ -3058,7 +3215,7 @@ void print_blaster_hint(int port, int irq, int dma, int hdma)
     }
     if (env != 0) {
         dup = strdup(env);
-        for (tok = strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
+        for (tok = dup == 0 ? 0 : strtok(dup, " "); tok != 0; tok = strtok(0, " ")) {
             if (strchr("AIDHaidh", *tok) == 0) {
                 printf(" %s", tok);
             }
@@ -3569,8 +3726,9 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
         }
         ok = 1;
     }
-    /* /XESSB: the ES1868/ES1869 layout, 1 audio, 2 gameport, 3 MPU-401 or IDE. The bypass key
-       has already placed and activated logical device 0, the control port, so it is left alone. */
+    /* /XESSB: the ES1868/ES1869 layout, 1 audio, 2 gameport, 3 MPU-401 or IDE; the ES1878 and
+       ES1879 have the same 1 and 2 and no 3 (data sheets, appendix A). The bypass key has already
+       placed and activated logical device 0, the control port, so it is left alone. */
     if (opt_essb != 0) {
         ld[0] = 1;
         ld[3] = 2;
@@ -3586,9 +3744,9 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
    For each byte, polls the status register (5) for up to 15 ms until bit 0 says data is ready,
    then reads the resource data register (4).
    Returns 1 on success, 0 on a timeout. */
-int pnp_read_res(unsigned char *buf, int n)
+int pnp_read_res(unsigned char *buf, unsigned n)
 {
-    int i = 0;
+    unsigned i = 0;
     unsigned char ready = 0;
     unsigned char data = 0;   /* unread initial value */
     unsigned char tries = 15; /* unread initial value */
@@ -3742,6 +3900,26 @@ void sb_print_dsp_ver(int port)
     }
 }
 
+/* /R with /D: say that /D is dropped. Called where a card is about to be read, after the
+   banner and only once a card was found. */
+void read_notice(void)
+{
+    if (opt_disable != 0) {
+        puts("/R given: /D ignored, the card will only be read.");
+    }
+}
+
+/* /D (without /R) on a non-PnP card, after it was detected: such a card has no logical
+   devices to deactivate, so leave it unchanged instead of setting it up, and have main exit
+   with ERRORLEVEL 1, since nothing was disabled. Returns 1, the "card found" of the init
+   functions, so the caller stops looking for other cards. */
+int refuse_disable(void)
+{
+    puts("Non-PnP card, can't be disabled. Card left unchanged.");
+    disable_refused = 1;
+    return 1;
+}
+
 /* Detect and configure a non-PnP (jumpered) SB16 or AWE32, used for /CS and as a fallback when
    no PnP card is found. Probes 0x220-0x280 for a DSP of version 4.xx that answers the 0xE3
    copyright command; each DSP is reset first, so a byte left in its read buffer isn't taken for
@@ -3831,11 +4009,10 @@ int init_nonpnp_sb16(void)
         }
         printf("\n%s detected at: [%Xh] DSP: v%d.%02d\n", name, port, maj, min);
         if (opt_disable != 0 && opt_read == 0) {
-            /* /D: a jumpered card has no logical devices to deactivate */
-            puts("Non-PnP card, can't be disabled. Card left unchanged.");
-            return 1;
+            return refuse_disable();
         }
         if (opt_read != 0) {
+            read_notice();
             puts("Reading card current settings...");
         } else {
             sb16_set_irq_dma(port, irq, dma, hdma);
@@ -3855,6 +4032,9 @@ int init_nonpnp_sb16(void)
         }
         delay(20);
         irqr = sb16_get_irq(port);
+        if (irqr == 2 && irq == 9) {
+            irqr = 9; /* the same line: show it as BLASTER asks for it, so the hint matches */
+        }
         delay(20);
         dmar = sb16_get_dma(port);
         delay(1);
@@ -3913,13 +4093,14 @@ int init_nonpnp_sb16(void)
 }
 
 /* Program an SB16's IRQ select (mixer register 0x80) and DMA select (0x81) for the given IRQ
-   (2/5/7/10, default 5), 8-bit DMA (0/1/3, default 1) and 16-bit DMA (5/6/7; 4 = none). */
+   (2 or 9/5/7/10, default 5), 8-bit DMA (0/1/3, default 1) and 16-bit DMA (5/6/7; 4 = none). */
 void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned char hdma)
 {
     unsigned char irqv = 2;
     unsigned char dmav = 2;
     switch (irq) {
         case 2:
+        case 9: /* the AT's IRQ 9 is the ISA bus IRQ 2 line; 0.82a set IRQ 5 for I9 */
             irqv = 1;
             break;
         case 5:
@@ -4416,7 +4597,7 @@ void sam9407_upload(unsigned base)
     unsigned word = 0;
     unsigned long size;
     register FILE *fp;
-    int i;
+    unsigned i;
     int lo, hi;
     unsigned out;
 
@@ -5287,9 +5468,11 @@ void send_alt_pnp_key(void)
 
 /* /XESSB: with the PnP registers reached through the ESS control port, put logical device 1
    (audio) at sb_port and check the chip itself: the DSP answers E7h with 68h, and mixer register
-   40h, read four times after one index write (as Linux es18xx does), gives 18h, 68h or 69h, then
-   the control port's high and low bytes. Returns CARD_ES1868 or CARD_ES1869, or 0. */
-int ess_bypass_id(void)
+   40h, read four times after one index write (as Linux es18xx does), gives 18h, then 68h, 69h,
+   78h or 79h for the ES1868, ES1869, ES1878 or ES1879 (their data sheets, "Identifying the
+   ES18xx"), then the control port's high and low bytes. Sets *part to that second byte. Returns
+   CARD_ES1868, or CARD_ES1869 for the other three (as their PnP ids are mapped), or 0. */
+int ess_bypass_id(unsigned char *part)
 {
     unsigned char m[4];
     int e7;
@@ -5307,10 +5490,15 @@ int ess_bypass_id(void)
         m[i] = inportb(sb_port + 5);
     }
     dlog("bypass %X: E7 %02X, 40h %02X %02X %02X %02X", ess_ctl_port, e7, m[0], m[1], m[2], m[3]);
-    if (e7 != 0x68 || m[0] != 0x18 || (m[1] != 0x68 && m[1] != 0x69) || m[2] != ess_ctl_port >> 8 ||
-        m[3] != (ess_ctl_port & 0xff)) {
+    if (e7 != 0x68 || m[0] != 0x18 ||
+        (m[1] != 0x68 && m[1] != 0x69 && m[1] != 0x78 && m[1] != 0x79) ||
+        m[2] != ess_ctl_port >> 8 || m[3] != (ess_ctl_port & 0xff)) {
+        /* LD1 was activated to reach the PnP registers; put it back off. */
+        pnp_write(7, 1);
+        pnp_write(0x30, 0);
         return 0;
     }
+    *part = m[1];
     return m[1] == 0x68 ? CARD_ES1868 : CARD_ES1869;
 }
 
@@ -5712,6 +5900,7 @@ int init_opti928(void)
             static int dmas[4] = {1, 0, 3, 4};
             int irqs[4] = {7, 0, 5, 0};
             irqs[1] = c929 ? 10 : 11;
+            read_notice();
             puts("Reading card current settings...");
             if (id_f8d & 0x80) {
                 printf("Settings: WSS:%X", wss[(id_f8d >> 4) & 3]);
@@ -5723,6 +5912,9 @@ int init_opti928(void)
             printf(" JOY:%X%s\n", id_f8d & 1 ? 0 : 0x200,
                    id_f8d & 0x80 ? " [WSS mode]" : " [SB Mode]");
             return 1;
+        }
+        if (opt_disable != 0) {
+            return refuse_disable();
         }
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         /* The WSS base, IRQ and DMA come from ULTRA16, not from BLASTER (W, K), which describes
@@ -5773,9 +5965,14 @@ int init_opti928(void)
             cfg1 &= 0xfe;
             joy_port = 0x200;
         }
+        /* MC3 bits 7:6 and 5:4: SB IRQ 7, 10 (82C929) or 11 (82C928), 5; DMA 1, 0, 3. Anything
+           else is set as IRQ 5 / DMA 1, and said so */
         if (sb_irq == (c929 ? 10 : 11)) {
             cfg2 |= 0x40;
         } else if (sb_irq != 7) {
+            if (sb_irq != 5 && opt_xwss == 0) {
+                printf("IRQ %d not possible on OPTi 82C92%d, using 5.\n", sb_irq, c929 ? 9 : 8);
+            }
             sb_irq = 5;
             cfg2 |= 0x80;
         }
@@ -5787,6 +5984,9 @@ int init_opti928(void)
                 cfg2 |= 0x10;
                 break;
             default:
+                if (sb_dma != 1) {
+                    printf("DMA %d not possible on OPTi 82C92%d, using 1.\n", sb_dma, c929 ? 9 : 8);
+                }
                 sb_dma = 1;
         }
         if (opt_xwss > 0) {
@@ -6008,12 +6208,16 @@ int init_opti930(void)
             static unsigned wss[4] = {0x530, 0xe80, 0xf40, 0x604};
             unsigned char mc1 = opti93x_read(0xe0e, 1);
             unsigned char mc3 = opti93x_read(0xe0e, 3);
+            read_notice();
             puts("Reading card current settings...");
             printf("Settings: ADD:%X IRQ:%d DMA:%s WSS:%X JOY:%X", mc1 & 0x80 ? 0x240 : 0x220,
                    irqs[(mc3 >> 3) & 7], dmas[mc3 & 7], wss[(mc1 >> 4) & 3], mc1 & 1 ? 0 : 0x200);
             /* the CD-type bits read back inverted: 08 is secondary IDE (see below) */
             puts((mc1 & 0x0e) == 0x08 ? " IDE:170/I15" : "");
             return 1;
+        }
+        if (opt_disable != 0) {
+            return refuse_disable();
         }
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         wss_port = 0x530;
@@ -6077,6 +6281,10 @@ int init_opti930(void)
                 cfg2 |= 8;
                 break;
             default:
+                /* 5, or one the 82C930 doesn't have */
+                if (sb_irq != 5) {
+                    printf("IRQ %d not possible on OPTi 82C930, using 5.\n", sb_irq);
+                }
                 sb_irq = 5;
                 cfg2 |= 0x28;
         }
@@ -6088,6 +6296,9 @@ int init_opti930(void)
                 cfg2 |= 1;
                 break;
             default:
+                if (sb_dma != 1) {
+                    printf("DMA %d not possible on OPTi 82C930, using 1.\n", sb_dma);
+                }
                 sb_dma = 1;
                 cfg2 |= 2;
         }
@@ -6437,7 +6648,7 @@ int init_es688(void)
             ver = sb_dsp_read(port);
         }
         dlog("%X: E7 %02X %02X", port, id, ver);
-        if (id == 0x68) {
+        if (id == 0x68 && ver >= 0x80) {
             break;
         }
     }
@@ -6477,6 +6688,7 @@ int init_es688(void)
                 static unsigned mports[4] = {0x300, 0x310, 0x320, 0x330};
                 int irq = pin > 0 ? pins[pin] : irqs[(ess_ext_read(port, 0xb1) >> 2) & 3];
                 b = (ess_ext_read(port, 0xb2) >> 2) & 3;
+                read_notice();
                 puts("Reading card current settings...");
                 printf("Settings: ADD:%X IRQ:%d DMA:%d", port, irq,
                        b == 0   ? 4
@@ -6494,6 +6706,9 @@ int init_es688(void)
                 }
                 puts("");
                 return 1;
+            }
+            if (opt_disable != 0) {
+                return refuse_disable();
             }
             puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
             sb_port = port;
@@ -6535,7 +6750,12 @@ int init_es688(void)
                 sb_irq = b == 0 ? 9 : b == 1 ? 5 : b == 2 ? 7 : 10;
             }
             b = (id >> 2) & 3;
-            if (b != 0) {
+            if (b == 0) {
+                /* B2h reads back no DMA: say so and show DMA 4 (none), as /R does. There is no
+                   BLASTER line to suggest without a D, so the hint below is skipped */
+                printf("DMA %d didn't take: the chip reads back no DMA.\n", sb_dma);
+                sb_dma = 4;
+            } else {
                 sb_dma = b == 1 ? 0 : b == 2 ? 1 : 3;
             }
             if (pin > 0) {
@@ -6578,6 +6798,13 @@ int init_es688(void)
                 } else {
                     joy_port = 0;
                 }
+                /* Mixer 40h: bits 7:5 MPU-401 IRQ (000 = MPU off), 4:3 its base 300-330, 1 the
+                   joystick, 0 the FM at 388 on the ES1788 (86Box snd_sb.c; Linux es1688_lib.c
+                   also always sets bit 0). 0.82a left bits 7:5 set for P0, so the MPU-401 stayed
+                   on at 300 */
+                if (mpu_port == 0) {
+                    mpu &= 0x1f;
+                }
                 mpu |= ((mpu_port & 0xf0) >> 1) | 1;
                 if (opt_log) {
                     outportb(sb_port + 4, 0x40);
@@ -6594,13 +6821,19 @@ int init_es688(void)
             }
             printf("Settings: ADD:%X IRQ:%d DMA:%d", sb_port, sb_irq, sb_dma);
             if (ver >= 0x88) {
-                printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
+                if (mpu_port == 0) {
+                    printf(" MPU:0 JOY:%X", joy_port);
+                } else {
+                    printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
+                }
                 hint_mpu = mpu_port;
             }
             puts("");
             sbpro_mixer_set();
             print_mixer("ESS", -1, -1);
-            print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
+            if (sb_dma != 4) {
+                print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
+            }
             return 1;
         }
     }

@@ -3,9 +3,14 @@
    sound card's IDE port with BLASTER or UNISOUND_CD C and Y. Resets the channel, prints the
    signature (14 EB for ATAPI), sends IDENTIFY PACKET DEVICE (A1h) to the master, or the slave
    with a third argument, and prints the model string and how many interrupts arrived.
+   BASE must be nonzero; IRQ must be 2-7 or 9-15 (IRQ 0 is the timer, 1 the keyboard, 8 the
+   RTC, and anything outside 0-15 is not an IRQ at all). IRQ 2 is taken as IRQ 9: on an AT the
+   bus's IRQ 2 line is wired to IRQ 9 of the second PIC, IRQ 2 being its cascade. The third
+   argument, if given, must be SLAVE. Timeouts print as timeout, not status FF.
    Build: tcc ATAPIID.C */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <dos.h>
 
 unsigned base, ctl;
@@ -55,8 +60,21 @@ int main(int argc, char *argv[])
     base = (unsigned)strtoul(argv[1], 0, 16);
     ctl = base + 0x206;
     irq = atoi(argv[2]);
+    if (irq == 2) {
+        irq = 9; /* the AT bus's IRQ 2 line is IRQ 9 */
+    }
+    if (base == 0 || irq < 2 || irq > 15 || irq == 8) {
+        puts("usage: ATAPIID BASE IRQ [SLAVE]");
+        puts("BASE must be nonzero; IRQ must be 2-7 or 9-15 (not 0, 1 or 8; 2 means 9).");
+        return 1;
+    }
     if (argc >= 4) {
-        dev = 0xb0;
+        if (stricmp(argv[3], "SLAVE") == 0) {
+            dev = 0xb0;
+        } else {
+            puts("usage: ATAPIID BASE IRQ [SLAVE]");
+            return 1;
+        }
     }
     printf("IDE %X ctl %X irq %d %s: status %02X\n", base, ctl, irq,
            dev == 0xa0 ? "master" : "slave", inportb(base + 7));
@@ -67,8 +85,12 @@ int main(int argc, char *argv[])
     outportb(base + 6, dev);
     delay(5);
     st = wait_ready();
-    printf("after reset: status %02X signature %02X %02X\n", st & 0xff, inportb(base + 4),
-           inportb(base + 5));
+    if (st < 0) {
+        puts("after reset: timeout");
+    } else {
+        printf("after reset: status %02X signature %02X %02X\n", st & 0xff, inportb(base + 4),
+               inportb(base + 5));
+    }
     old = getvect(vec(irq));
     setvect(vec(irq), isr);
     m1 = inportb(0x21);
@@ -95,6 +117,8 @@ int main(int argc, char *argv[])
             putchar(id[i] & 0xff);
         }
         printf("\"\n");
+    } else if (st < 0) {
+        puts("IDENTIFY PACKET: no data (timeout)");
     } else {
         printf("IDENTIFY PACKET: no data (status %02X)\n", st & 0xff);
     }

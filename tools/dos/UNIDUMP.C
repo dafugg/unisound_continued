@@ -20,8 +20,9 @@
               B1h/B2h), OPL timers at 388h, MPU-401 status at 330h/300h, WSS codecs at 530h,
               604h, E80h and F40h, an Echo PSS ID at 220h-250h
    Options:
-     /SKIP:A,B   leave sections out (e.g. /SKIP:PCI,WSS if a probe hangs the machine)
-     /ONLY:A,B   run only these sections
+     /SKIP:A,B   leave sections out (e.g. /SKIP:PCI,WSS if a probe hangs the machine);
+                 repeatable, lists combine
+     /ONLY:A,B   run only these sections (repeatable, lists combine)
      /ESCD       also print the ESCD in hex (PnP BIOS function 42h, or read from memory)
      /ISOLATE    isolate ISA PnP cards that have no CSN, as UNISOUND does, and report them too.
                  It assigns CSNs; without a PnP BIOS (or with no CSNs) it resets them first
@@ -128,6 +129,21 @@ int want(char *name)
         return in_list(only, name);
     }
     return !in_list(skip, name);
+}
+
+/* Append src to a comma-separated list, so repeated /SKIP: and /ONLY: combine instead of
+   overwriting each other. */
+void add_list(char *dst, unsigned size, char *src)
+{
+    unsigned n = strlen(dst);
+    if (n > 0) {
+        if (n + 1 >= size) {
+            return;
+        }
+        dst[n++] = ',';
+        dst[n] = 0;
+    }
+    strncat(dst, src, size - n - 1);
 }
 
 void step(char *what)
@@ -241,6 +257,33 @@ void print_mask(char *what, unsigned mask, int max)
     puts(any ? "" : " none");
 }
 
+/* Minimum payload length for a resource tag; a shorter tag is printed raw instead of being
+   decoded, so a truncated byte is never read as the next field. 0 = any length decodes. */
+unsigned tag_minlen(unsigned char t)
+{
+    switch (t) {
+        case 0x1:
+        case 0x5:
+            return 1;
+        case 0x2:
+        case 0x3:
+            return 4; /* eisa_id reads 4 bytes; the LD flags byte is len-guarded below */
+        case 0x4:
+            return 2;
+        case 0x8:
+            return 7;
+        case 0x9:
+            return 3;
+        case 0x81:
+        case 0x86:
+            return 9;
+        case 0x85:
+            return 17;
+        default:
+            return 0;
+    }
+}
+
 /* Decode resource data p[0..n) up to and including the end tag; returns the bytes used, or n if
    there is no end tag. Every tag gets one line, unknown ones in hex. */
 unsigned decode_res(unsigned char far *p, unsigned n, char *indent)
@@ -265,6 +308,15 @@ unsigned decode_res(unsigned char far *p, unsigned n, char *indent)
             printf("%s(tag %02X runs past the end)\n", indent, t);
             return n;
         }
+        if (len < tag_minlen(t)) {
+            printf("%sTag %02X: (short, len %u)", indent, t, len);
+            for (k = 0; k < len && k < 16; k++) {
+                printf(" %02X", p[i + k]);
+            }
+            puts(len > 16 ? " ..." : "");
+            i += len;
+            continue;
+        }
         printf("%s", indent);
         switch (t) {
             case 0x1:
@@ -273,7 +325,11 @@ unsigned decode_res(unsigned char far *p, unsigned n, char *indent)
                 break;
             case 0x2:
                 printf("Logical device %s", eisa_id(p + i, id));
-                printf(len > 4 ? ", flags %02X\n" : "\n", p[i + 4]);
+                if (len > 4) { /* p[i + 4] is only read when the tag has a flags byte */
+                    printf(", flags %02X\n", p[i + 4]);
+                } else {
+                    puts("");
+                }
                 break;
             case 0x3:
                 printf("Compatible ID %s\n", eisa_id(p + i, id));
@@ -515,17 +571,34 @@ void bios_strings(unsigned seg)
     }
 }
 
+/* String number n (1-based) of the string area s[0..len). Every scan is bounded by len, so a
+   malformed table can only yield "?" or "(blank)", never a read past the table. */
 char *smb_str(unsigned char *s, int n, unsigned len)
 {
-    unsigned char *p = s, *q;
+    unsigned char *p = s, *q, *end = s + len;
+    unsigned k;
     if (n == 0) {
         return "";
     }
-    while (--n > 0 && p < s + len) {
-        p += strlen((char *)p) + 1;
-        if (*p == 0) {
-            return "?";
+    while (--n > 0 && p < end) {
+        for (k = 0; p + k < end && p[k]; k++) {
         }
+        if (p + k >= end) {
+            return "?"; /* unterminated string: no NUL before the end of the area */
+        }
+        p += k + 1;
+        if (p >= end || *p == 0) {
+            return "?"; /* past the last string: index out of range */
+        }
+    }
+    if (p >= end) {
+        return "?";
+    }
+    /* The string must end with a NUL inside the area; without one printf %s would read on. */
+    for (k = 0; p + k < end && p[k]; k++) {
+    }
+    if (p + k >= end) {
+        return "?";
     }
     for (q = p; *q == ' '; q++) {
     }
@@ -587,36 +660,67 @@ void report_smbios(void)
     end = t + tlen;
     for (i = 0; i < count && p + 4 <= end; i++) {
         unsigned char ty = p[0], ln = p[1];
-        unsigned char *s = p + ln, *n = s;
+        unsigned char *s, *n;
+        if (ln < 4 || p + ln > end) {
+            /* A length past the end of the table would make the string scan below read past
+               the malloc'd buffer. */
+            printf("  type %u: (truncated structure, len %u)\n", ty, ln);
+            break;
+        }
+        s = p + ln;
+        n = s;
         while (n + 1 < end && (n[0] || n[1])) {
             n++;
         }
         n += 2;
+        if (n > end) {
+            n = end;
+        }
         switch (ty) {
             case 0:
-                printf("  BIOS: %s, version %s, date %s\n", smb_str(s, p[4], end - s),
-                       smb_str(s, p[5], end - s), smb_str(s, p[8], end - s));
+                if (ln >= 9) {
+                    printf("  BIOS: %s, version %s, date %s\n", smb_str(s, p[4], n - s),
+                           smb_str(s, p[5], n - s), smb_str(s, p[8], n - s));
+                } else {
+                    printf("  BIOS: (short structure, len %u)\n", ln);
+                }
                 break;
             case 1:
-                printf("  System: %s %s, version %s\n", smb_str(s, p[4], end - s),
-                       smb_str(s, p[5], end - s), smb_str(s, p[6], end - s));
+                if (ln >= 7) {
+                    printf("  System: %s %s, version %s\n", smb_str(s, p[4], n - s),
+                           smb_str(s, p[5], n - s), smb_str(s, p[6], n - s));
+                } else {
+                    printf("  System: (short structure, len %u)\n", ln);
+                }
                 break;
             case 2:
-                printf("  Board: %s %s, version %s\n", smb_str(s, p[4], end - s),
-                       smb_str(s, p[5], end - s), smb_str(s, p[6], end - s));
+                if (ln >= 7) {
+                    printf("  Board: %s %s, version %s\n", smb_str(s, p[4], n - s),
+                           smb_str(s, p[5], n - s), smb_str(s, p[6], n - s));
+                } else {
+                    printf("  Board: (short structure, len %u)\n", ln);
+                }
                 break;
             case 4:
-                printf("  Processor: %s, %s %s, %u MHz (max %u)\n", smb_str(s, p[4], end - s),
-                       smb_str(s, p[7], end - s), smb_str(s, p[0x10], end - s),
-                       *(unsigned *)(p + 0x16), *(unsigned *)(p + 0x14));
+                if (ln >= 0x18) {
+                    printf("  Processor: %s, %s %s, %u MHz (max %u)\n", smb_str(s, p[4], n - s),
+                           smb_str(s, p[7], n - s), smb_str(s, p[0x10], n - s),
+                           *(unsigned *)(p + 0x16), *(unsigned *)(p + 0x14));
+                } else {
+                    printf("  Processor: (short structure, len %u)\n", ln);
+                }
                 break;
             case 6:
-                printf("  Memory module %s: size code %02X\n", smb_str(s, p[4], end - s), p[9]);
+                if (ln >= 10) {
+                    printf("  Memory module %s: size code %02X\n", smb_str(s, p[4], n - s), p[9]);
+                } else {
+                    printf("  Memory module: (short structure, len %u)\n", ln);
+                }
                 break;
             case 17:
                 if (ln >= 0x11) {
                     unsigned sz = *(unsigned *)(p + 0x0c);
-                    printf("  Memory device %s: ", smb_str(s, p[0x10], end - s));
+                    printf("  Memory device %s: ", smb_str(s, p[0x10], n - s));
                     if (sz == 0) {
                         puts("empty");
                     } else if (sz == 0xffff) {
@@ -1078,8 +1182,14 @@ void report_pnp_bios(void)
                     puts("    compatible:");
                     decode_res(node_buf + pos, size - pos, "    ");
                 }
+            } else if (size > sizeof(node_buf)) {
+                printf("    (resource data %u bytes exceeds the %u-byte buffer; skipped)\n", size,
+                       sizeof(node_buf));
             }
         }
+    } else if (ax == 0) {
+        printf("largest node %u bytes exceeds the %u-byte buffer; nodes skipped\n", nsize,
+               sizeof(node_buf));
     }
     step("PnP BIOS function 40h");
     ax = pnp_entry(0x40, (unsigned char far *)cfg, pnp_ds);
@@ -1226,6 +1336,9 @@ void report_card(int csn)
     for (nld = 0, k = 9; k < n;) {
         unsigned char t = res[k];
         if (t & 0x80) {
+            if (k + 3 > n) {
+                break; /* truncated large tag: no length bytes left to read */
+            }
             k += 3 + (res[k + 1] | (res[k + 2] << 8));
         } else {
             if (((t >> 3) & 0xf) == 2) {
@@ -1534,9 +1647,9 @@ int main(int argc, char *argv[])
     int i;
     for (i = 1; i < argc; i++) {
         if (strnicmp(argv[i], "/SKIP:", 6) == 0) {
-            strncpy(skip, argv[i] + 6, sizeof(skip) - 1);
+            add_list(skip, sizeof(skip), argv[i] + 6);
         } else if (strnicmp(argv[i], "/ONLY:", 6) == 0) {
-            strncpy(only, argv[i] + 6, sizeof(only) - 1);
+            add_list(only, sizeof(only), argv[i] + 6);
         } else if (stricmp(argv[i], "/ESCD") == 0) {
             opt_escd = 1;
         } else if (stricmp(argv[i], "/ISOLATE") == 0) {

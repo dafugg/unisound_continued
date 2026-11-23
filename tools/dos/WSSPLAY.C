@@ -14,6 +14,7 @@
 #define LEN 2000
 unsigned base, cdc;
 volatile int hit[16];
+int nirq, ndma; /* how many distinct IRQs / DMA channels fired during playback */
 unsigned char buf[2 * LEN + 16];
 unsigned long phys;
 static int irqs[5] = {5, 7, 9, 10, 11};
@@ -84,7 +85,15 @@ int vec(int irq)
 void wait_init(void)
 {
     int k;
-    for (k = 0; k < 1000 && (inportb(cdc) & 0x80); k++) {
+    unsigned char v;
+    for (k = 0; k < 1000; k++) {
+        v = inportb(cdc);
+        if (v == 0xff) {
+            return; /* no codec: open bus, not a codec still initialising */
+        }
+        if (!(v & 0x80)) {
+            return;
+        }
         delay(1);
     }
 }
@@ -129,7 +138,7 @@ int main(int argc, char *argv[])
 {
     int i, irq = -1, dma = -1, fmt = -1;
     unsigned rate = 8000;
-    unsigned char m1, m2, st;
+    unsigned char m1, m2, st, idx0;
     unsigned char *p;
     unsigned long a, t0;
     if (argc >= 3) {
@@ -158,7 +167,12 @@ int main(int argc, char *argv[])
     for (i = 0; i < LEN; i++) {
         p[i] = (i / 8) & 1 ? 0xc0 : 0x40;
     }
-    printf("WSS cfg[%X]=%02X codec idx=%02X I12=%02X\n", base, inportb(base), inportb(cdc), cr(12));
+    /* Read the codec index before cr(12) changes it: the old print mixed a side-effecting
+       cr() call with a plain read of the same index register, so "codec idx" printed 0Ch,
+       the value the tool itself had just written. The index is restored afterwards. */
+    idx0 = inportb(cdc);
+    printf("WSS cfg[%X]=%02X codec idx=%02X I12=%02X\n", base, inportb(base), idx0, cr(12));
+    outportb(cdc, idx0);
     printf("rate %u Hz (I8 %02X, XTAL%d)\n", rate, fmt, (fmt & 1) + 1);
     old[5] = getvect(vec(5));
     setvect(vec(5), isr5);
@@ -207,7 +221,10 @@ int main(int argc, char *argv[])
     for (i = 0; i < 5; i++) {
         printf(" %d=%d", irqs[i], hit[irqs[i]]);
         if (hit[irqs[i]]) {
-            irq = irqs[i];
+            nirq++;
+            if (irq < 0) {
+                irq = irqs[i]; /* first hit, not last: the counts above show the rest */
+            }
         }
     }
     printf("\ndma:");
@@ -216,8 +233,14 @@ int main(int argc, char *argv[])
         unsigned left = dma_count(c);
         printf(" %d=%s/%04X", c, (st >> c) & 1 ? "TC" : "--", left);
         if ((st >> c) & 1) {
-            dma = c;
+            ndma++;
+            if (dma < 0) {
+                dma = c;
+            }
         }
+    }
+    if (nirq > 1 || ndma > 1) {
+        puts("\nNOTE: more than one IRQ/DMA fired; RESULT below is the first hit only");
     }
     printf("\nRESULT: WSS IRQ %d DMA %d (-1 = none)\n", irq, dma);
     for (i = 0; i < 3; i++) {

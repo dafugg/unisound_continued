@@ -61,14 +61,24 @@ vendor drivers needed.
   with an ES688 or ES1688, and ES688/ES1688 PnP cards with ID `ESS0100` or `ESS0102`
   (experimental, see [Wanted](#wanted-testers-and-pnp-dumps)). On the Maxi Sound 64 (ES1868 +
   SAM9407 versions only), the SAM9407 firmware is uploaded, but the firmware itself isn't
-  included. The MK1869, a modern ES1869 card, works with 0.82a according to its developer's
+  included. The file must be named `SAM9407.BIN` and be in the current directory when UNISOUND
+  runs; without it UNISOUND prints `SAM9407.BIN firmware file not found. Sound will be silent.`
+  and the card stays silent. The file must also be between 4 KB and 128 KB with the right
+  header, or UNISOUND prints `Bad SAM9407 firmware file.` The MK1869, a modern ES1869 card,
+  works with 0.82a according to its developer's
   [notes on UNISOUND](https://pcmidi.eu/mk1869.html) (`/X3D0` turns the 3D effect off, `/VBnn`
   sets AuxB, the wavetable header, apart from FM); it hasn't been tried with these builds.
 - **Yamaha:** YMF715, YMF718 and YMF719 (OPL3-SAx, OPL3-SA3, AudioTrix XG-3D). ISA PnP models
   only: Yamaha chips built into laptops are usually configured through the BIOS and aren't
   supported.
 - **Crystal:** CS4232, CS4235, CS4236/B, CS4237/B and CX4236/B, CX4237/B, including the Orpheus
-  and Turtle Beach Malibu, and chips that the BIOS hides from PnP (`/XSLAM`).
+  and Turtle Beach Malibu, and chips that the BIOS hides from PnP (`/XSLAM`). Cards whose PnP ID
+  ends in 32 get UNISOUND's built-in CS4232 firmware patch (3213 bytes), with `Loading CS4232
+  Firmware... done.` The Terratec EWS64 (`CSCA836`, `CDCA836`) gets its resources but no
+  firmware, and UNISOUND prints `EWS64 firmware not supported. Output will be silent.` That its
+  output stays silent comes from UNISOUND.TXT (its v0.76b notes) and hasn't been tried since
+  0.82a; a [VOGONS report by moturimi1](https://www.vogons.org/viewtopic.php?p=1352501#p1352501)
+  says an EWS64 XL's MIDI at P310/P340 works.
 - **Avance Logic:** ALS007, ALS100, ALS100+, ALS120 and ALS200, and DT-0197H/DT-0196H.
 - **Aztech:** AZT2320.
 - **Rockwell:** RWA01x (WaveArtist), including Zoltrix cards with the RWA011.
@@ -87,6 +97,34 @@ vendor drivers needed.
 A few card IDs and the options `/XSLAM` and `/XESSB` are experimental: see
 [Wanted](#wanted-testers-and-pnp-dumps).
 
+The list above names chips. UNISOUND picks the setup from the card's PnP ID, using the table
+`card_ids` in `src/UNISOUND.C` (`?` matches any character, and the first match wins):
+
+- **Creative:** `CTL????`; `CTL??F4` is the AWE upgrade card.
+- **Avance Logic:** `ALS????`, with variants for `ALS??07` and `ALS0001`; `RWB1???` is set up as
+  an ALS card and shown as "Diamond"; `RTL3000` (Realtek ALS120, experimental).
+- **ESS:** `ESS096?` (ES968), `ESS1868` and `SEM3006` (ES1868), `ESS0003`, `ESS0006` and
+  `ESS1869` (ES1869), `ESS1878` and `ESS1879` (set up as ES1869, experimental), `ESS0100` and
+  `ESS0102` (experimental).
+- **Yamaha:** `YMH????`, `NMX22??`, `QHA08??` and `MPI0003`.
+- **Rockwell:** `RSS????`; `RSS58??` cards whose name starts with "Zol" (Zoltrix) get the `/XRU`
+  setup on their own.
+- **OPTi:** `OPT??24`, `OPT??25`, `OPT??31` and `OPT??33`.
+- **C-Media:** `CMI????`.
+- **Analog Devices:** `ADS7141` has its own setup; `ADS71??`, `AXS71??`, `TER11??`, `TER14??`,
+  `LWC1061`, `MDK1605` and `SMM7180` are AD1816 cards.
+- **Aztech:** `AZT232?`, `AZT1005` to `AZT1009`, `AZT1015` to `AZT1017`, `AZT1021` to
+  `AZT1023`, `AZT1026`, `AZT3000` to `AZT3003`, `AZT3005`, `AZT3011` and `AZT3013`. Other IDs in
+  those ranges, such as `AZT1010` or `AZT3004`, are not recognised. `AZT1022` is an AD1816 card
+  when its first logical device is `AZT1018`.
+- **Crystal:** `CSC??3?` and `CDC??3?`; IDs ending in 32 get the CS4232 firmware, IDs ending in
+  37 the CS4237 extended setup, and `CSCA836`/`CDCA836` are the EWS64. `CSC?25?`, `CSC??25`,
+  `CDC?25?` and `CDC??25` are CS4235 cards, and `TBS2004` is a Crystal card. Cards whose name
+  starts with "Orp" (Orpheus) or "Tur" (Turtle Beach Malibu) get their own extended setup.
+- **Other:** `RJA0???` (Roland Super MPU II), `ENS4???` (Ensoniq Soundscape VIVO), `TBS20??`
+  (Turtle Beach Pinnacle), and `GRV????`, `ADV55??`, `STB01??`, `DXP3201` and `CDC1111` (GUS PnP;
+  the last two experimental).
+
 ### Non-PnP cards (`/NOPNP`, experimental; install only one card)
 
 - **Creative:** SB16 and AWE32 (software-configurable models), with the same EMU8000 setup as
@@ -100,7 +138,7 @@ A few card IDs and the options `/XSLAM` and `/XESSB` are experimental: see
   games, the card may need setting up again after some programs, and SB-mode audio is mono only;
   FM and WSS mode (`/XWSS`) are stereo.
 - **OPTi 82C929 (MAD16 Pro):** for example the Boca Research Sound Expression 4294 and SE1440.
-  SB Pro mode, with the MPU-401 (BLASTER P and U); experimental, see
+  SB Pro mode, with the MPU-401 (BLASTER P and U). Tried on three real cards; see
   [Wanted](#wanted-testers-and-pnp-dumps).
 
 On the OPTi 82C928, 82C929 and 82C930, `/NOPNP /XWSS` sets up Windows Sound System mode instead of
@@ -110,12 +148,14 @@ Mpxplay read to find the WSS codec, and not from BLASTER. The port is 530, E80, 
 the DMAs 0, 1 or 3 and the IRQ 7, 9, 10 or 11, or also 5 on the 82C930 (the 82C928 and 82C929
 use IRQ 7 instead). A missing or invalid field falls back to OPTi's default, 530h, DMA 0 or
 IRQ 7, and if the port, DMA or IRQ field was missing or invalid UNISOUND prints the
-`SET ULTRA16=` line to add to AUTOEXEC.BAT (`SET ULTRA16=530,0,7,0` without the variable). The
-record DMA is optional. `SET WSS`, which some OPTi 82C930/931 drivers are said to read, is not
-used: no format for it was found. On the 82C928 and 82C929 WSS mode turns the SB part's IRQ off.
-On a real 82C930 the SB part keeps answering, but once anything sets up WSS (`/XWSS`, or a
-program's own WSS driver, which also works after a plain `/NOPNP`), it plays on the WSS DMA with
-no IRQ, so SB programs fail until `UNISOUND /NOPNP` runs again. The same happens on a real
+`SET ULTRA16=` line to add to AUTOEXEC.BAT (`SET ULTRA16=530,0,7,0` without the variable). An
+empty field keeps its place (`530,,10` is IRQ 10), and a field with no digits counts as invalid,
+so `530,X,10` gets DMA 0 and the `SET ULTRA16=` line. The record DMA is optional. `SET WSS`,
+which some OPTi 82C930/931 drivers are said to read, is not used: no format for it was found.
+On the 82C928 and 82C929 WSS mode turns the SB part's IRQ off. On a real 82C930 the SB part
+keeps answering, but once anything sets up WSS (`/XWSS`, or a program's own WSS driver, which
+also works after a plain `/NOPNP`), it plays on the WSS DMA with no IRQ, so SB programs fail
+until `UNISOUND /NOPNP` runs again. The same happens on a real
 82C931 (PnP) after a program's WSS driver: SB plays with no IRQ until `UNISOUND` runs again.
 
 On GUS PnP (InterWave) cards, UNISOUND reads `ULTRASND=port,dma,dma2,irq,irq2` instead of
@@ -125,10 +165,15 @@ UNISOUND uses 240, DMA 3 and 3, IRQ 11. Limitations:
 
 - The fifth field, the MIDI IRQ, is read but not used: the second IRQ is left off, as are SB
   emulation and the MPU-401.
+- The joystick is off unless `/XGJ` is given: without it the gameport logical device is
+  deactivated and no joystick port is set up.
 - The DMA and IRQ fields are only range-checked (DMA 0-7, IRQ 0-15), not checked against what
   the card supports. An out-of-range field keeps the default.
-- With fewer than three fields UNISOUND says it is loading its defaults, but the fields given are
-  still used.
+- With fewer than three fields, or with no valid field, UNISOUND says it is loading its defaults,
+  but any valid field given is still used.
+- An empty field keeps the default for its place: `ULTRASND=250,,5,7` gives DMA 3/5 and IRQ 7.
+  Before 1b27daf the later fields moved up one place (DMA 5/7, IRQ 11). A field with no digits,
+  such as the X in `240,X,3,11`, is ignored too (13ef91c); before, it set 0.
 - No `SET ULTRASND=` line is printed when the variable is missing, as there is for `ULTRA16`.
 - `ULTRADIR` and Gravis's other variables are neither read nor set.
 - On the GUS Extreme and ViperMax (`/NOPNP`), UNISOUND sets up only the ES1688, from BLASTER; the
@@ -136,6 +181,142 @@ UNISOUND uses 240, DMA 3 and 3, IRQ 11. Limitations:
 
 This list comes from the source and hasn't been checked on a real card; see
 [Wanted](#wanted-testers-and-pnp-dumps).
+
+## Options and variables
+
+UNISOUND.TXT, JazeFox's manual, comes with every build and describes the options (section 3 and
+the help screen), the `/X` options (section 5) and the BLASTER fields. This section adds what
+the source shows beyond the manual, and what has changed since 0.82a. `UNISOUND /H` lists the
+options too.
+
+### Command-line options
+
+- `/Cn` selects PnP card n, from 1 to 9. `/C0` and `/C10` are unknown options (ERRORLEVEL 2).
+  With n above 1 and no card n, UNISOUND prints `Card #n not found.`, runs no non-PnP fallback
+  and exits with ERRORLEVEL 1.
+- `/CL` lists the PnP cards with their names and configures nothing (ERRORLEVEL 0).
+- `/CS` sets up a non-PnP SB16 or AWE32 without the PnP scan. With `/CL`, or with `/Cn` for n
+  above 1, UNISOUND prints `/CS cannot be used with /CL or /Cn.` and exits with ERRORLEVEL 2
+  (3a339b7, c683a68); before, which one happened depended on the order of the options.
+- `/F` and `/FS` are for a PnP card that isolation doesn't find at first: `/F` sets the read
+  data port on every try, and `/FS` also reads every isolation bit, a slower scan. The manual
+  mentions `/FS` for some Terratec AD1816 and Pinnacle cards; its v0.80a notes say `/F` was taken
+  off the help screen but keeps working. The help screen lists both again.
+- `/R` reads the card's settings back and writes nothing: on PnP cards, and with `/CS` and
+  `/NOPNP` on the non-PnP SB16, ES688/ES1688-family chips and OPTi 82C928, 82C929 and 82C930.
+  `/XSLAM /R` and `/XESSB /R` are refused (`/R can't read a chip set up through SLAM.`, `/R can't
+  read a chip found through the ESS bypass key.`, ERRORLEVEL 1). With `/D` too, `/R` wins, and
+  once a card is found UNISOUND says `/R given: /D ignored, the card will only be read.`
+  (c65bb4a).
+- `/D` turns a PnP card's logical devices off (`Card disabled.`, ERRORLEVEL 0). The OPTi 82C924
+  and 82C925 in non-PnP mode are set up through their PnP registers, so `/D` turns them off too. A
+  non-PnP card has nothing to turn off: on the SB16 and AWE32 (`/CS`, `/NOPNP` or the fallback
+  after the PnP scan), ES688, ES1688, ES1788 and ES1887/ES1888, the OPTi 82C928, 82C929 and
+  82C930 and the OAK OTI601, UNISOUND prints `Non-PnP card, can't be disabled. Card left
+  unchanged.`, writes nothing and exits with ERRORLEVEL 1 (5603724). Before, `/NOPNP /D` set the
+  ESS and OPTi chips up as if `/D` weren't there, and every route exited with 0.
+- `/Vnn` and the other volume options take 0 to 99 as one or two digits, or as three digits
+  with a leading zero: `/V099` is 99 and `/VW010` 10 (e6c7f3a). `/V100` and anything else print
+  `Invalid value: /V100 (0-99)` and exit with ERRORLEVEL 2.
+
+Without `/V` options the volumes are: master 85, FM and wave 80, line-in, CD, microphone and PC
+speaker 0. (The manual's notes for an older version give line-in 50.) Treble and bass have no
+default value of their own: Yamaha cards get 0, the TEA6330T on the Compaq InterWave and STB
+Ultrasound Pro 32 gets 50 (as the manual says), cards with an SB16 mixer get its middle setting
+(80h) and show 50, and on ESS cards AuxB follows the FM volume unless `/VB` is given.
+
+### Extended options (`/X`)
+
+Section 5 of UNISOUND.TXT describes them. The source applies some of them to more cards than
+the manual names, or to fewer:
+
+- `/X3Dn`: as the manual says, and also on the OPTi 82C931 (the same setup as the 82C933). On
+  Crystal cards only the Orpheus, the Turtle Beach Malibu and cards whose ID ends in 37 get it. On
+  ALS cards, those with `ALS??07`, `ALS0001` and `RWB1???` IDs don't. On Yamaha cards n is cut
+  to 0-7, so 8 gives 0 and 9 gives 1. On Creative cards it sets SB16 mixer register 90h, also on
+  the non-PnP SB16.
+- `/XXGn`: on cards with an SB16 mixer (Creative, also the non-PnP SB16, C-Media and most ALS
+  cards) 1 gives gain x1, 4 gives x4 and anything else x2. On C-Media cards any n but 0 turns
+  loudness on.
+- `/XWSS`: besides the cards the manual lists, the ADS7141 (its SB Pro mixer is then left alone)
+  and, with `/NOPNP`, the OPTi 82C929 and 82C930 (see the OPTi paragraph above).
+- `/XOS1` and `/XOS0` work on the Orpheus and the Turtle Beach Malibu only. `/XOFI` and `/XOFE`
+  work on the Orpheus (default external OPL3) and on cards whose ID ends in 37 (default
+  CrystalFM), not on the Turtle Beach Malibu. `/XOM1` and `/XOM0` work on every Crystal card.
+- `/XGC5` is accepted besides the manual's `/XGC2` to `/XGC4`; it sets no IDE port.
+- `/XNET` also works after the ES1869 setup (and the ES1868 one with `/XEA`), and with `/XESSB`
+  and `/XSLAM`: UNISOUND moves the PnP ports back before it looks for the network card (08c6ca6).
+  Before, the workaround went to the ESS control port and the network card stayed off.
+- `/XSLAM` and `/XESSB` were added after 0.82a; see [Wanted](#wanted-testers-and-pnp-dumps).
+  Together they print `/XSLAM cannot be used with /XESSB.` and exit with ERRORLEVEL 2 (3ece608).
+  `/XESSB` also accepts the ES1878 and ES1879 and names them `[ESS1878]` and `[ESS1879]`
+  (2aa4b38). That comes from their data sheets and is untested: 86Box has neither chip.
+
+### BLASTER fields
+
+The manual lists the fields. In the source they take these values; anything else is ignored:
+
+| Field | What | Values |
+|---|---|---|
+| `A` | SB port | 220h-280h |
+| `I` | SB IRQ | 0-15 |
+| `D`, `H` | first and second DMA | 0-7 |
+| `P` | MPU-401 port | 300h-3F0h, or 0 |
+| `E` | EMU8000 port | 620h-680h, or 0 |
+| `J` | game port | 200h-211h, or 0 |
+| `W` | WSS port | 100h-FFFh, or 0 |
+| `C` | IDE port | 168h, 1E8h, 170h, or 0 |
+| `Y` | IDE IRQ | 2-15 |
+| `R` | control port | 100h-FFFh, 2100h-21FFh (Ensoniq), or 0 |
+| `M` | second MPU-401 port (Maxi Sound 64) | 300h-380h, or 0 |
+| `F` | FM port | 300h-3FFh, or 0 |
+| `U` | MPU-401 IRQ | 0-15 |
+| `Q` | second IRQ | 0-15 |
+| `K` | WSS DMA | 0-7 |
+
+`I`, `U`, `Q` and `Y` are decimal, the others hex. `T` is read but not used. `R` sets the
+Yamaha, ESS and other control ports at once. Changes since 0.82a:
+
+- Up to 20 fields are read; 0.82a read 12, so a full BLASTER lost its last fields (010dcc2).
+  Every word counts towards the 20, also `T` and unknown ones.
+- A field with no digits after its letter (`IX`, `CX`) is ignored (13ef91c). Before, it set 0,
+  so `CX` turned the IDE port off. The same goes for `UNISOUND_CD`, `ULTRASND` and `ULTRA16`.
+- `W` and `R` are range-checked (11568cc). Before, they took any value, so `W9999` or `R40`
+  aimed the codec or control port writes at whatever answers there, such as the timer at 40h.
+- UNISOUND says `BLASTER environment var found! Loading settings...` only when at least one
+  field was used, and `Loading Unisound default settings...` otherwise, for example for
+  `BLASTER=T6` (06c6818). The same goes for `ULTRASND`.
+
+### Exit codes
+
+UNISOUND exits with ERRORLEVEL 0 when a card was set up, read (`/R`) or turned off (`/D` on a
+PnP card), and after `/CL` and `/H`. It exits with 1 when nothing was set up:
+
+- no card was found, by the PnP scan or by the non-PnP fallback after it;
+- `/Cn` found no card n, or an unsupported one (`Aborting...`);
+- a supported PnP card's resource data couldn't be read (6ea6f2a; before, ERRORLEVEL 0), and
+  the fallback found nothing either. The fallback runs only if no card was listed or skipped
+  first, so not with `/Cn` for n above 1;
+- `/D` found no card (6ea6f2a; before, 0), or only a non-PnP card (5603724, see `/D` above);
+- `/CS`, `/NOPNP`, `/XSLAM` or `/XESSB` found no card, or `/R` was refused with `/XSLAM` or
+  `/XESSB`.
+
+It exits with 2 for an unknown option, an invalid `/V` value, `/CS` with `/CL` or `/Cn`, and
+`/XSLAM` with `/XESSB`.
+
+### Other changes to the non-PnP setups
+
+- Non-PnP SB16: BLASTER `I9` sets IRQ 9 (29da20b). It is the ISA bus's IRQ 2 line, so `/R`
+  shows `IRQ:2`. v0.82a set IRQ 5 for `I9`.
+- OPTi 82C928, 82C929 and 82C930: an IRQ or DMA the chip doesn't have is still replaced by IRQ 5
+  or DMA 1, and UNISOUND now says so, for example `IRQ 3 not possible on OPTi 82C929, using 5.`
+  (29da20b). The 82C928 and 82C929 take IRQ 5, 7 and 11 (82C928) or 10 (82C929), the 82C930
+  IRQ 5, 7, 9, 10 and 11, and all three DMA 0, 1 and 3.
+- ES1688, ES1788 and ES1887/ES1888: `P0` turns the MPU-401 off, and the Settings line shows
+  `MPU:0` (8470856). Before, the MPU-401 stayed on at 300h.
+- ES688/ES1688-family chips: if the chip reads back no DMA after the setup, UNISOUND prints `DMA
+  n didn't take: the chip reads back no DMA.`, shows DMA 4 (none) as `/R` does, and suggests no
+  BLASTER line (ac82477). Untested on a chip that does this: 86Box always takes the DMA.
 
 ## Planned: CD-ROM interfaces
 
@@ -229,7 +410,12 @@ If you have one of these cards, please open a GitHub issue with:
 | CDC1111 | Dynasonic Pro (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
 | ESS1878, ESS1879 | ESS ES1878 / ES1879 | ES1869 | ESS's data sheets give them the ES1869's layout and bypass key; 86Box ES1869 with each chip's internal PnP ROM from its data sheet |
 | ESS0100, ESS0102 | ESS ES688/ES1688 PnP cards | ES968 layout (SB and FM on LD0), MPU-401 on LD1 with its own IRQ, game port LD2, IDE LD3 | only 86Box's `ess_ess0100_pnp` and `ess_ess0102_pnp`, whose PnP data is a reconstruction, not a dump from a real card. A `UNISOUND /LOG` from a real card, and whether sound, FM and MIDI work, would settle it |
-| none (`/NOPNP`) | OPTi 82C929 (MAD16 Pro): Boca Research Sound Expression 4294 and SE1440, miro PCM10, Acer Magic S20 | OPTi 82C929, SB Pro or WSS (`/XWSS`, `ULTRA16`) | its data sheet; 86Box `acermagic_s20` and `mirosound_pcm10`, where it leaves the same registers as OPTi's own SNDINIT; on real hardware a Boca Research SE1440 (82C929), a NewCom High Fidelity 16i and a Turtle Beach Monte Carlo (both 82C929A) work in SB mode, and the Monte Carlo also in WSS mode (`/XWSS`). WSS reports from other cards are still wanted |
+
+The OPTi 82C929 (`/NOPNP`) is no longer in this table: a Boca Research SE1440 (82C929), a NewCom
+High Fidelity 16i and a Turtle Beach Monte Carlo (both 82C929A) work in SB mode, and the Monte
+Carlo also in WSS mode (`/XWSS`); see [TESTING.md](docs/TESTING.md#real-hardware-with-fix-4).
+In 86Box, `acermagic_s20` and `mirosound_pcm10` get the same registers as from OPTi's own
+SNDINIT. WSS reports from other 82C929 cards are still wanted.
 
 ### Held back: need a PnP dump first
 
@@ -256,15 +442,15 @@ bytes resident (MEM /C), and what that part does isn't known yet; UNISOUND isn't
 Blaster games the card is better paired with a real SB-compatible card. Linux's driver needs
 nothing resident for 1-3: it loads the firmware and then uses the card's MPU-401 port directly.
 
-### Options not yet tried on real hardware
+### Options not yet tried on a machine that needs them
 
 These find chips that PnP isolation misses. They work in 86Box, but no one has reported back from
 a machine that needs them yet. Please include `UNISOUND /LOG` output with the option.
 
 | Option | For | Machines that need it |
 |---|---|---|
-| `/XSLAM` | Crystal CS423x chips whose PnP key is disabled, so they take no part in isolation | Laptops and boards whose BIOS or CWDINIT sets up the chip, where UNISOUND says "No PnP card detected." |
-| `/XESSB` | ES1868/ES1869 chips that isolation doesn't find. Without BLASTER `R` it tries control port 660h, then 800h | On-board ES1868/ES1869, or chipsets that don't pass A79h on to the chip; 86Box always passes it on, so only a real machine can test this. On a real ES1898F card in a Gateway 2000 4DX2-66 the key was taken and the chip set up, but isolation finds that card too |
+| `/XSLAM` | Crystal CS423x chips whose PnP key is disabled, so they take no part in isolation. They get the generic Crystal variant: no CS4232 firmware upload, no Orpheus/Turtle Beach/CS4237 extended setup, no MODE-1 return | Laptops and boards whose BIOS or CWDINIT sets up the chip, where UNISOUND says "No PnP card detected." |
+| `/XESSB` | ES1868/ES1869 chips that isolation doesn't find (also ES1878/ES1879, from their data sheets; untested). Without BLASTER `R` it tries control port 660h, then 800h | On-board ES1868/ES1869, or chipsets that don't pass A79h on to the chip; 86Box always passes it on, so only a real machine can test this. On a real ES1898F card in a Gateway 2000 4DX2-66 the key was taken and the chip set up, but isolation finds that card too |
 
 ### Fixes for VOGONS reports, not yet tried on real hardware
 
@@ -276,11 +462,10 @@ yet. Details and links to the reports are in
 | Commit | Card | Fix | Reported by |
 |---|---|---|---|
 | [00806ef](https://github.com/dafugg/unisound_continued/commit/00806ef) | Any card | After setup, BLASTER's A, I, D and H are compared with what the card got | analog_programmer |
-| [5281f0f](https://github.com/dafugg/unisound_continued/commit/5281f0f) | Crystal CS4237B/CS4238B cards (Orpheus, Turtle Beach) | The codec is put back in MODE 1 | vanfanel |
+| [5281f0f](https://github.com/dafugg/unisound_continued/commit/5281f0f) | Crystal CS4237B-class cards (Orpheus, Turtle Beach, and cards whose PnP ID ends in 37) | The codec is put back in MODE 1 | vanfanel |
 | [1adfd17](https://github.com/dafugg/unisound_continued/commit/1adfd17) | ES1868/ES1869 | BLASTER `U` sets the MPU-401 IRQ | crvs |
 | [f73bb3f](https://github.com/dafugg/unisound_continued/commit/f73bb3f) | ES1868/ES1869 | `H4`, or D = H, means no second DMA | Kahenraz |
 | [26f3356](https://github.com/dafugg/unisound_continued/commit/26f3356) | ES1887/ES1888 with `/NOPNP` | The IRQ the BIOS set up is kept | 0xDEADBEEF |
-| [ff390e3](https://github.com/dafugg/unisound_continued/commit/ff390e3) | Creative cards | A BLASTER `F` that isn't a multiple of 4 is rounded down | Mr.Hunt |
 | [50253a7](https://github.com/dafugg/unisound_continued/commit/50253a7) | Yamaha OPL3-SAx | BLASTER `K` sets the WSS DMA | TgamesFR |
 | [ecbe7de](https://github.com/dafugg/unisound_continued/commit/ecbe7de) | Yamaha OPL3-SAx | The SB Pro master volume is set correctly | badmojo, --Freeman-- |
 
@@ -337,10 +522,11 @@ whole report to a file, and the freeware HWiNFO for DOS can save a report too. T
 UNIDUMP rather than replace it: UNIDUMP shows the PnP cards and sound chips the way UNISOUND
 sees them.
 
-`/XESSB` and `/XSLAM` skip the PnP scan, so they never read the card's ID and print a fixed
-name for the chip instead. The same card can show up under different names: an ES1898F card is
-`ESS0003` normally and `[ESS1869] (ESS bypass key)` with `/XESSB`, because the chip reports
-itself as an ES1869.
+`/XESSB` and `/XSLAM` skip the PnP scan, so they never read the card's ID. `/XSLAM` prints a
+fixed name, and `/XESSB` names the chip from the part number it reads, `[ESS1868]` to
+`[ESS1879]`. The same card can show up under different names: an ES1898F card is `ESS0003`
+normally and `[ESS1869] (ESS bypass key)` with `/XESSB`, because the chip reports itself as an
+ES1869.
 
 ### What `/LOG` shows
 
@@ -411,7 +597,7 @@ binary, use `tools/build.sh --no-hash`; the hash check is for the `0.82a` branch
 
 | Path | Contents |
 |---|---|
-| `src/UNISOUND.C` | The whole program in one module, as in the original: 79 functions and all initialized data |
+| `src/UNISOUND.C` | The whole program in one module, as in the original: 111 functions (79 in 0.82a) and all initialized data |
 | `BUILD.BAT`, `UNISOUND.SHA256` | Build commands and the hash of the original v0.82a |
 | `tools/` | Build, matching and test tools (see below) |
 | `data/funcs.json` | Function map of the author's code (0x369–0x9185), including switch jump tables |

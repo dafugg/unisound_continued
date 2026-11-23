@@ -84,6 +84,15 @@ int main(int argc, char *argv[])
     sb = (unsigned)strtoul(argv[1], 0, 16);
     dma = atoi(argv[2]);
     mode = argv[3][0] & 0xdf;
+    if (dma != 0 && dma != 1 && dma != 3) {
+        /* DMA 2 is the floppy channel; 4-7 read past the 4-entry page table. */
+        puts("usage: SBST BASE DMA S|D|M (DMA 0, 1 or 3)");
+        return 1;
+    }
+    if (mode != 'S' && mode != 'D' && mode != 'M') {
+        puts("usage: SBST BASE DMA S|D|M");
+        return 1;
+    }
     e0 = mix_r(0x0e);
     printf("mixer 0Eh before = %02X\n", e0);
     outportb(sb + 6, 1);
