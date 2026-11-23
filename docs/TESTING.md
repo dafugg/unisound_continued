@@ -1,18 +1,14 @@
 # Testing in 86Box
 
-All results here come from emulation in 86Box. Thirteen fixes have since also been confirmed on
-real hardware: the ULTRASND and BLASTER parsing, option names (bug 12), unknown PnP cards (bug
-11), the ESS DSP flush (bug 10) and the ES1688 enable reads (bug 19) on a Compaq LTE 5000 with its
-on-board ES1688 (all but the unknown PnP cards), and the OPTi 82C924/925 probe (d2f397b) and the
-ES688/ES1688 IRQ and DMA writes (aee160e) on analog_programmer's ES1688F with the fix-3 build,
-which also found the chip with the DSP flush and the enable reads, and the non-PnP SB16 check's
-DSP reset (19a0fe1) on vintagefugg's Sound Blaster Pro 2, and the 82C928/82C929 MC1 check
-(0863ab4) on vintagefugg's Boca Research Sound Expression 14.4VSP (82C929), NewCom High
-Fidelity 16i (82C929A) and Turtle Beach Monte Carlo (82C929A), and the 82C928/82C929 WSS
-configuration register (b33b131) on the Monte Carlo, and the 82C930's WSS mode (8b5e5f0) and
-name (331a650) on vintagefugg's Silicom Wavemaster 32 FGS (MegaImage32, 82C930); see
-[Real hardware with fix-4](#real-hardware-with-fix-4). The table in
-[changes_since_official_082a.md](changes_since_official_082a.md) marks them.
+All results here come from emulation in 86Box, apart from
+[Real hardware with fix-4](#real-hardware-with-fix-4). Some fixes have since also been confirmed
+on real hardware. The table in [changes_since_official_082a.md](changes_since_official_082a.md)
+marks them in its last column: 24 rows, 22 of them fixes and two other changes, the small-model
+build (ce71335) and the `/LOG` dump of unknown cards (7d418a7). The first were the ULTRASND and
+BLASTER parsing, option names (bug 12), the ESS DSP flush (bug 10) and the ES1688 enable reads
+(bug 19) on a Compaq LTE 5000 with its on-board ES1688, unknown PnP cards (bug 11), and the OPTi
+82C924/925 probe (d2f397b) and the ES688/ES1688 IRQ and DMA writes (aee160e) on
+analog_programmer's ES1688F with the fix-3 build.
 
 ## Environment
 

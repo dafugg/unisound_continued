@@ -138,7 +138,7 @@ The list above names chips. UNISOUND picks the setup from the card's PnP ID, usi
   games, the card may need setting up again after some programs, and SB-mode audio is mono only;
   FM and WSS mode (`/XWSS`) are stereo.
 - **OPTi 82C929 (MAD16 Pro):** for example the Boca Research Sound Expression 4294 and SE1440.
-  SB Pro mode, with the MPU-401 (BLASTER P and U); experimental, see
+  SB Pro mode, with the MPU-401 (BLASTER P and U). Tried on three real cards; see
   [Wanted](#wanted-testers-and-pnp-dumps).
 
 On the OPTi 82C928, 82C929 and 82C930, `/NOPNP /XWSS` sets up Windows Sound System mode instead of
@@ -410,7 +410,12 @@ If you have one of these cards, please open a GitHub issue with:
 | CDC1111 | Dynasonic Pro (InterWave) | GUS PnP | Linux interwave.c; 86Box GUS PnP ROM with the id changed |
 | ESS1878, ESS1879 | ESS ES1878 / ES1879 | ES1869 | ESS's data sheets give them the ES1869's layout and bypass key; 86Box ES1869 with each chip's internal PnP ROM from its data sheet |
 | ESS0100, ESS0102 | ESS ES688/ES1688 PnP cards | ES968 layout (SB and FM on LD0), MPU-401 on LD1 with its own IRQ, game port LD2, IDE LD3 | only 86Box's `ess_ess0100_pnp` and `ess_ess0102_pnp`, whose PnP data is a reconstruction, not a dump from a real card. A `UNISOUND /LOG` from a real card, and whether sound, FM and MIDI work, would settle it |
-| none (`/NOPNP`) | OPTi 82C929 (MAD16 Pro): Boca Research Sound Expression 4294 and SE1440, miro PCM10, Acer Magic S20 | OPTi 82C929, SB Pro or WSS (`/XWSS`, `ULTRA16`) | its data sheet; 86Box `acermagic_s20` and `mirosound_pcm10`, where it leaves the same registers as OPTi's own SNDINIT; on real hardware a Boca Research SE1440 (82C929), a NewCom High Fidelity 16i and a Turtle Beach Monte Carlo (both 82C929A) work in SB mode, and the Monte Carlo also in WSS mode (`/XWSS`). WSS reports from other cards are still wanted |
+
+The OPTi 82C929 (`/NOPNP`) is no longer in this table: a Boca Research SE1440 (82C929), a NewCom
+High Fidelity 16i and a Turtle Beach Monte Carlo (both 82C929A) work in SB mode, and the Monte
+Carlo also in WSS mode (`/XWSS`); see [TESTING.md](docs/TESTING.md#real-hardware-with-fix-4).
+In 86Box, `acermagic_s20` and `mirosound_pcm10` get the same registers as from OPTi's own
+SNDINIT. WSS reports from other 82C929 cards are still wanted.
 
 ### Held back: need a PnP dump first
 
@@ -437,7 +442,7 @@ bytes resident (MEM /C), and what that part does isn't known yet; UNISOUND isn't
 Blaster games the card is better paired with a real SB-compatible card. Linux's driver needs
 nothing resident for 1-3: it loads the firmware and then uses the card's MPU-401 port directly.
 
-### Options not yet tried on real hardware
+### Options not yet tried on a machine that needs them
 
 These find chips that PnP isolation misses. They work in 86Box, but no one has reported back from
 a machine that needs them yet. Please include `UNISOUND /LOG` output with the option.
@@ -461,7 +466,6 @@ yet. Details and links to the reports are in
 | [1adfd17](https://github.com/dafugg/unisound_continued/commit/1adfd17) | ES1868/ES1869 | BLASTER `U` sets the MPU-401 IRQ | crvs |
 | [f73bb3f](https://github.com/dafugg/unisound_continued/commit/f73bb3f) | ES1868/ES1869 | `H4`, or D = H, means no second DMA | Kahenraz |
 | [26f3356](https://github.com/dafugg/unisound_continued/commit/26f3356) | ES1887/ES1888 with `/NOPNP` | The IRQ the BIOS set up is kept | 0xDEADBEEF |
-| [ff390e3](https://github.com/dafugg/unisound_continued/commit/ff390e3) | Creative cards | A BLASTER `F` that isn't a multiple of 4 is rounded down | Mr.Hunt |
 | [50253a7](https://github.com/dafugg/unisound_continued/commit/50253a7) | Yamaha OPL3-SAx | BLASTER `K` sets the WSS DMA | TgamesFR |
 | [ecbe7de](https://github.com/dafugg/unisound_continued/commit/ecbe7de) | Yamaha OPL3-SAx | The SB Pro master volume is set correctly | badmojo, --Freeman-- |
 
@@ -518,10 +522,11 @@ whole report to a file, and the freeware HWiNFO for DOS can save a report too. T
 UNIDUMP rather than replace it: UNIDUMP shows the PnP cards and sound chips the way UNISOUND
 sees them.
 
-`/XESSB` and `/XSLAM` skip the PnP scan, so they never read the card's ID and print a fixed
-name for the chip instead. The same card can show up under different names: an ES1898F card is
-`ESS0003` normally and `[ESS1869] (ESS bypass key)` with `/XESSB`, because the chip reports
-itself as an ES1869.
+`/XESSB` and `/XSLAM` skip the PnP scan, so they never read the card's ID. `/XSLAM` prints a
+fixed name, and `/XESSB` names the chip from the part number it reads, `[ESS1868]` to
+`[ESS1879]`. The same card can show up under different names: an ES1898F card is `ESS0003`
+normally and `[ESS1869] (ESS bypass key)` with `/XESSB`, because the chip reports itself as an
+ES1869.
 
 ### What `/LOG` shows
 
@@ -592,7 +597,7 @@ binary, use `tools/build.sh --no-hash`; the hash check is for the `0.82a` branch
 
 | Path | Contents |
 |---|---|
-| `src/UNISOUND.C` | The whole program in one module, as in the original: 79 functions and all initialized data |
+| `src/UNISOUND.C` | The whole program in one module, as in the original: 111 functions (79 in 0.82a) and all initialized data |
 | `BUILD.BAT`, `UNISOUND.SHA256` | Build commands and the hash of the original v0.82a |
 | `tools/` | Build, matching and test tools (see below) |
 | `data/funcs.json` | Function map of the author's code (0x369–0x9185), including switch jump tables |
