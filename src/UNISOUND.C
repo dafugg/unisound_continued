@@ -2719,6 +2719,8 @@ int parse_ultrasnd(void)
     int hex = 0; /* unread initial value */
     char *tok;
     char *next;
+    char *dend; /* end of the digits read as decimal */
+    char *hend; /* end of the digits read as hex */
     unsigned char field;
     env = getenv("ULTRASND");
     if (env == 0) {
@@ -2741,8 +2743,13 @@ int parse_ultrasnd(void)
         if (*tok == 0) {
             continue;
         }
-        dec = strtol(tok, 0, 10);
-        hex = strtol(tok, 0, 16);
+        dec = strtol(tok, &dend, 10);
+        hex = strtol(tok, &hend, 16);
+        if ((field == 0 ? hend : dend) == tok) {
+            /* No digits ("240,X,3,11"): strtol returns 0, which is not what the field says, so
+               ignore it. The port is hex, the DMAs and IRQs decimal. */
+            continue;
+        }
         switch (field) {
             case 0:
                 if (hex == 0x220 || hex == 0x230 || hex == 0x240 || hex == 0x250 || hex == 0x260) {
@@ -2803,6 +2810,7 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
     char *dup;
     char *tok;
     char *next;
+    char *end;
     int field = 0;
     int ok = 0;
     int v;
@@ -2825,7 +2833,12 @@ int parse_ultra16(int *port, int *dma, int *irq, int *rdma)
         if (*tok == 0) {
             continue;
         }
-        v = (int)strtol(tok, 0, field == 0 ? 16 : 10);
+        v = (int)strtol(tok, &end, field == 0 ? 16 : 10);
+        if (end == tok) {
+            /* No digits ("530,X,10"): strtol returns 0, which is not what the field says, so
+               ignore it. */
+            continue;
+        }
         if (field == 0 && (v == 0x530 || v == 0xe80 || v == 0xf40 || v == 0x604)) {
             *port = v;
             ok++;
@@ -2857,6 +2870,8 @@ int parse_blaster(void)
     int dec = 0; /* unread initial value */
     int hex = 0; /* unread initial value */
     char *tok;
+    char *dend; /* end of the digits read as decimal */
+    char *hend; /* end of the digits read as hex */
     unsigned char field;
     char letter;
     env = getenv("BLASTER");
@@ -2876,8 +2891,14 @@ int parse_blaster(void)
         if (isalpha((unsigned char)*tok) && strlen(tok) > 1) {
             letter = *tok;
             tok++;
-            dec = strtol(tok, 0, 10);
-            hex = strtol(tok, 0, 16);
+            dec = strtol(tok, &dend, 10);
+            hex = strtol(tok, &hend, 16);
+            if ((strchr("IUQY", toupper((unsigned char)letter)) != 0 ? dend : hend) == tok) {
+                /* No digits after the letter ("IX", "CX"): strtol returns 0, which is not what
+                   the field says, so ignore it. I, U, Q and Y are read as decimal, the other
+                   fields as hex, so WE80 or WF40 has digits. */
+                letter = 0;
+            }
             switch (toupper((unsigned char)letter)) {
                 case 'A':
                     if (hex >= 0x220 && hex <= 0x280) {
@@ -3015,6 +3036,7 @@ void parse_cd(void)
     char *env;
     char *dup;
     char *tok;
+    char *end;
     int val;
     env = getenv("UNISOUND_CD");
     if (env == 0) {
@@ -3030,14 +3052,22 @@ void parse_cd(void)
         }
         switch (toupper((unsigned char)*tok)) {
             case 'C':
-                val = (int)strtol(tok + 1, 0, 16);
+                val = (int)strtol(tok + 1, &end, 16);
+                if (end == tok + 1) {
+                    /* No digits after the letter ("CX"): not a zero, ignore the field. */
+                    break;
+                }
                 if (val == 0x168 || val == 0x1e8 || val == 0x170 || val == 0) {
                     ide_port = val;
                     ide_given = 1;
                 }
                 break;
             case 'Y':
-                val = (int)strtol(tok + 1, 0, 10);
+                val = (int)strtol(tok + 1, &end, 10);
+                if (end == tok + 1) {
+                    /* No digits after the letter ("YX"): not a zero, ignore the field. */
+                    break;
+                }
                 if (val >= 2 && val <= 15) {
                     ide_irq = val;
                 }
