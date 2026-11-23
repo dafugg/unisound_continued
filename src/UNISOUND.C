@@ -2950,8 +2950,16 @@ int parse_blaster(void)
                     }
                     break;
                 case 'W':
-                    wss_port = hex;
-                    applied++;
+                    /* 0 (none) or a port in 100h-FFFh. The cards take W anywhere in their
+                       PnP ranges (86Box ROMs: AD1816 500-620, Yamaha 530-F48, Crystal and
+                       Aztech codec 100-FFC), so no list of bases. Below 100h are the
+                       motherboard's DMA, PIC and timer ports, and above FFFh the 12-bit ISA
+                       PnP decode wraps around, while UNISOUND writes the codec at W + 4. */
+                    if (hex == 0 || (hex >= 0x100 && hex <= 0xfff)) {
+                        wss_port = hex;
+                        applied++;
+                        break;
+                    }
                     break;
                 case 'C':
                     if (hex == 0x168 || hex == 0x1e8 || hex == 0x170 || hex == 0) {
@@ -2962,10 +2970,20 @@ int parse_blaster(void)
                     }
                     break;
                 case 'R':
-                    yamaha_ctl_port = hex;
-                    ess_ctl_port = hex;
-                    aux_ctl_port = hex;
-                    applied++;
+                    /* 0 (none), a port in 100h-FFFh, or the Ensoniq range 2100h-21FFh
+                       (default 2180h). 100h-FFFh holds the PnP ranges of the other users,
+                       86Box ROMs: ESS ES1868/ES1869 800-FF8 (and 660h for the bypass key),
+                       Yamaha 100-FFE (default 370h); Rockwell 250h and GUS PnP 350h. Others
+                       would aim the control port writes at the motherboard (below 100h) or
+                       past the 12-bit decode. */
+                    if (hex == 0 || (hex >= 0x100 && hex <= 0xfff) ||
+                        (hex >= 0x2100 && hex <= 0x21ff)) {
+                        yamaha_ctl_port = hex;
+                        ess_ctl_port = hex;
+                        aux_ctl_port = hex;
+                        applied++;
+                        break;
+                    }
                     break;
                 case 'M':
                     if ((hex >= 0x300 && hex <= 0x380) || hex == 0) {
