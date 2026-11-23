@@ -426,6 +426,7 @@ void awe_init(unsigned port);
 void sb_print_dsp_ver(int port);
 int init_nonpnp_sb16(void);
 int refuse_disable(void);
+void read_notice(void);
 void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned char hdma);
 unsigned char sb16_get_irq(int port);
 unsigned char sb16_get_dma(int port);
@@ -1085,6 +1086,7 @@ int configure_pnp(int card, int list, int pass, unsigned port)
                 gus_irq2 = 0;
             }
             if (opt_read != 0) {
+                read_notice();
                 puts("Reading card current settings...\n");
             } else if (opt_disable == 0) {
                 if (type == CARD_GUSPNP) {
@@ -3874,6 +3876,15 @@ void sb_print_dsp_ver(int port)
     }
 }
 
+/* /R with /D: say that /D is dropped. Called where a card is about to be read, after the
+   banner and only once a card was found. */
+void read_notice(void)
+{
+    if (opt_disable != 0) {
+        puts("/R given: /D ignored, the card will only be read.");
+    }
+}
+
 /* /D (without /R) on a non-PnP card, after it was detected: such a card has no logical
    devices to deactivate, so leave it unchanged instead of setting it up, and have main exit
    with ERRORLEVEL 1, since nothing was disabled. Returns 1, the "card found" of the init
@@ -3977,6 +3988,7 @@ int init_nonpnp_sb16(void)
             return refuse_disable();
         }
         if (opt_read != 0) {
+            read_notice();
             puts("Reading card current settings...");
         } else {
             sb16_set_irq_dma(port, irq, dma, hdma);
@@ -5856,6 +5868,7 @@ int init_opti928(void)
             static int dmas[4] = {1, 0, 3, 4};
             int irqs[4] = {7, 0, 5, 0};
             irqs[1] = c929 ? 10 : 11;
+            read_notice();
             puts("Reading card current settings...");
             if (id_f8d & 0x80) {
                 printf("Settings: WSS:%X", wss[(id_f8d >> 4) & 3]);
@@ -6155,6 +6168,7 @@ int init_opti930(void)
             static unsigned wss[4] = {0x530, 0xe80, 0xf40, 0x604};
             unsigned char mc1 = opti93x_read(0xe0e, 1);
             unsigned char mc3 = opti93x_read(0xe0e, 3);
+            read_notice();
             puts("Reading card current settings...");
             printf("Settings: ADD:%X IRQ:%d DMA:%s WSS:%X JOY:%X", mc1 & 0x80 ? 0x240 : 0x220,
                    irqs[(mc3 >> 3) & 7], dmas[mc3 & 7], wss[(mc1 >> 4) & 3], mc1 & 1 ? 0 : 0x200);
@@ -6627,6 +6641,7 @@ int init_es688(void)
                 static unsigned mports[4] = {0x300, 0x310, 0x320, 0x330};
                 int irq = pin > 0 ? pins[pin] : irqs[(ess_ext_read(port, 0xb1) >> 2) & 3];
                 b = (ess_ext_read(port, 0xb2) >> 2) & 3;
+                read_notice();
                 puts("Reading card current settings...");
                 printf("Settings: ADD:%X IRQ:%d DMA:%d", port, irq,
                        b == 0   ? 4
