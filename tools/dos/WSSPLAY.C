@@ -14,7 +14,6 @@
 #define LEN 2000
 unsigned base, cdc;
 volatile int hit[16];
-int nirq, ndma; /* how many distinct IRQs / DMA channels fired during playback */
 unsigned char buf[2 * LEN + 16];
 unsigned long phys;
 static int irqs[5] = {5, 7, 9, 10, 11};
@@ -221,10 +220,7 @@ int main(int argc, char *argv[])
     for (i = 0; i < 5; i++) {
         printf(" %d=%d", irqs[i], hit[irqs[i]]);
         if (hit[irqs[i]]) {
-            nirq++;
-            if (irq < 0) {
-                irq = irqs[i]; /* first hit, not last: the counts above show the rest */
-            }
+            irq = irqs[i];
         }
     }
     printf("\ndma:");
@@ -233,14 +229,8 @@ int main(int argc, char *argv[])
         unsigned left = dma_count(c);
         printf(" %d=%s/%04X", c, (st >> c) & 1 ? "TC" : "--", left);
         if ((st >> c) & 1) {
-            ndma++;
-            if (dma < 0) {
-                dma = c;
-            }
+            dma = c;
         }
-    }
-    if (nirq > 1 || ndma > 1) {
-        puts("\nNOTE: more than one IRQ/DMA fired; RESULT below is the first hit only");
     }
     printf("\nRESULT: WSS IRQ %d DMA %d (-1 = none)\n", irq, dma);
     for (i = 0; i < 3; i++) {

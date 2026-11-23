@@ -158,7 +158,7 @@ int wait_irq(int before)
 
 int main(int argc, char *argv[])
 {
-    int i, n, blocks = 1, irq = -1, dma = -1, nirq = 0, ndma = 0;
+    int i, n, blocks = 1, irq = -1, dma = -1;
     unsigned char m1, m2, st;
     unsigned char *p;
     unsigned long a;
@@ -218,10 +218,7 @@ int main(int argc, char *argv[])
     for (i = 0; i < 4; i++) {
         printf(" %d=%d", irqs[i], hit[irqs[i]]);
         if (hit[irqs[i]]) {
-            nirq++;
-            if (irq < 0) {
-                irq = irqs[i]; /* first hit, not last: the counts above show the rest */
-            }
+            irq = irqs[i];
         }
     }
     printf("\ndma:");
@@ -230,16 +227,10 @@ int main(int argc, char *argv[])
         unsigned left = dma_count(c);
         printf(" %d=%s/%04X", c, (st >> c) & 1 ? "TC" : "--", left);
         if ((st >> c) & 1) {
-            ndma++;
-            if (dma < 0) {
-                dma = c;
-            }
+            dma = c;
         }
     }
     puts("");
-    if (nirq > 1 || ndma > 1) {
-        puts("NOTE: more than one IRQ/DMA fired; the IRQ/DMA below is the first hit only");
-    }
     if (irq >= 0 && dma >= 0) {
         for (i = 1; i < blocks; i++) {
             dma_prog(dma);
