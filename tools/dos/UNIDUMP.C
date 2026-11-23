@@ -257,6 +257,33 @@ void print_mask(char *what, unsigned mask, int max)
     puts(any ? "" : " none");
 }
 
+/* Minimum payload length for a resource tag; a shorter tag is printed raw instead of being
+   decoded, so a truncated byte is never read as the next field. 0 = any length decodes. */
+unsigned tag_minlen(unsigned char t)
+{
+    switch (t) {
+        case 0x1:
+        case 0x5:
+            return 1;
+        case 0x2:
+        case 0x3:
+            return 4; /* eisa_id reads 4 bytes; the LD flags byte is len-guarded below */
+        case 0x4:
+            return 2;
+        case 0x8:
+            return 7;
+        case 0x9:
+            return 3;
+        case 0x81:
+        case 0x86:
+            return 9;
+        case 0x85:
+            return 17;
+        default:
+            return 0;
+    }
+}
+
 /* Decode resource data p[0..n) up to and including the end tag; returns the bytes used, or n if
    there is no end tag. Every tag gets one line, unknown ones in hex. */
 unsigned decode_res(unsigned char far *p, unsigned n, char *indent)
@@ -281,6 +308,15 @@ unsigned decode_res(unsigned char far *p, unsigned n, char *indent)
             printf("%s(tag %02X runs past the end)\n", indent, t);
             return n;
         }
+        if (len < tag_minlen(t)) {
+            printf("%sTag %02X: (short, len %u)", indent, t, len);
+            for (k = 0; k < len && k < 16; k++) {
+                printf(" %02X", p[i + k]);
+            }
+            puts(len > 16 ? " ..." : "");
+            i += len;
+            continue;
+        }
         printf("%s", indent);
         switch (t) {
             case 0x1:
@@ -289,7 +325,11 @@ unsigned decode_res(unsigned char far *p, unsigned n, char *indent)
                 break;
             case 0x2:
                 printf("Logical device %s", eisa_id(p + i, id));
-                printf(len > 4 ? ", flags %02X\n" : "\n", p[i + 4]);
+                if (len > 4) { /* p[i + 4] is only read when the tag has a flags byte */
+                    printf(", flags %02X\n", p[i + 4]);
+                } else {
+                    puts("");
+                }
                 break;
             case 0x3:
                 printf("Compatible ID %s\n", eisa_id(p + i, id));
@@ -1142,8 +1182,14 @@ void report_pnp_bios(void)
                     puts("    compatible:");
                     decode_res(node_buf + pos, size - pos, "    ");
                 }
+            } else if (size > sizeof(node_buf)) {
+                printf("    (resource data %u bytes exceeds the %u-byte buffer; skipped)\n", size,
+                       sizeof(node_buf));
             }
         }
+    } else if (ax == 0) {
+        printf("largest node %u bytes exceeds the %u-byte buffer; nodes skipped\n", nsize,
+               sizeof(node_buf));
     }
     step("PnP BIOS function 40h");
     ax = pnp_entry(0x40, (unsigned char far *)cfg, pnp_ds);
@@ -1290,6 +1336,9 @@ void report_card(int csn)
     for (nld = 0, k = 9; k < n;) {
         unsigned char t = res[k];
         if (t & 0x80) {
+            if (k + 3 > n) {
+                break; /* truncated large tag: no length bytes left to read */
+            }
             k += 3 + (res[k + 1] | (res[k + 2] << 8));
         } else {
             if (((t >> 3) & 0xf) == 2) {
