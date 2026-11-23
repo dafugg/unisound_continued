@@ -719,9 +719,9 @@ void no_card_hint(void)
            "To report a problem: UNISOUND /LOG > LOG.TXT");
 }
 
-/* Return the value of a /V option value s of one or two digits ("0" to "99"), or -1 if s is
-   anything else. 99 sets every mixer to its maximum; the treble, bass and AWE formulas overflow
-   above it. */
+/* Return the value of a /V option value s of one or two digits ("0" to "99"), or of three
+   digits with a leading zero ("000" to "099"), or -1 if s is anything else. 99 sets every mixer
+   to its maximum; the treble, bass and AWE formulas overflow above it. */
 int opt_value(char *s)
 {
     if (isdigit((unsigned char)s[0]) && s[1] == 0) {
@@ -729,6 +729,9 @@ int opt_value(char *s)
     }
     if (isdigit((unsigned char)s[0]) && isdigit((unsigned char)s[1]) && s[2] == 0) {
         return (s[0] - '0') * 10 + s[1] - '0';
+    }
+    if (s[0] == '0' && isdigit((unsigned char)s[1]) && isdigit((unsigned char)s[2]) && s[3] == 0) {
+        return (s[1] - '0') * 10 + s[2] - '0';
     }
     return -1;
 }
@@ -766,8 +769,8 @@ void print_help(void)
     puts("   /Cn    Select PnP card number 'n' to initialize/read (1-9)");
     puts("   /CL    List all PnP cards present in the system");
     puts("   /CS    Initialize non-PnP Creative card (SB16 & AWE32)");
-    puts("   /R     Read PnP card current settings only");
-    puts("   /D     Disable PnP sound card");
+    puts("   /R     Read card current settings only (not with /XSLAM or /XESSB)");
+    puts("   /D     Disable PnP sound card (a non-PnP card is left unchanged)");
     puts("   /Vnn   Set Master Volume (0-99); also /VWnn Wave, /VFnn FM/Synth/Wavetable,");
     puts("          /VLnn Line-in, /VCnn CD, /VMnn Mic, /VPnn PC Speaker-in (Creative)");
     puts("   /VTnn  and /VBnn Set Treble/Bass/AuxB level (0-99) On supported cards");
@@ -779,7 +782,7 @@ void print_help(void)
     puts("   /XESSB ES1868/ES1869 not found by PnP (on-board): ESS bypass key, R=port");
     puts("   /LOG   Print diagnostic lines (UNISOUND /LOG > LOG.TXT)");
     puts("   /H /?  This help screen");
-    puts("\nUNISOUND (w/o options) initializes 1st card found with default vols.");
+    puts("\nUNISOUND (w/o options) inits 1st PnP card, else non-PnP SB16, default vols.");
     puts("If BLASTER/ULTRASND env var is found, values will be used to configure");
     puts("the card. If not, default values will be used. This program is FREEWARE!");
 }
