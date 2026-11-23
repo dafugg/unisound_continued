@@ -839,10 +839,11 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     unsigned char reg_irq2 = 0x72;
     unsigned char reg_dma = 0x74;
     unsigned char reg_dma2 = 0x75;
-    int ret = 0;   /* return value */
-    int hint = 0;  /* SB device set up: check BLASTER at the end */
-    int h16 = -1;  /* SB16-compatible card: the H DMA, else -1 */
-    int tries = 1; /* /XESSB: control ports to try */
+    int ret = 0;             /* return value */
+    int hint = 0;            /* SB device set up: check BLASTER at the end */
+    int h16 = -1;            /* SB16-compatible card: the H DMA, else -1 */
+    int tries = 1;           /* /XESSB: control ports to try */
+    unsigned xnet_rd = port; /* /XNET: the read-data port isolation found, else the first one */
 
     print_banner();
     if (nopnp_mode != 0) {
@@ -976,6 +977,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         }
     }
     dlog("PnP RD port %X", pnp_rdata_port);
+    if (opt_essb == 0 && opt_slam == 0) {
+        xnet_rd = pnp_rdata_port; /* before an ES1868/ES1869 moves the PnP ports */
+    }
     while (found != 0 && cardno < 16) {
         csn++;
         pnp_write(6, csn);
@@ -2368,7 +2372,17 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         print_blaster_hint(sb_port, sb_irq, sb_dma, h16);
     }
     if (opt_xnet > 0) {
-        xnet_workaround(pnp_rdata_port);
+        /* The Realtek key and isolation go out on the standard PnP ports, which an ES1868/
+           ES1869 setup (and /XESSB) moved to the ESS control port, so 0.82a sent them there.
+           /XESSB and /XSLAM ran no isolation: use the first read-data port it would have tried.
+           Wake[CSN] and plain PnP writes are needed, so /XESSB's and /XSLAM's write rules are
+           off for it. Nothing uses the PnP ports after this */
+        pnp_addr_port = 0x279;
+        pnp_wdata_port = 0xa79;
+        pnp_rdata_port = xnet_rd;
+        opt_essb = 0;
+        opt_slam = 0;
+        xnet_workaround(xnet_rd);
     }
     return ret;
 }
