@@ -371,7 +371,7 @@ int opt_xxg = 0;                    /* /XXGn: SB16 gain */
 int nopnp_mode = 0;                 /* /NOPNP = 1; 2 = OPTi control chip found */
 char opt_log = 0;                   /* /LOG: print diagnostic lines */
 char opt_slam = 0;   /* /XSLAM: Crystal chip set up through SLAM; 2 while SLAM is open */
-char opt_essb = 0;   /* /XESSB: ES1868/ES1869 found through the ESS bypass key alone */
+char opt_essb = 0;   /* /XESSB: ES1868/69/78/79 found through the ESS bypass key alone */
 int res_logged = -1; /* /LOG: resource data bytes printed so far; -1 = not printing them */
 /* Bit n set: logical device n's first I/O range is 1 or 2 bytes long, so it is an IDE control
    port and goes in register 60h, with the 8-byte command block in 62h (OPTi 82C931). */
@@ -394,7 +394,7 @@ int configure_pnp(int card, int list, int pass, unsigned port);
 void pnp_send_key(void);
 void pnp_write(unsigned char reg, unsigned char val);
 void slam_write(unsigned char reg, unsigned char val);
-int ess_bypass_id(void);
+int ess_bypass_id(unsigned char *part);
 void no_card_hint(void);
 void log_ldn(int ldn);
 void log_codec(unsigned port);
@@ -779,7 +779,7 @@ void print_help(void)
     puts("   /NOPNP Detect & init some Non-PnP cards (See TXT end of section 3)");
     puts("   /F /FS PnP card not found: set the read port on every try (/FS: slower)");
     puts("   /XSLAM Crystal chip set up by the BIOS (no PnP): configure it through SLAM");
-    puts("   /XESSB ES1868/ES1869 not found by PnP (on-board): ESS bypass key, R=port");
+    puts("   /XESSB ES1868/69/78/79 not found by PnP (on-board): ESS bypass key, R=port");
     puts("   /LOG   Print diagnostic lines (UNISOUND /LOG > LOG.TXT)");
     puts("   /H /?  This help screen");
     puts("\nUNISOUND (w/o options) inits 1st PnP card, else non-PnP SB16, default vols.");
@@ -843,6 +843,8 @@ int configure_pnp(int card, int list, int pass, unsigned port)
     int hint = 0;            /* SB device set up: check BLASTER at the end */
     int h16 = -1;            /* SB16-compatible card: the H DMA, else -1 */
     int tries = 1;           /* /XESSB: control ports to try */
+    unsigned char part = 0;  /* /XESSB: the ESS part number's low byte (68h for the ES1868) */
+    static char essb_id[8];  /* /XESSB: the chip name shown */
     unsigned xnet_rd = port; /* /XNET: the read-data port isolation found, else the first one */
 
     print_banner();
@@ -901,11 +903,12 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         pass = 2;
     }
     if (opt_essb != 0) {
-        /* /XESSB: for an ES1868/ES1869 that isolation doesn't find (a chipset that doesn't pass
-           A79h on, an on-board chip), send the ESS bypass key with the control port and reach the
-           PnP registers through it, with no CSN. The port is BLASTER R; without it, 660h (the
-           port 0.82a's own ESS setup and ESSCFG use), then 800h. Before the second try the chip
-           is put back into Wait for Key through the first port, in case it took the key there. */
+        /* /XESSB: for an ES1868, ES1869, ES1878 or ES1879 that isolation doesn't find (a chipset
+           that doesn't pass A79h on, an on-board chip), send the ESS bypass key with the control
+           port and reach the PnP registers through it, with no CSN. The port is BLASTER R; without
+           it, 660h (the port 0.82a's own ESS setup and ESSCFG use), then 800h. Before the second
+           try the chip is put back into Wait for Key through the first port, in case it took the
+           key there. */
         if (opt_read != 0) {
             /* the key itself places and activates the control port */
             puts("/R can't read a chip found through the ESS bypass key.");
@@ -922,9 +925,10 @@ int configure_pnp(int card, int list, int pass, unsigned port)
             pnp_addr_port = ess_ctl_port;
             pnp_wdata_port = ess_ctl_port + 1;
             pnp_rdata_port = ess_ctl_port + 1;
-            type = ess_bypass_id();
+            type = ess_bypass_id(&part);
             if (type == 0) {
-                printf("No ES1868/ES1869 answered the ESS bypass key at %X.\n", ess_ctl_port);
+                printf("No ES1868/ES1869/ES1878/ES1879 answered the ESS bypass key at %X.\n",
+                       ess_ctl_port);
             }
             if (type != 0 || --tries == 0) {
                 break;
@@ -938,7 +942,9 @@ int configure_pnp(int card, int list, int pass, unsigned port)
         if (type == 0) {
             return 1;
         }
-        id = type == CARD_ES1868 ? "ESS1868" : "ESS1869";
+        /* the part number, as the PnP id of logical device 1: ESS1868 ... ESS1879 */
+        sprintf(essb_id, "ESS18%02X", part);
+        id = essb_id;
         csn = 1;
         nsup = 1;
         pass = 2;
@@ -3720,8 +3726,9 @@ int pnp_map_devices(unsigned char csn, char *name, int *ld, int type)
         }
         ok = 1;
     }
-    /* /XESSB: the ES1868/ES1869 layout, 1 audio, 2 gameport, 3 MPU-401 or IDE. The bypass key
-       has already placed and activated logical device 0, the control port, so it is left alone. */
+    /* /XESSB: the ES1868/ES1869 layout, 1 audio, 2 gameport, 3 MPU-401 or IDE; the ES1878 and
+       ES1879 have the same 1 and 2 and no 3 (data sheets, appendix A). The bypass key has already
+       placed and activated logical device 0, the control port, so it is left alone. */
     if (opt_essb != 0) {
         ld[0] = 1;
         ld[3] = 2;
@@ -5461,9 +5468,11 @@ void send_alt_pnp_key(void)
 
 /* /XESSB: with the PnP registers reached through the ESS control port, put logical device 1
    (audio) at sb_port and check the chip itself: the DSP answers E7h with 68h, and mixer register
-   40h, read four times after one index write (as Linux es18xx does), gives 18h, 68h or 69h, then
-   the control port's high and low bytes. Returns CARD_ES1868 or CARD_ES1869, or 0. */
-int ess_bypass_id(void)
+   40h, read four times after one index write (as Linux es18xx does), gives 18h, then 68h, 69h,
+   78h or 79h for the ES1868, ES1869, ES1878 or ES1879 (their data sheets, "Identifying the
+   ES18xx"), then the control port's high and low bytes. Sets *part to that second byte. Returns
+   CARD_ES1868, or CARD_ES1869 for the other three (as their PnP ids are mapped), or 0. */
+int ess_bypass_id(unsigned char *part)
 {
     unsigned char m[4];
     int e7;
@@ -5481,13 +5490,15 @@ int ess_bypass_id(void)
         m[i] = inportb(sb_port + 5);
     }
     dlog("bypass %X: E7 %02X, 40h %02X %02X %02X %02X", ess_ctl_port, e7, m[0], m[1], m[2], m[3]);
-    if (e7 != 0x68 || m[0] != 0x18 || (m[1] != 0x68 && m[1] != 0x69) || m[2] != ess_ctl_port >> 8 ||
-        m[3] != (ess_ctl_port & 0xff)) {
+    if (e7 != 0x68 || m[0] != 0x18 ||
+        (m[1] != 0x68 && m[1] != 0x69 && m[1] != 0x78 && m[1] != 0x79) ||
+        m[2] != ess_ctl_port >> 8 || m[3] != (ess_ctl_port & 0xff)) {
         /* LD1 was activated to reach the PnP registers; put it back off. */
         pnp_write(7, 1);
         pnp_write(0x30, 0);
         return 0;
     }
+    *part = m[1];
     return m[1] == 0x68 ? CARD_ES1868 : CARD_ES1869;
 }
 
