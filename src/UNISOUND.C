@@ -6750,7 +6750,12 @@ int init_es688(void)
                 sb_irq = b == 0 ? 9 : b == 1 ? 5 : b == 2 ? 7 : 10;
             }
             b = (id >> 2) & 3;
-            if (b != 0) {
+            if (b == 0) {
+                /* B2h reads back no DMA: say so and show DMA 4 (none), as /R does. There is no
+                   BLASTER line to suggest without a D, so the hint below is skipped */
+                printf("DMA %d didn't take: the chip reads back no DMA.\n", sb_dma);
+                sb_dma = 4;
+            } else {
                 sb_dma = b == 1 ? 0 : b == 2 ? 1 : 3;
             }
             if (pin > 0) {
@@ -6826,7 +6831,9 @@ int init_es688(void)
             puts("");
             sbpro_mixer_set();
             print_mixer("ESS", -1, -1);
-            print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
+            if (sb_dma != 4) {
+                print_blaster_hint(sb_port, sb_irq, sb_dma, -1);
+            }
             return 1;
         }
     }
