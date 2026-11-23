@@ -76,8 +76,8 @@ vendor drivers needed.
   ends in 32 get UNISOUND's built-in CS4232 firmware patch (3213 bytes), with `Loading CS4232
   Firmware... done.` The Terratec EWS64 (`CSCA836`, `CDCA836`) gets its resources but no
   firmware, and UNISOUND prints `EWS64 firmware not supported. Output will be silent.` That its
-  output stays silent comes from UNISOUND.TXT (its v0.76b notes) and hasn't been tried with
-  these builds; a [VOGONS report by moturimi1](https://www.vogons.org/viewtopic.php?p=1352501#p1352501)
+  output stays silent comes from UNISOUND.TXT (its v0.76b notes) and hasn't been tried since
+  0.82a; a [VOGONS report by moturimi1](https://www.vogons.org/viewtopic.php?p=1352501#p1352501)
   says an EWS64 XL's MIDI at P310/P340 works.
 - **Avance Logic:** ALS007, ALS100, ALS100+, ALS120 and ALS200, and DT-0197H/DT-0196H.
 - **Aztech:** AZT2320.
@@ -186,7 +186,7 @@ This list comes from the source and hasn't been checked on a real card; see
 
 UNISOUND.TXT, JazeFox's manual, comes with every build and describes the options (section 3 and
 the help screen), the `/X` options (section 5) and the BLASTER fields. This section adds what
-the source shows beyond the manual, and what these builds change. `UNISOUND /H` lists the
+the source shows beyond the manual, and what has changed since 0.82a. `UNISOUND /H` lists the
 options too.
 
 ### Command-line options
@@ -201,7 +201,7 @@ options too.
 - `/F` and `/FS` are for a PnP card that isolation doesn't find at first: `/F` sets the read
   data port on every try, and `/FS` also reads every isolation bit, a slower scan. The manual
   mentions `/FS` for some Terratec AD1816 and Pinnacle cards; its v0.80a notes say `/F` was taken
-  off the help screen but keeps working. These builds list both on the help screen.
+  off the help screen but keeps working. The help screen lists both again.
 - `/R` reads the card's settings back and writes nothing: on PnP cards, and with `/CS` and
   `/NOPNP` on the non-PnP SB16, ES688/ES1688-family chips and OPTi 82C928, 82C929 and 82C930.
   `/XSLAM /R` and `/XESSB /R` are refused (`/R can't read a chip set up through SLAM.`, `/R can't
@@ -247,7 +247,7 @@ the manual names, or to fewer:
 - `/XNET` also works after the ES1869 setup (and the ES1868 one with `/XEA`), and with `/XESSB`
   and `/XSLAM`: UNISOUND moves the PnP ports back before it looks for the network card (08c6ca6).
   Before, the workaround went to the ESS control port and the network card stayed off.
-- `/XSLAM` and `/XESSB` are these builds' own; see [Wanted](#wanted-testers-and-pnp-dumps).
+- `/XSLAM` and `/XESSB` were added after 0.82a; see [Wanted](#wanted-testers-and-pnp-dumps).
   Together they print `/XSLAM cannot be used with /XESSB.` and exit with ERRORLEVEL 2 (3ece608).
   `/XESSB` also accepts the ES1878 and ES1879 and names them `[ESS1878]` and `[ESS1879]`
   (2aa4b38). That comes from their data sheets and is untested: 86Box has neither chip.
@@ -275,7 +275,7 @@ The manual lists the fields. In the source they take these values; anything else
 | `K` | WSS DMA | 0-7 |
 
 `I`, `U`, `Q` and `Y` are decimal, the others hex. `T` is read but not used. `R` sets the
-Yamaha, ESS and other control ports at once. Changes in these builds:
+Yamaha, ESS and other control ports at once. Changes since 0.82a:
 
 - Up to 20 fields are read; 0.82a read 12, so a full BLASTER lost its last fields (010dcc2).
   Every word counts towards the 20, also `T` and unknown ones.
