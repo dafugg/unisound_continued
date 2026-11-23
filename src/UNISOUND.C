@@ -350,6 +350,7 @@ int bass_lvl = -1;                /* bass / AuxB (/VBnn); -1 = not set */
 char opt_cs = 0;                  /* /CS: initialize a non-PnP Creative card */
 unsigned char opt_read = 0;       /* /R: read settings only */
 int opt_disable = 0;              /* /D: disable the card */
+char disable_refused = 0;         /* /D found a non-PnP card and left it alone: exit 1 */
 char opt_xxf = 0; /* /XXF: ignore bad checksums; set to 2 when one was bad, 1 when good */
 unsigned char isolate_limit =
     4;              /* isolation gives up after this many bits without a response (/FS: 0x50) */
@@ -424,6 +425,7 @@ int pnp_read_str(char *buf, unsigned len);
 void awe_init(unsigned port);
 void sb_print_dsp_ver(int port);
 int init_nonpnp_sb16(void);
+int refuse_disable(void);
 void sb16_set_irq_dma(int port, unsigned char irq, unsigned char dma, unsigned char hdma);
 unsigned char sb16_get_irq(int port);
 unsigned char sb16_get_dma(int port);
@@ -673,7 +675,10 @@ int main(int argc, char *argv[])
     if (nopnp_mode != 0) {
         probe_opti_ctl();
     }
-    return configure_pnp(card, list, full_scan, scan_port);
+    i = configure_pnp(card, list, full_scan, scan_port);
+    /* /D on a non-PnP card disabled nothing: ERRORLEVEL 1, whether the card was reached
+       through /CS, /NOPNP or the fallback after the PnP scan. */
+    return disable_refused != 0 ? 1 : i;
 }
 
 /* /LOG: select logical device ldn and print its registers 30h, 60h-65h and 70h-75h. */
@@ -3869,6 +3874,17 @@ void sb_print_dsp_ver(int port)
     }
 }
 
+/* /D (without /R) on a non-PnP card, after it was detected: such a card has no logical
+   devices to deactivate, so leave it unchanged instead of setting it up, and have main exit
+   with ERRORLEVEL 1, since nothing was disabled. Returns 1, the "card found" of the init
+   functions, so the caller stops looking for other cards. */
+int refuse_disable(void)
+{
+    puts("Non-PnP card, can't be disabled. Card left unchanged.");
+    disable_refused = 1;
+    return 1;
+}
+
 /* Detect and configure a non-PnP (jumpered) SB16 or AWE32, used for /CS and as a fallback when
    no PnP card is found. Probes 0x220-0x280 for a DSP of version 4.xx that answers the 0xE3
    copyright command; each DSP is reset first, so a byte left in its read buffer isn't taken for
@@ -3958,9 +3974,7 @@ int init_nonpnp_sb16(void)
         }
         printf("\n%s detected at: [%Xh] DSP: v%d.%02d\n", name, port, maj, min);
         if (opt_disable != 0 && opt_read == 0) {
-            /* /D: a jumpered card has no logical devices to deactivate */
-            puts("Non-PnP card, can't be disabled. Card left unchanged.");
-            return 1;
+            return refuse_disable();
         }
         if (opt_read != 0) {
             puts("Reading card current settings...");
@@ -5854,6 +5868,9 @@ int init_opti928(void)
                    id_f8d & 0x80 ? " [WSS mode]" : " [SB Mode]");
             return 1;
         }
+        if (opt_disable != 0) {
+            return refuse_disable();
+        }
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         /* The WSS base, IRQ and DMA come from ULTRA16, not from BLASTER (W, K), which describes
            the SB part. Without it, OPTi's SOUND16.CFG defaults: 530, IRQ 7, DMA 0. */
@@ -6144,6 +6161,9 @@ int init_opti930(void)
             /* the CD-type bits read back inverted: 08 is secondary IDE (see below) */
             puts((mc1 & 0x0e) == 0x08 ? " IDE:170/I15" : "");
             return 1;
+        }
+        if (opt_disable != 0) {
+            return refuse_disable();
         }
         puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
         wss_port = 0x530;
@@ -6624,6 +6644,9 @@ int init_es688(void)
                 }
                 puts("");
                 return 1;
+            }
+            if (opt_disable != 0) {
+                return refuse_disable();
             }
             puts(parse_blaster() ? "Loading BLASTER values..." : "Loading default values...");
             sb_port = port;
