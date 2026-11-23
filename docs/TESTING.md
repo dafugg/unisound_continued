@@ -615,6 +615,52 @@ On MS-DOS 3.30 and 5.00, booted from their own floppies, both builds ran `VER`, 
 `cs4236b`, `sbprov2` and `sbawe32_pnp`, on pnp2 and nopnp: 24 boots per build, and every UNISOUND
 output was identical. Only CHKDSK's file sizes differed.
 
+## Bug-hunt fixes
+
+A bug hunt over the decompiled source found the problems fixed from `010dcc2` to `ac82477`.
+Each finding was checked before it was taken: the bug shown on `main` (`04d7a4a`) and the fix on
+the bug hunt's own build. The fixes that needed it were then redone and tested again. All of it
+ran in 86Box on pnp2 and nopnp under MS-DOS 6.22, or, where 86Box can't show the bug, in a host
+harness built with gcc around the code itself. Nothing here was tried on real hardware. Exit
+codes were read with `IF ERRORLEVEL` chains.
+
+| Fix | How it was reproduced | Before | After |
+|---|---|---|---|
+| `010dcc2` BLASTER fields | sb16_pnp, `BLASTER=A220 I5 D1 H5 P330 T6 J201 F388 M0 C0 Q0 U9 I7 D0` (14 fields), `/LOG` | the last two fields dropped: `IRQ:5 DMA:1/5` and a "doesn't match" hint | `IRQ:7 DMA:0/5`, LDN 0 70h = 07, 74h = 00 |
+| `3ece608` `/XSLAM /XESSB` | ess_es1868, ess_es1869, sb16_pnp, cs4236b | a Settings line for a card never programmed, then "No Crystal codec answered after the SLAM setup.", ERRORLEVEL 1 | `/XSLAM cannot be used with /XESSB.`, ERRORLEVEL 2 |
+| `8bab410` resource lengths | host harness: resource data with a tag 84h item of 32768 bytes | the item skipped, then 5467 tags and 5463 logical devices read from its contents | 5 tags and 2 logical devices, as in the data |
+| `6ea6f2a` exit codes | no card, `UNISOUND /D` and `/R /D`; sb16_pnp, `/C2 /D` | ERRORLEVEL 0 | ERRORLEVEL 1 |
+| `1b27daf` empty fields | guspnp, `ULTRASND=250,,5,7`; opti_82c930, `/NOPNP /XWSS`, `ULTRA16=530,,10` | DMA 5/7, IRQ 11; IRQ 7 and `SET ULTRA16=530,0,7,0` | DMA 3/5, IRQ 7; IRQ 10 and `SET ULTRA16=530,0,10,0` |
+| `3a339b7`, `c683a68` `/CS` with `/CL` or `/Cn` | sb16_pnp, guspnp: `/CS /CL`, `/CL /CS`, `/C2 /CS` | a non-PnP SB16 setup, a list, a non-PnP setup; all ERRORLEVEL 0 | `/CS cannot be used with /CL or /Cn.`, ERRORLEVEL 2; `/CS /C1` still works. Only a build with both commits was run, so the `/CL /CS` case that c683a68 closes has no run of its own |
+| `06c6818` "environment var found" | sb16_pnp, `BLASTER=T6 XYZ`; guspnp, `ULTRASND=999,999,999` | "BLASTER (ULTRASND) environment var found! Loading settings..." | "Loading Unisound default settings..." |
+| `1cecae5` ctype | sb16_pnp, guspnp: `/X3D` followed by byte 81h or E9h | taken as `/X3D`, ERRORLEVEL 0 (Turbo C's table before `_ctype` makes those bytes digits) | "Unknown option", ERRORLEVEL 2 |
+| `2a2fd38` SAM9407 counter | host harness, a 128 KB upload | 12 progress dots, those after word 32768 at shifted places | 13 dots, one every 5000 words |
+| `8cf1879` ESS probe | host harness: 220h answers E7h with `68 05`, an ES1688 at 240h with `68 8B` | no ESS chip found | the ES1688 at 240h set up |
+| `96ae23a` Crystal 75h | cs4232, cs4235, cs4236b, `H5` after a run with `H0` | `DMA:1`, `/R` reads `DMA:1/0` | `DMA:1/4`, `/R` the same |
+| `e838543` `/XESSB` LD1 | ess_es1869 + sb16, `/XESSB` at 800h, the DSP there not an ESS | LD1 left active at 220h over the SB16 (PIO: 30h = 01) | LD1 off (30h = 00) |
+| `13ef91c` no-digit fields | sb16_pnp, ess_es1868, cs4236b, ymf719, `BLASTER=A220 IX D1 H5 P330 T6 CX`; guspnp, `ULTRASND=240,X,3,11`; `WE80`, `WF40` | `IRQ:0`; `DMA:0/3` | `IRQ:5`; `DMA:3/3`; `WE80` and `WF40` still taken (the first version of the fix dropped them). `ULTRA16=530,X,10` now gets the `SET ULTRA16=` line |
+| `11568cc` W and R | ymf719 `W9999`, `W20 R40`; cs4236b `W9999`, `W20`; ess_es1868 `R9999`, `R820` | `WSS:9999`, `WSS:20 CTR:40`, `WSS:999D`, `WSS:24`, `CTR:9999` | `WSS:530`, `WSS:530 CTR:370`, `WSS:534`, `WSS:534`, `CTR:800`; `R820` kept (the first version refused it) |
+| `5603724` non-PnP `/D` | ess_es1688, ess_es688, opti_82c930, mirosound_pcm10: `/NOPNP /D`; sb16: `/NOPNP /D`, `/CS /D`, plain `/D` | the whole setup, ERRORLEVEL 0; on the sb16 the refusal, ERRORLEVEL 0 | `Non-PnP card, can't be disabled. Card left unchanged.`, ERRORLEVEL 1 on every route; `/NOPNP /R /D` only reads |
+| `c65bb4a` `/R /D` | sb16_pnp `/R /D`; sb16, ess_es1688, ess_es688, opti_82c930, mirosound_pcm10 `/NOPNP /R /D` | no word about `/D` | `/R given: /D ignored, the card will only be read.` after the card's line; not printed when no card is found |
+| `e6c7f3a` `/V0nn` | sb16_pnp, `/V099`, `/VW010`, `/V000`, `/V100` | "Invalid value", ERRORLEVEL 2, for the first two | `VOL:99`, `WAV:10`, `VOL:0`; `/V100` still refused |
+| `29da20b` SB16 IRQ 9 | sb16, `BLASTER=A220 I9 D1 H5 T6`, then DMAPLAY | `IRQ:5`, a "doesn't match" hint, DMAPLAY plays on IRQ 5 | `IRQ:9`, no hint, `/R` `IRQ:2`, DMAPLAY plays on IRQ 9 |
+| `29da20b` OPTi IRQ/DMA | mirosound_pcm10, acermagic_s20, opti_82c930, `/NOPNP` with `I3`, `D2`, and with `I5 D1` or no BLASTER | IRQ 5 / DMA 1 without a word | `IRQ 3 not possible on OPTi 82C929, using 5.` and the DMA line; nothing for `I5 D1` (the first version printed it there too) |
+| `8470856` ESS `P0` | ess_es1688, ess_es1788, `P0`, then MPUDET and OPLDET | mixer 40h = 43h, an MPU-401 at 300h | 40h = 03h, no MPU-401, the ES1788's OPL still at 388h; `P300` and `P330` unchanged. The ess_es1888 VM didn't start, so the ES1888 is untested |
+| `08c6ca6` `/XNET` | ess_es1869 + ne2kpnp (RTL8019AS), `/XESSB /XNET` and `/XNET`, read back through the PnP ports | after `/XESSB /XNET`, the network card at CSN 81h reads FFh, inactive | CSN 81h, active, after both |
+| `2aa4b38` ES1878/ES1879 | host harness of the test and the name; 86Box ess_es1868, ess_es1869, sb16 with `/XESSB` | | 68h, 69h, 78h and 79h give `[ESS1868]` to `[ESS1879]`, other values are refused; 86Box's chips are found as before. 86Box has no ES1878 or ES1879 |
+| `ac82477` no DMA | host harness of the code: B2h read back as 58h, 5Ch, 54h, 50h, 00h | | DMA 1, 3, 0 with the hint; for 50h and 00h `DMA n didn't take: the chip reads back no DMA.`, `DMA:4`, no hint. 86Box always takes the DMA |
+
+Not shown at run time: `4f9bd2a` (a strdup() that fails needs a full heap), `c823853` (86Box has
+no ADS7141), `7a7fc33` (a card that keeps answering isolation) and the "resource data could not
+be read" path of `6ea6f2a` (no 86Box card fails there); they were checked by reading the code.
+`bcbec13` only drops a test that was always false.
+
+The final build (`ac82477`) ran the regression matrix against the build before the redone fixes
+(`2f917b3`): all 75 ISA sound cards on pnp2 and nopnp, nine commands each (`/LOG`, `/NOPNP /LOG`,
+`/R`, `/NOPNP /R`, `/XESSB /LOG`, `/XSLAM /LOG`, `/?`, `DMAPLAY 220`, `WSSPLAY 530`). The only
+differences were the help screen's `/R`, `/D`, `/XESSB` and last lines (150 outputs) and the new
+"No ES1868/ES1869/ES1878/ES1879 answered" lines (146 outputs).
+
 ## Real hardware with fix-4
 
 vintagefugg's tests of fix-4 builds on real cards, all under MS-DOS 6.22. Cards that 0.82a
