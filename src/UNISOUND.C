@@ -6768,6 +6768,13 @@ int init_es688(void)
                 } else {
                     joy_port = 0;
                 }
+                /* Mixer 40h: bits 7:5 MPU-401 IRQ (000 = MPU off), 4:3 its base 300-330, 1 the
+                   joystick, 0 the FM at 388 on the ES1788 (86Box snd_sb.c; Linux es1688_lib.c
+                   also always sets bit 0). 0.82a left bits 7:5 set for P0, so the MPU-401 stayed
+                   on at 300 */
+                if (mpu_port == 0) {
+                    mpu &= 0x1f;
+                }
                 mpu |= ((mpu_port & 0xf0) >> 1) | 1;
                 if (opt_log) {
                     outportb(sb_port + 4, 0x40);
@@ -6784,7 +6791,11 @@ int init_es688(void)
             }
             printf("Settings: ADD:%X IRQ:%d DMA:%d", sb_port, sb_irq, sb_dma);
             if (ver >= 0x88) {
-                printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
+                if (mpu_port == 0) {
+                    printf(" MPU:0 JOY:%X", joy_port);
+                } else {
+                    printf(" MPU:%X/I%d JOY:%X", mpu_port, mpu_irq, joy_port);
+                }
                 hint_mpu = mpu_port;
             }
             puts("");
