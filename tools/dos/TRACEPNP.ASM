@@ -1,6 +1,8 @@
 ; TRACEPNP [options]: run UNISOUND.COM [options] with the trap flag set and log every
 ; OUT DX,AL to the ISA PnP ports (279h address, A79h write data) and to the ESS
 ; configuration ports 660h/661h and 800h/801h. Prints "port=value" for each, in order.
+; Every CS from the child's PSP to the end of its memory block is traced, so both a tiny
+; .COM and the medium-model UNISOUND.COM (an EXE whose code is in UNISOUND_TEXT) are covered.
 ; Exits with the child's exit code, or 1 if UNISOUND.COM could not be loaded.
 ; Build: TASM TRACEPNP.ASM / TLINK /t TRACEPNP.OBJ
         .model tiny
@@ -46,6 +48,12 @@ loaded:
         mov     ah, 62h                 ; the child's PSP is now current
         int     21h
         mov     childpsp, bx
+        mov     ax, bx                  ; end of the child's memory block: PSP + the
+        dec     ax                      ; size in its MCB (the paragraph before the PSP)
+        mov     es, ax
+        mov     ax, es:[3]
+        add     ax, bx
+        mov     childend, ax
         mov     es, bx                  ; child returns to child_done
         mov     word ptr es:[0ah], offset child_done
         mov     word ptr es:[0ch], cs
@@ -156,8 +164,11 @@ int1:
         push    ds
         lds     si, [bp+2]
         mov     ax, ds                  ; outside UNISOUND (in DOS or the BIOS):
-        cmp     ax, cs:childpsp         ; stop tracing until the INT 3 below
-        je      i1_child
+        cmp     ax, cs:childpsp         ; stop tracing until the INT 3 below.
+        jb      i1_not                  ; UNISOUND is a medium-model EXE: its code
+        cmp     ax, cs:childend         ; runs in segments above the PSP, so take
+        jb      i1_child                ; any CS inside the child's block
+i1_not:
         and     word ptr [bp+6], 0feffh
         jmp     i1_done
 i1_child:
@@ -267,6 +278,7 @@ old3    dd      0
 bp_addr dd      0
 bp_byte db      0
 childpsp dw     0
+childend dw     0
 savesp  dw      0
 retcode db      0
 overflow db     0
